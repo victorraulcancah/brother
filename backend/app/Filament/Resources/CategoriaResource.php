@@ -6,6 +6,7 @@ use App\Filament\Resources\CategoriaResource\Pages;
 use App\Models\Categoria;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -55,12 +56,12 @@ class CategoriaResource extends Resource
     {
         return $schema
             ->schema([
-                Components\Tabs::make('Categoría')
+                SchemaComponents\Tabs::make('Categoría')
                     ->tabs([
-                        Components\Tabs\Tab::make('Información')
+                        SchemaComponents\Tabs\Tab::make('Información')
                             ->icon('heroicon-o-information-circle')
                             ->schema([
-                                Components\Section::make('Datos de la Categoría')
+                                SchemaComponents\Section::make('Datos de la Categoría')
                                     ->schema([
                                         Components\TextInput::make('nombre')
                                             ->label('Nombre')
@@ -72,13 +73,13 @@ class CategoriaResource extends Resource
                                     ])->columns(2),
                             ]),
 
-                        Components\Tabs\Tab::make('Sub Categorías')
+                        SchemaComponents\Tabs\Tab::make('Sub Categorías')
                             ->icon('heroicon-o-rectangle-stack')
                             ->schema([
                                 Components\Repeater::make('subCategorias')
                                     ->relationship('subCategorias')
                                     ->schema([
-                                        Components\Grid::make(2)
+                                        SchemaComponents\Grid::make(2)
                                             ->schema([
                                                 Components\TextInput::make('nombre')
                                                     ->label('Nombre')

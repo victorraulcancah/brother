@@ -6,6 +6,7 @@ use App\Filament\Resources\MarcaResource\Pages;
 use App\Models\Marca;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -55,12 +56,12 @@ class MarcaResource extends Resource
     {
         return $schema
             ->schema([
-                Components\Tabs::make('Marca')
+                SchemaComponents\Tabs::make('Marca')
                     ->tabs([
-                        Components\Tabs\Tab::make('Información')
+                        SchemaComponents\Tabs\Tab::make('Información')
                             ->icon('heroicon-o-information-circle')
                             ->schema([
-                                Components\Section::make('Datos de la Marca')
+                                SchemaComponents\Section::make('Datos de la Marca')
                                     ->schema([
                                         Components\TextInput::make('nombre')
                                             ->label('Nombre')
@@ -75,13 +76,13 @@ class MarcaResource extends Resource
                                     ])->columns(2),
                             ]),
 
-                        Components\Tabs\Tab::make('Sub Marcas')
+                        SchemaComponents\Tabs\Tab::make('Sub Marcas')
                             ->icon('heroicon-o-tag')
                             ->schema([
                                 Components\Repeater::make('subMarcas')
                                     ->relationship('subMarcas')
                                     ->schema([
-                                        Components\Grid::make(2)
+                                        SchemaComponents\Grid::make(2)
                                             ->schema([
                                                 Components\TextInput::make('nombre')
                                                     ->label('Nombre')

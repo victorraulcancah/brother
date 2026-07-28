@@ -6,6 +6,7 @@ use App\Filament\Resources\ProductoResource\Pages;
 use App\Models\Producto;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -55,12 +56,12 @@ class ProductoResource extends Resource
     {
         return $schema
             ->schema([
-                Components\Tabs::make('Producto')
+                SchemaComponents\Tabs::make('Producto')
                     ->tabs([
-                        Components\Tabs\Tab::make('Información General')
+                        SchemaComponents\Tabs\Tab::make('Información General')
                             ->icon('heroicon-o-information-circle')
                             ->schema([
-                                Components\Section::make('Identificación')
+                                SchemaComponents\Section::make('Identificación')
                                     ->schema([
                                         Components\TextInput::make('codigo')
                                             ->label('Código / SKU')
@@ -73,7 +74,7 @@ class ProductoResource extends Resource
                                             ->maxLength(255),
                                     ])->columns(2),
 
-                                Components\Section::make('Clasificación')
+                                SchemaComponents\Section::make('Clasificación')
                                     ->schema([
                                         Components\Select::make('marca_id')
                                             ->label('Marca')
@@ -101,7 +102,7 @@ class ProductoResource extends Resource
                                             ->required(),
                                     ])->columns(2),
 
-                                Components\Section::make('Precio y Configuración')
+                                SchemaComponents\Section::make('Precio y Configuración')
                                     ->schema([
                                         Components\TextInput::make('precio_base')
                                             ->label('Precio Base')
@@ -122,13 +123,13 @@ class ProductoResource extends Resource
                                     ])->columns(2),
                             ]),
 
-                        Components\Tabs\Tab::make('Variantes')
+                        SchemaComponents\Tabs\Tab::make('Variantes')
                             ->icon('heroicon-o-variable')
                             ->schema([
                                 Components\Repeater::make('variantes')
                                     ->relationship('variantes')
                                     ->schema([
-                                        Components\Grid::make(3)
+                                        SchemaComponents\Grid::make(3)
                                             ->schema([
                                                 Components\TextInput::make('sku_variante')
                                                     ->label('SKU Variante')
@@ -158,13 +159,13 @@ class ProductoResource extends Resource
                                     ->cloneable(),
                             ]),
 
-                        Components\Tabs\Tab::make('Imágenes')
+                        SchemaComponents\Tabs\Tab::make('Imágenes')
                             ->icon('heroicon-o-photo')
                             ->schema([
                                 Components\Repeater::make('imagenes')
                                     ->relationship('imagenes')
                                     ->schema([
-                                        Components\Grid::make(3)
+                                        SchemaComponents\Grid::make(3)
                                             ->schema([
                                                 Components\TextInput::make('url')
                                                     ->label('URL de la Imagen')
