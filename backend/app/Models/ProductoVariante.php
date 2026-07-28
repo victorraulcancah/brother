@@ -34,4 +34,14 @@ class ProductoVariante extends Model
     {
         return $this->belongsToMany(AtributoValor::class, 'producto_variante_atributo_valor');
     }
+
+    public function stocks()
+    {
+        return $this->hasMany(ProductoAlmacenStock::class);
+    }
+
+    public function movimientos()
+    {
+        return $this->hasMany(MovimientoInventario::class);
+    }
 }

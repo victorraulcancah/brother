@@ -49,6 +49,15 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Escritorio')
                     ->icon('heroicon-o-home')
                     ->collapsed(false),
+                NavigationGroup::make('Inventario')
+                    ->icon('heroicon-o-archive-box')
+                    ->collapsed(true),
+                NavigationGroup::make('Catálogo')
+                    ->icon('heroicon-o-book-open')
+                    ->collapsed(true),
+                NavigationGroup::make('Compras')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->collapsed(true),
                 NavigationGroup::make('Gestión')
                     ->icon('heroicon-o-building-office-2')
                     ->collapsed(true),
