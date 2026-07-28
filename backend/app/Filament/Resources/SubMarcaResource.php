@@ -123,8 +123,6 @@ class SubMarcaResource extends Resource
     {
         return [
             'index' => Pages\ListSubMarcas::route('/'),
-            'create' => Pages\CreateSubMarca::route('/create'),
-            'edit' => Pages\EditSubMarca::route('/{record}/edit'),
         ];
     }
 }

@@ -118,8 +118,6 @@ class SubCategoriaResource extends Resource
     {
         return [
             'index' => Pages\ListSubCategorias::route('/'),
-            'create' => Pages\CreateSubCategoria::route('/create'),
-            'edit' => Pages\EditSubCategoria::route('/{record}/edit'),
         ];
     }
 }

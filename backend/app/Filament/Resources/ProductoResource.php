@@ -236,7 +236,7 @@ class ProductoResource extends Resource
                     ->label('Afecto a IGV'),
             ])
             ->actions([
-                Actions\EditAction::make(),
+                Actions\EditAction::make()->modalWidth('screen'),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -255,8 +255,6 @@ class ProductoResource extends Resource
     {
         return [
             'index' => Pages\ListProductos::route('/'),
-            'create' => Pages\CreateProducto::route('/create'),
-            'edit' => Pages\EditProducto::route('/{record}/edit'),
         ];
     }
 }

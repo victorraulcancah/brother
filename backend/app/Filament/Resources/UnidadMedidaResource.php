@@ -102,8 +102,6 @@ class UnidadMedidaResource extends Resource
     {
         return [
             'index' => Pages\ListUnidadMedidas::route('/'),
-            'create' => Pages\CreateUnidadMedida::route('/create'),
-            'edit' => Pages\EditUnidadMedida::route('/{record}/edit'),
         ];
     }
 }

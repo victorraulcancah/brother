@@ -98,8 +98,6 @@ class AtributoResource extends Resource
     {
         return [
             'index' => Pages\ListAtributos::route('/'),
-            'create' => Pages\CreateAtributo::route('/create'),
-            'edit' => Pages\EditAtributo::route('/{record}/edit'),
         ];
     }
 }

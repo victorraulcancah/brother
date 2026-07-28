@@ -111,8 +111,6 @@ class AtributoValorResource extends Resource
     {
         return [
             'index' => Pages\ListAtributoValors::route('/'),
-            'create' => Pages\CreateAtributoValor::route('/create'),
-            'edit' => Pages\EditAtributoValor::route('/{record}/edit'),
         ];
     }
 }

@@ -125,7 +125,7 @@ class CategoriaResource extends Resource
                     ->label('Estado'),
             ])
             ->actions([
-                Actions\EditAction::make(),
+                Actions\EditAction::make()->modalWidth('2xl'),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -144,8 +144,6 @@ class CategoriaResource extends Resource
     {
         return [
             'index' => Pages\ListCategorias::route('/'),
-            'create' => Pages\CreateCategoria::route('/create'),
-            'edit' => Pages\EditCategoria::route('/{record}/edit'),
         ];
     }
 }

@@ -128,7 +128,7 @@ class MarcaResource extends Resource
                     ->label('Estado'),
             ])
             ->actions([
-                Actions\EditAction::make(),
+                Actions\EditAction::make()->modalWidth('2xl'),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -147,8 +147,6 @@ class MarcaResource extends Resource
     {
         return [
             'index' => Pages\ListMarcas::route('/'),
-            'create' => Pages\CreateMarca::route('/create'),
-            'edit' => Pages\EditMarca::route('/{record}/edit'),
         ];
     }
 }
