@@ -6,10 +6,13 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\MenuItem;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -28,9 +31,38 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->passwordReset()
+            ->profile()
+            ->darkMode(false)
             ->colors([
                 'primary' => Color::Amber,
+                'gray' => Color::Slate,
             ])
+            ->brandName('Brother')
+            ->brandLogo(fn() => view('filament.brand'))
+            ->favicon(asset('favicon.ico'))
+            ->font('Inter')
+            ->sidebarCollapsibleOnDesktop()
+            ->sidebarWidth('16rem')
+            ->collapsibleNavigationGroups(true)
+            ->navigationGroups([
+                NavigationGroup::make('Escritorio')
+                    ->icon('heroicon-o-home')
+                    ->collapsed(false),
+                NavigationGroup::make('Gestión')
+                    ->icon('heroicon-o-building-office-2')
+                    ->collapsed(false),
+            ])
+            ->userMenuItems([
+                MenuItem::make()
+                    ->label('Mi Perfil')
+                    ->url(fn() => \Filament\Auth\Pages\EditProfile::getUrl())
+                    ->icon('heroicon-o-user'),
+            ])
+            ->renderHook(
+                PanelsRenderHook::HEAD_START,
+                fn(): string => '<link rel="stylesheet" href="' . asset('css/filament-custom.css') . '">',
+            )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([

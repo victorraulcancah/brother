@@ -1,0 +1,19 @@
+.fi-sidebar {
+    background-color: #ffffff !important;
+}
+
+.fi-sidebar .fi-sidebar-item-active > a,
+.fi-sidebar .fi-sidebar-item-active .fi-sidebar-item-button {
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+}
+
+.fi-sidebar .fi-sidebar-item-active .fi-sidebar-item-label,
+.fi-sidebar .fi-sidebar-item-active .fi-sidebar-item-icon {
+    color: #ffffff !important;
+}
+
+.fi-sidebar .fi-sidebar-item-active > a:hover,
+.fi-sidebar .fi-sidebar-item-active .fi-sidebar-item-button:hover {
+    background-color: #d97706 !important;
+}
