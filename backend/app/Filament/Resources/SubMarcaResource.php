@@ -16,15 +16,7 @@ class SubMarcaResource extends Resource
 {
     protected static ?string $model = SubMarca::class;
 
-    public static function getNavigationIcon(): string
-    {
-        return 'heroicon-o-tag';
-    }
-
-    public static function getNavigationLabel(): string
-    {
-        return 'Sub-marcas';
-    }
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function getPluralModelLabel(): string
     {
@@ -34,21 +26,6 @@ class SubMarcaResource extends Resource
     public static function getSlug(?Panel $panel = null): string
     {
         return 'sub-marcas';
-    }
-
-    public static function getNavigationGroup(): string
-    {
-        return 'Catálogo';
-    }
-
-    public static function getNavigationSort(): ?int
-    {
-        return 2;
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        return (string) static::getModel()::count();
     }
 
     public static function form(Schema $schema): Schema
