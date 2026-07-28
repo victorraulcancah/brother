@@ -16,15 +16,7 @@ class SubCategoriaResource extends Resource
 {
     protected static ?string $model = SubCategoria::class;
 
-    public static function getNavigationIcon(): string
-    {
-        return 'heroicon-o-rectangle-stack';
-    }
-
-    public static function getNavigationLabel(): string
-    {
-        return 'Sub Categorías';
-    }
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function getPluralModelLabel(): string
     {
@@ -34,21 +26,6 @@ class SubCategoriaResource extends Resource
     public static function getSlug(?Panel $panel = null): string
     {
         return 'sub-categorias';
-    }
-
-    public static function getNavigationGroup(): string
-    {
-        return 'Catálogo';
-    }
-
-    public static function getNavigationSort(): ?int
-    {
-        return 4;
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        return (string) static::getModel()::count();
     }
 
     public static function form(Schema $schema): Schema
