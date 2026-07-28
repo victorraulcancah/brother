@@ -51,7 +51,7 @@ class AdminPanelProvider extends PanelProvider
                     ->collapsed(false),
                 NavigationGroup::make('Gestión')
                     ->icon('heroicon-o-building-office-2')
-                    ->collapsed(false),
+                    ->collapsed(true),
             ])
             ->userMenuItems([
                 MenuItem::make()
