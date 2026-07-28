@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\EmpresaController;
+use App\Http\Controllers\MarcaController;
+use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -23,5 +26,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('users/{id}', [UserController::class, 'destroy']);
         Route::post('users/{id}/assign-role', [UserController::class, 'assignRole']);
         Route::get('roles', [UserController::class, 'roles']);
+
+        Route::apiResource('productos', ProductoController::class);
+        Route::get('marcas', [MarcaController::class, 'index']);
+        Route::get('categorias', [CategoriaController::class, 'index']);
     });
 });
