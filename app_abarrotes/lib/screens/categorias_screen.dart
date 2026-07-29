@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../config/api_endpoints.dart';
+import '../services/api_service.dart';
+import '../services/crud_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
@@ -12,7 +15,6 @@ import '../widgets/app_text_field.dart';
 import '../widgets/app_toggle.dart';
 import '../widgets/data_card.dart';
 
-/// Catálogo → Categorías. Listado en cards, crear/editar en modal.
 class CategoriasScreen extends StatefulWidget {
   const CategoriasScreen({super.key});
 
@@ -21,19 +23,25 @@ class CategoriasScreen extends StatefulWidget {
 }
 
 class _CategoriasScreenState extends State<CategoriasScreen> {
-  final List<Map<String, dynamic>> _items = [
-    {
-      'nombre': 'Abarrotes',
-      'descripcion': 'Productos de despensa',
-      'activo': true,
-    },
-    {
-      'nombre': 'Bebidas',
-      'descripcion': 'Gaseosas, aguas y jugos',
-      'activo': true,
-    },
-    {'nombre': 'Limpieza', 'descripcion': 'Artículos de aseo', 'activo': true},
-  ];
+  final ApiService _api = ApiService();
+  late final CrudService _crud;
+  List<Map<String, dynamic>> _items = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _crud = CrudService(_api, ApiEndpoints.categorias);
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      _items = await _crud.getAll();
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
 
   Future<void> _openForm({Map<String, dynamic>? item, int? index}) async {
     final result = await showAppModal<Map<String, dynamic>>(
@@ -43,19 +51,23 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
     );
     if (result == null) return;
 
-    setState(() {
+    try {
       if (index != null) {
-        _items[index] = result;
+        await _crud.update(item!['id'], result);
       } else {
-        _items.add(result);
+        await _crud.create(result);
       }
-    });
-    if (!mounted) return;
-    showAppSnackbar(
-      context,
-      item == null ? 'Categoría creada' : 'Categoría actualizada',
-      type: AppSnackbarType.success,
-    );
+      await _load();
+      if (!mounted) return;
+      showAppSnackbar(
+        context,
+        item == null ? 'Categoría creada' : 'Categoría actualizada',
+        type: AppSnackbarType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+    }
   }
 
   Future<void> _delete(int index) async {
@@ -67,13 +79,15 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
     );
     if (!confirmado) return;
 
-    setState(() => _items.removeAt(index));
-    if (!mounted) return;
-    showAppSnackbar(
-      context,
-      'Categoría eliminada',
-      type: AppSnackbarType.error,
-    );
+    try {
+      await _crud.delete(item['id']);
+      await _load();
+      if (!mounted) return;
+      showAppSnackbar(context, 'Categoría eliminada', type: AppSnackbarType.error);
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+    }
   }
 
   @override
@@ -84,48 +98,51 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
         onPressed: () => _openForm(),
         child: const Icon(Icons.add),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _items.length,
-        itemBuilder: (context, index) {
-          final item = _items[index];
-          final activo = item['activo'] as bool;
-          return DataCard(
-            title: item['nombre'] as String,
-            rows: [
-              DataCardRow.text('Descripción', item['descripcion'] as String),
-              DataCardRow(
-                label: 'Estado',
-                value: AppBadge(
-                  activo ? 'Activo' : 'Inactivo',
-                  type: activo ? AppBadgeType.success : AppBadgeType.danger,
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _items.isEmpty
+              ? const Center(child: Text('No hay categorías'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _items.length,
+                  itemBuilder: (context, index) {
+                    final item = _items[index];
+                    final activo = item['activo'] as bool? ?? true;
+                    return DataCard(
+                      title: item['nombre'] as String,
+                      rows: [
+                        DataCardRow.text('Descripción', item['descripcion'] as String? ?? ''),
+                        DataCardRow(
+                          label: 'Estado',
+                          value: AppBadge(
+                            activo ? 'Activo' : 'Inactivo',
+                            type: activo ? AppBadgeType.success : AppBadgeType.danger,
+                          ),
+                        ),
+                      ],
+                      actions: [
+                        DataCardAction(
+                          icon: Icons.edit_outlined,
+                          color: AppColors.primary,
+                          tooltip: 'Editar',
+                          onTap: () => _openForm(item: item, index: index),
+                        ),
+                        DataCardAction(
+                          icon: Icons.delete_outline,
+                          color: AppColors.danger,
+                          tooltip: 'Eliminar',
+                          onTap: () => _delete(index),
+                        ),
+                      ],
+                    );
+                  },
                 ),
-              ),
-            ],
-            actions: [
-              DataCardAction(
-                icon: Icons.edit_outlined,
-                color: AppColors.primary,
-                tooltip: 'Editar',
-                onTap: () => _openForm(item: item, index: index),
-              ),
-              DataCardAction(
-                icon: Icons.delete_outline,
-                color: AppColors.danger,
-                tooltip: 'Eliminar',
-                onTap: () => _delete(index),
-              ),
-            ],
-          );
-        },
-      ),
     );
   }
 }
 
 class _CategoriaFormSheet extends StatefulWidget {
   final Map<String, dynamic>? initial;
-
   const _CategoriaFormSheet({this.initial});
 
   @override
@@ -142,9 +159,7 @@ class _CategoriaFormSheetState extends State<_CategoriaFormSheet> {
   void initState() {
     super.initState();
     _nombre = TextEditingController(text: widget.initial?['nombre'] ?? '');
-    _descripcion = TextEditingController(
-      text: widget.initial?['descripcion'] ?? '',
-    );
+    _descripcion = TextEditingController(text: widget.initial?['descripcion'] ?? '');
     _activo = widget.initial?['activo'] as bool? ?? true;
   }
 
@@ -178,9 +193,7 @@ class _CategoriaFormSheetState extends State<_CategoriaFormSheet> {
                 controller: _nombre,
                 label: 'Nombre',
                 icon: Icons.category_outlined,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Ingrese el nombre'
-                    : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese el nombre' : null,
               ),
               AppTextArea(controller: _descripcion, label: 'Descripción'),
               AppToggle(

@@ -1,21 +1,55 @@
-/// Rutas de la API, relativas a [AppConfig.apiBaseUrl].
-///
-/// Se pasan a `ApiService` (que antepone la URL base). Así, si un
-/// endpoint cambia, se corrige en UN solo sitio. Nunca escribas la
-/// ruta completa dentro de un servicio o pantalla.
 class ApiEndpoints {
   ApiEndpoints._();
 
-  // Auth
   static const String login = '/login';
   static const String register = '/register';
   static const String me = '/me';
   static const String logout = '/logout';
 
-  // Empresa
-  static const String empresa = '/empresa';
+  static const String empresas = '/empresas';
+  static String empresa(int id) => '/empresas/$id';
 
-  // Aquí se agregan los próximos módulos (productos, ventas, stock...):
-  // static const String productos = '/productos';
-  // static String producto(int id) => '/productos/$id';
+  static const String productos = '/productos';
+  static String producto(int id) => '/productos/$id';
+
+  static const String categorias = '/categorias';
+  static const String marcas = '/marcas';
+
+  static const String unidades = '/unidades-medida';
+  static String unidad(int id) => '/unidades-medida/$id';
+
+  static const String proveedores = '/proveedores';
+  static String proveedor(int id) => '/proveedores/$id';
+
+  static const String almacenes = '/almacenes';
+  static String almacen(int id) => '/almacenes/$id';
+
+  static const String movimientos = '/movimientos';
+  static String movimiento(int id) => '/movimientos/$id';
+
+  static const String transferencias = '/transferencias';
+  static String transferencia(int id) => '/transferencias/$id';
+
+  static const String solicitudes = '/solicitudes-compra';
+  static String solicitud(int id) => '/solicitudes-compra/$id';
+
+  static const String ordenes = '/ordenes-compra';
+  static String orden(int id) => '/ordenes-compra/$id';
+
+  static const String recepciones = '/recepciones-compra';
+  static String recepcion(int id) => '/recepciones-compra/$id';
+
+  static const String tomas = '/tomas-inventario';
+  static String toma(int id) => '/tomas-inventario/$id';
+
+  static const String ajustes = '/ajustes';
+  static String ajuste(int id) => '/ajustes/$id';
+
+  static const String costeo = '/costeo';
+
+  static const String usuarios = '/users';
+  static String usuario(int id) => '/users/$id';
+  static String assignRole(int id) => '/users/$id/assign-role';
+
+  static const String roles = '/roles';
 }

@@ -50,7 +50,7 @@ class ApiService {
     if (_token != null) HttpHeaders.authorizationHeader: 'Bearer $_token',
   };
 
-  Future<Map<String, dynamic>> get(String path) async {
+  Future<dynamic> get(String path) async {
     await _loadSavedData();
     final response = await _client.get(
       Uri.parse('$_baseUrl$path'),
@@ -69,7 +69,8 @@ class ApiService {
       headers: _headers,
       body: body != null ? jsonEncode(body) : null,
     );
-    return _handleResponse(response);
+    final result = _handleResponse(response);
+    return result is Map<String, dynamic> ? result : <String, dynamic>{};
   }
 
   Future<Map<String, dynamic>> put(
@@ -82,7 +83,8 @@ class ApiService {
       headers: _headers,
       body: body != null ? jsonEncode(body) : null,
     );
-    return _handleResponse(response);
+    final result = _handleResponse(response);
+    return result is Map<String, dynamic> ? result : <String, dynamic>{};
   }
 
   Future<Map<String, dynamic>> delete(String path) async {
@@ -91,13 +93,14 @@ class ApiService {
       Uri.parse('$_baseUrl$path'),
       headers: _headers,
     );
-    return _handleResponse(response);
+    final result = _handleResponse(response);
+    return result is Map<String, dynamic> ? result : <String, dynamic>{};
   }
 
-  Map<String, dynamic> _handleResponse(http.Response response) {
+  dynamic _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.body.isEmpty) return {};
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.body.isEmpty) return <String, dynamic>{};
+      return jsonDecode(response.body);
     }
     final errorBody = response.body.isNotEmpty
         ? jsonDecode(response.body)

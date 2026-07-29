@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../config/api_endpoints.dart';
+import '../services/api_service.dart';
+import '../services/crud_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
@@ -7,145 +10,103 @@ import '../widgets/app_form_section.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
+
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_area.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/data_card.dart';
 
-/// Compras → Solicitudes de compra. Listado en cards, crear/editar en modal.
 class SolicitudesCompraScreen extends StatefulWidget {
   const SolicitudesCompraScreen({super.key});
 
   @override
-  State<SolicitudesCompraScreen> createState() =>
-      _SolicitudesCompraScreenState();
+  State<SolicitudesCompraScreen> createState() => _SolicitudesCompraScreenState();
 }
 
 class _SolicitudesCompraScreenState extends State<SolicitudesCompraScreen> {
-  final List<Map<String, dynamic>> _items = [
-    {
-      'codigo': 'SC-0001',
-      'producto': 'Leche evaporada 400g',
-      'cantidad': '50',
-      'fecha_solicitud': '2026-07-24',
-      'estado': 'pendiente',
-      'observaciones': '',
-    },
-    {
-      'codigo': 'SC-0002',
-      'producto': 'Arroz 1kg',
-      'cantidad': '100',
-      'fecha_solicitud': '2026-07-26',
-      'estado': 'aprobada',
-      'observaciones': '',
-    },
-  ];
+  final ApiService _api = ApiService();
+  late final CrudService _crud;
+  List<Map<String, dynamic>> _items = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _crud = CrudService(_api, ApiEndpoints.solicitudes);
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try { _items = await _crud.getAll(); } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
 
   Future<void> _openForm({Map<String, dynamic>? item, int? index}) async {
     final result = await showAppModal<Map<String, dynamic>>(
-      context,
-      title: item == null ? 'Nueva solicitud' : 'Editar solicitud',
+      context, title: item == null ? 'Nueva solicitud' : 'Editar solicitud',
       child: _SolicitudFormSheet(initial: item),
     );
     if (result == null) return;
-
-    setState(() {
-      if (index != null) {
-        _items[index] = result;
-      } else {
-        _items.add(result);
-      }
-    });
-    if (!mounted) return;
-    showAppSnackbar(
-      context,
-      item == null ? 'Solicitud creada' : 'Solicitud actualizada',
-      type: AppSnackbarType.success,
-    );
+    try {
+      if (index != null) { await _crud.update(item!['id'], result); }
+      else { await _crud.create(result); }
+      await _load();
+      if (mounted) showAppSnackbar(context, item == null ? 'Solicitud creada' : 'Solicitud actualizada', type: AppSnackbarType.success);
+    } catch (e) { if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error); }
   }
 
   Future<void> _delete(int index) async {
     final item = _items[index];
-    final confirmado = await showAppConfirmDialog(
-      context,
-      title: 'Eliminar solicitud',
-      message: '¿Eliminar la solicitud "${item['codigo']}"?',
-    );
+    final confirmado = await showAppConfirmDialog(context, title: 'Eliminar solicitud', message: '¿Eliminar "${item['codigo']}"?');
     if (!confirmado) return;
-
-    setState(() => _items.removeAt(index));
-    if (!mounted) return;
-    showAppSnackbar(
-      context,
-      'Solicitud eliminada',
-      type: AppSnackbarType.error,
-    );
+    try {
+      await _crud.delete(item['id']);
+      await _load();
+      if (mounted) showAppSnackbar(context, 'Solicitud eliminada', type: AppSnackbarType.error);
+    } catch (e) { if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error); }
   }
+
+  String _estadoLabel(String estado) => switch (estado) {
+    'pendiente' => 'Pendiente', 'aprobada' => 'Aprobada', 'rechazada' => 'Rechazada', _ => estado,
+  };
+
+  AppBadgeType _estadoType(String estado) => switch (estado) {
+    'aprobada' => AppBadgeType.success, 'rechazada' => AppBadgeType.danger, _ => AppBadgeType.warning,
+  };
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Solicitudes de compra',
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openForm(),
-        child: const Icon(Icons.add),
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _items.length,
-        itemBuilder: (context, index) {
-          final item = _items[index];
-          return DataCard(
-            title: item['codigo'] as String,
-            rows: [
-              DataCardRow.text('Producto', item['producto'] as String),
-              DataCardRow.text('Cantidad', item['cantidad'] as String),
-              DataCardRow.text('Fecha', item['fecha_solicitud'] as String),
-              DataCardRow(
-                label: 'Estado',
-                value: AppBadge(
-                  _estadoLabel(item['estado'] as String),
-                  type: _estadoType(item['estado'] as String),
-                ),
-              ),
-            ],
-            actions: [
-              DataCardAction(
-                icon: Icons.edit_outlined,
-                color: AppColors.primary,
-                tooltip: 'Editar',
-                onTap: () => _openForm(item: item, index: index),
-              ),
-              DataCardAction(
-                icon: Icons.delete_outline,
-                color: AppColors.danger,
-                tooltip: 'Eliminar',
-                onTap: () => _delete(index),
-              ),
-            ],
-          );
-        },
-      ),
+      floatingActionButton: FloatingActionButton(onPressed: () => _openForm(), child: const Icon(Icons.add)),
+      body: _loading ? const Center(child: CircularProgressIndicator())
+          : _items.isEmpty ? const Center(child: Text('No hay solicitudes'))
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _items.length,
+              itemBuilder: (context, index) {
+                final item = _items[index];
+                final estado = item['estado'] as String? ?? '';
+                return DataCard(
+                  title: item['codigo'] as String? ?? '',
+                  rows: [
+                    DataCardRow.text('Fecha', item['fecha_solicitud'] as String? ?? ''),
+                    DataCardRow(label: 'Estado', value: AppBadge(_estadoLabel(estado), type: _estadoType(estado))),
+                  ],
+                  actions: [
+                    DataCardAction(icon: Icons.edit_outlined, color: AppColors.primary, tooltip: 'Editar', onTap: () => _openForm(item: item, index: index)),
+                    DataCardAction(icon: Icons.delete_outline, color: AppColors.danger, tooltip: 'Eliminar', onTap: () => _delete(index)),
+                  ],
+                );
+              },
+            ),
     );
   }
 }
 
-String _estadoLabel(String estado) => switch (estado) {
-  'pendiente' => 'Pendiente',
-  'aprobada' => 'Aprobada',
-  'rechazada' => 'Rechazada',
-  _ => estado,
-};
-
-AppBadgeType _estadoType(String estado) => switch (estado) {
-  'aprobada' => AppBadgeType.success,
-  'rechazada' => AppBadgeType.danger,
-  _ => AppBadgeType.warning,
-};
-
 class _SolicitudFormSheet extends StatefulWidget {
   final Map<String, dynamic>? initial;
-
   const _SolicitudFormSheet({this.initial});
 
   @override
@@ -155,46 +116,24 @@ class _SolicitudFormSheet extends StatefulWidget {
 class _SolicitudFormSheetState extends State<_SolicitudFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _codigo;
-  late final TextEditingController _cantidad;
-  late final TextEditingController _fecha;
   late final TextEditingController _observaciones;
-  String? _producto;
-  String? _estado;
-
-  static const _productos = [
-    'Leche evaporada 400g',
-    'Gaseosa 1.5L',
-    'Arroz 1kg',
-  ];
+  String _estado = 'pendiente';
 
   @override
   void initState() {
     super.initState();
-    final i = widget.initial;
-    _codigo = TextEditingController(text: i?['codigo'] ?? '');
-    _cantidad = TextEditingController(text: i?['cantidad'] ?? '');
-    _fecha = TextEditingController(text: i?['fecha_solicitud'] ?? '');
-    _observaciones = TextEditingController(text: i?['observaciones'] ?? '');
-    _producto = i?['producto'] as String?;
-    _estado = i?['estado'] as String? ?? 'pendiente';
+    _codigo = TextEditingController(text: widget.initial?['codigo'] ?? '');
+    _observaciones = TextEditingController(text: widget.initial?['observaciones'] ?? '');
+    _estado = widget.initial?['estado'] as String? ?? 'pendiente';
   }
 
   @override
-  void dispose() {
-    _codigo.dispose();
-    _cantidad.dispose();
-    _fecha.dispose();
-    _observaciones.dispose();
-    super.dispose();
-  }
+  void dispose() { _codigo.dispose(); _observaciones.dispose(); super.dispose(); }
 
   void _guardar() {
     if (!_formKey.currentState!.validate()) return;
     Navigator.pop(context, {
       'codigo': _codigo.text.trim(),
-      'producto': _producto,
-      'cantidad': _cantidad.text.trim(),
-      'fecha_solicitud': _fecha.text.trim(),
       'estado': _estado,
       'observaciones': _observaciones.text.trim(),
     });
@@ -207,68 +146,17 @@ class _SolicitudFormSheetState extends State<_SolicitudFormSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AppFormSection(
-            title: 'Datos de la solicitud',
-            children: [
-              AppTextField(
-                controller: _codigo,
-                label: 'Código',
-                icon: Icons.tag,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Ingrese el código'
-                    : null,
-              ),
-              AppSelect<String>(
-                label: 'Producto',
-                icon: Icons.inventory_2_outlined,
-                value: _producto,
-                options: [for (final p in _productos) AppSelectOption(p, p)],
-                onChanged: (v) => setState(() => _producto = v),
-                validator: (v) => v == null ? 'Seleccione un producto' : null,
-              ),
-              AppTextField(
-                controller: _cantidad,
-                label: 'Cantidad solicitada',
-                icon: Icons.numbers,
-                keyboardType: TextInputType.number,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Ingrese la cantidad'
-                    : null,
-              ),
-              AppTextField(
-                controller: _fecha,
-                label: 'Fecha (AAAA-MM-DD)',
-                icon: Icons.event_outlined,
-              ),
-              AppSelect<String>(
-                label: 'Estado',
-                icon: Icons.flag_outlined,
-                value: _estado,
-                options: const [
-                  AppSelectOption('pendiente', 'Pendiente'),
-                  AppSelectOption('aprobada', 'Aprobada'),
-                  AppSelectOption('rechazada', 'Rechazada'),
-                ],
-                onChanged: (v) => setState(() => _estado = v),
-              ),
-              AppTextArea(controller: _observaciones, label: 'Observaciones'),
-            ],
-          ),
+          AppFormSection(title: 'Datos de la solicitud', children: [
+            AppTextField(controller: _codigo, label: 'Código', icon: Icons.tag, validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese el código' : null),
+            AppSelect<String>(label: 'Estado', icon: Icons.flag_outlined, value: _estado, options: const [AppSelectOption('pendiente', 'Pendiente'), AppSelectOption('aprobada', 'Aprobada'), AppSelectOption('rechazada', 'Rechazada')], onChanged: (v) => setState(() => _estado = v ?? 'pendiente')),
+            AppTextArea(controller: _observaciones, label: 'Observaciones'),
+          ]),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: SecondaryButton(
-                  label: 'Cancelar',
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: PrimaryButton(label: 'Guardar', onPressed: _guardar),
-              ),
-            ],
-          ),
+          Row(children: [
+            Expanded(child: SecondaryButton(label: 'Cancelar', onPressed: () => Navigator.pop(context))),
+            const SizedBox(width: 12),
+            Expanded(child: PrimaryButton(label: 'Guardar', onPressed: _guardar)),
+          ]),
         ],
       ),
     );
