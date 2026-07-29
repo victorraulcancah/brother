@@ -75,16 +75,21 @@ class AjusteInventarioResource extends Resource
                                                 'ingreso' => 'Ingreso',
                                                 'salida' => 'Salida',
                                             ])
+                                            ->live()
+                                            ->afterStateUpdated(fn (callable $set) => $set('motivo', null))
                                             ->required(),
                                         Components\Select::make('motivo')
                                             ->label('Motivo')
-                                            ->options([
-                                                'inventario_fisico' => 'Inventario Físico',
-                                                'merma' => 'Merma',
-                                                'robo' => 'Robo',
-                                                'obsolescencia' => 'Obsolescencia',
-                                                'error_sistema' => 'Error de Sistema',
-                                            ])
+                                            ->options(function (callable $get): array {
+                                                $tipoAjuste = $get('tipo');
+                                                $query = \App\Models\MotivoMovimiento::where('activo', true);
+                                                if ($tipoAjuste) {
+                                                    $tipoMotivo = $tipoAjuste === 'ingreso' ? 'entrada' : 'salida';
+                                                    $query->where('tipo', $tipoMotivo);
+                                                }
+                                                return $query->orderBy('nombre')->pluck('nombre', 'nombre')->toArray();
+                                            })
+                                            ->searchable()
                                             ->required(),
                                         Components\Select::make('estado')
                                             ->label('Estado')
