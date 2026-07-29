@@ -38,9 +38,10 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
                 'gray' => Color::Slate,
             ])
-            ->brandName('Brother')
+            ->brandName(fn(): string => \App\Models\Empresa::activa()?->nombre_comercial ?? 'BRAVA')
             ->brandLogo(fn() => view('filament.brand'))
-            ->favicon(asset('favicon.ico'))
+            ->brandLogoHeight('2.5rem')
+            ->favicon(fn(): string => \App\Models\Empresa::activa()?->favicon_url ?? asset('favicon.ico'))
             ->font('Inter')
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('16rem')

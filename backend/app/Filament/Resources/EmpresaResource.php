@@ -70,6 +70,16 @@ class EmpresaResource extends Resource
                             ->label('Nombre Comercial')
                             ->required()
                             ->maxLength(255),
+                        Components\FileUpload::make('logo')
+                            ->label('Logo')
+                            ->image()
+                            ->disk('public')
+                            ->directory('logos')
+                            ->visibility('public')
+                            ->imageEditor()
+                            ->maxSize(2048)
+                            ->helperText('Se usa en el login, el panel y los documentos. PNG/SVG con fondo transparente, recomendado.')
+                            ->columnSpanFull(),
                     ])->columns(3),
 
                 Components\Section::make('Contacto')
@@ -95,6 +105,10 @@ class EmpresaResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('logo')
+                    ->label('Logo')
+                    ->disk('public')
+                    ->height(32),
                 Tables\Columns\TextColumn::make('ruc')
                     ->label('RUC')
                     ->searchable()
