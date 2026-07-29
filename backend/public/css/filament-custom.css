@@ -17,3 +17,15 @@
 .fi-sidebar .fi-sidebar-item-active .fi-sidebar-item-button:hover {
     background-color: #d97706 !important;
 }
+
+/* Logo más grande solo en la página de login */
+.fi-simple-header .fi-logo {
+    height: auto !important;
+    margin-bottom: 1rem;
+}
+
+.fi-simple-header .fi-logo img {
+    height: 5.5rem !important;
+    max-width: 100%;
+    margin: 0 auto;
+}
