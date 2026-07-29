@@ -4,6 +4,7 @@ import '../config/app_routes.dart';
 import '../config/menu_items.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_colors.dart';
+import 'app_logo.dart';
 
 /// Contenido del menú lateral (sidebar).
 ///
@@ -86,49 +87,14 @@ class _SidebarHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().user;
-    final name = user?.name ?? 'BRAVA';
-    final email = user?.email ?? '';
-
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
-      color: AppColors.primary,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: Colors.white,
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : 'B',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (email.isNotEmpty)
-            Text(
-              email,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-        ],
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
+      child: const Center(child: AppLogo(height: 56)),
     );
   }
 }
