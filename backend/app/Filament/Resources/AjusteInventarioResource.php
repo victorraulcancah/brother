@@ -56,64 +56,78 @@ class AjusteInventarioResource extends Resource
     {
         return $schema
             ->schema([
-                SchemaComponents\Section::make('Datos del Ajuste')
-                    ->schema([
-                        Components\Select::make('almacen_id')
-                            ->label('Almacén')
-                            ->relationship('almacen', 'nombre')
-                            ->searchable()
-                            ->preload()
-                            ->required(),
-                        Components\Select::make('tipo')
-                            ->label('Tipo')
-                            ->options([
-                                'ingreso' => 'Ingreso',
-                                'salida' => 'Salida',
-                            ])
-                            ->live()
-                            ->afterStateUpdated(fn (callable $set) => $set('motivo', null))
-                            ->required(),
-                        Components\Select::make('motivo')
-                            ->label('Motivo')
-                            ->options(function (callable $get): array {
-                                $tipoAjuste = $get('tipo');
-                                $query = \App\Models\MotivoMovimiento::where('activo', true)
-                                    ->where('es_sistema', false);
-                                if ($tipoAjuste) {
-                                    $tipoMotivo = $tipoAjuste === 'ingreso' ? 'entrada' : 'salida';
-                                    $query->where('tipo', $tipoMotivo);
-                                }
-                                return $query->orderBy('nombre')->pluck('nombre', 'nombre')->toArray();
-                            })
-                            ->searchable()
-                            ->required(),
-                        Components\Textarea::make('observaciones')
-                            ->label('Observación')
-                            ->maxLength(5000)
-                            ->columnSpanFull(),
-                        Components\Repeater::make('detalles')
-                            ->relationship('detalles')
-                            ->compact(true)
+                SchemaComponents\Tabs::make('Ajuste de Inventario')
+                    ->tabs([
+                        SchemaComponents\Tabs\Tab::make('Información')
+                            ->icon('heroicon-o-information-circle')
                             ->schema([
-                                SchemaComponents\Grid::make(3)
+                                SchemaComponents\Section::make('Datos del Ajuste')
                                     ->schema([
-                                        Components\Select::make('producto_id')
-                                            ->label('Producto')
-                                            ->relationship('producto', 'nombre')
+                                        Components\Select::make('almacen_id')
+                                            ->label('Almacén')
+                                            ->relationship('almacen', 'nombre')
                                             ->searchable()
                                             ->preload()
-                                            ->required()
-                                            ->columnSpan(2),
-                                        Components\TextInput::make('cantidad_fisica')
-                                            ->label('Nuevo stock')
-                                            ->numeric()
-                                            ->required()
-                                            ->default(0),
-                                    ]),
-                            ])
-                            ->defaultItems(1)
-                            ->addActionLabel('Agregar Producto'),
-                    ])->columns(3),
+                                            ->required(),
+                                        Components\Select::make('tipo')
+                                            ->label('Tipo')
+                                            ->options([
+                                                'ingreso' => 'Ingreso',
+                                                'salida' => 'Salida',
+                                            ])
+                                            ->live()
+                                            ->afterStateUpdated(fn (callable $set) => $set('motivo', null))
+                                            ->required(),
+                                        Components\Select::make('motivo')
+                                            ->label('Motivo')
+                                            ->options(function (callable $get): array {
+                                                $tipoAjuste = $get('tipo');
+                                                $query = \App\Models\MotivoMovimiento::where('activo', true)
+                                                    ->where('es_sistema', false);
+                                                if ($tipoAjuste) {
+                                                    $tipoMotivo = $tipoAjuste === 'ingreso' ? 'entrada' : 'salida';
+                                                    $query->where('tipo', $tipoMotivo);
+                                                }
+                                                return $query->orderBy('nombre')->pluck('nombre', 'nombre')->toArray();
+                                            })
+                                            ->searchable()
+                                            ->required(),
+                                        Components\Textarea::make('observaciones')
+                                            ->label('Observación')
+                                            ->rows(2)
+                                            ->maxLength(5000)
+                                            ->columnSpanFull(),
+                                    ])->columns(2),
+                            ]),
+                        SchemaComponents\Tabs\Tab::make('Productos')
+                            ->icon('heroicon-o-cube')
+                            ->schema([
+                                Components\Repeater::make('detalles')
+                                    ->relationship('detalles')
+                                    ->schema([
+                                        SchemaComponents\Grid::make(3)
+                                            ->schema([
+                                                Components\Select::make('producto_id')
+                                                    ->label('Producto')
+                                                    ->relationship('producto', 'nombre')
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->required()
+                                                    ->columnSpan(2),
+                                                Components\TextInput::make('cantidad_fisica')
+                                                    ->label('Nuevo stock')
+                                                    ->numeric()
+                                                    ->required()
+                                                    ->default(0),
+                                            ]),
+                                    ])
+                                    ->defaultItems(1)
+                                    ->addActionLabel('Agregar Producto')
+                                    ->collapsible()
+                                    ->cloneable()
+                                    ->columnSpanFull(),
+                            ]),
+                    ])->columnSpanFull(),
             ]);
     }
 
