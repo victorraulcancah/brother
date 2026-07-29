@@ -2,15 +2,16 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
 
 class ApiService {
   static const String _baseUrlKey = 'api_base_url';
   static const String _tokenKey = 'auth_token';
-  static const String defaultBaseUrl = 'http://brother.test/api/v1';
+  static const String defaultBaseUrl = AppConfig.apiBaseUrl;
 
   String _baseUrl = defaultBaseUrl;
   String? _token;
-  http.Client _client = http.Client();
+  final http.Client _client = http.Client();
 
   ApiService() {
     _loadSavedData();
@@ -58,7 +59,10 @@ class ApiService {
     return _handleResponse(response);
   }
 
-  Future<Map<String, dynamic>> post(String path, {Map<String, dynamic>? body}) async {
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
     await _loadSavedData();
     final response = await _client.post(
       Uri.parse('$_baseUrl$path'),
@@ -68,7 +72,10 @@ class ApiService {
     return _handleResponse(response);
   }
 
-  Future<Map<String, dynamic>> put(String path, {Map<String, dynamic>? body}) async {
+  Future<Map<String, dynamic>> put(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
     await _loadSavedData();
     final response = await _client.put(
       Uri.parse('$_baseUrl$path'),
@@ -97,8 +104,11 @@ class ApiService {
         : {'error': 'Error ${response.statusCode}'};
     throw ApiException(
       statusCode: response.statusCode,
-      message: errorBody['error']?.toString() ?? errorBody['message']?.toString() ?? 'Error desconocido',
-      errors: errorBody is Map ? errorBody : null,
+      message:
+          errorBody['error']?.toString() ??
+          errorBody['message']?.toString() ??
+          'Error desconocido',
+      errors: errorBody is Map<String, dynamic> ? errorBody : null,
     );
   }
 

@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../models/login_response.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -63,13 +62,25 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> register(String name, String email, String password, String passwordConfirmation, {int? empresaId}) async {
+  Future<bool> register(
+    String name,
+    String email,
+    String password,
+    String passwordConfirmation, {
+    int? empresaId,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await _authService.register(name, email, password, passwordConfirmation, empresaId: empresaId);
+      final response = await _authService.register(
+        name,
+        email,
+        password,
+        passwordConfirmation,
+        empresaId: empresaId,
+      );
       _user = response.user;
       _isLoading = false;
       notifyListeners();

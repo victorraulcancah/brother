@@ -46,11 +46,23 @@ class _SplashScreenState extends State<SplashScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Center(
-                child: Text('B', style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white)),
+                child: Text(
+                  'B',
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),
-            Text('Brother', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Brother',
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 32),
             const CircularProgressIndicator(),
           ],

@@ -24,7 +24,9 @@ class User {
       email: json['email'],
       empresaId: json['empresa_id'],
       empresaNombre: json['empresa']?['nombre_comercial'],
-      roles: (json['roles'] as List?)?.map((r) => r['name'] as String).toList() ?? [],
+      roles:
+          (json['roles'] as List?)?.map((r) => r['name'] as String).toList() ??
+          [],
       createdAt: json['created_at'],
     );
   }

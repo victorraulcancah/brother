@@ -57,9 +57,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Registro', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  Text(
+                    'Registro',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text('Crea una cuenta nueva', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey)),
+                  Text(
+                    'Crea una cuenta nueva',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                  ),
                   const SizedBox(height: 24),
 
                   Consumer<AuthProvider>(
@@ -76,9 +86,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                                Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red.shade700,
+                                  size: 20,
+                                ),
                                 const SizedBox(width: 8),
-                                Expanded(child: Text(auth.error!, style: TextStyle(color: Colors.red.shade700))),
+                                Expanded(
+                                  child: Text(
+                                    auth.error!,
+                                    style: TextStyle(
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -95,7 +116,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       prefixIcon: Icon(Icons.person_outlined),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Ingrese su nombre' : null,
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Ingrese su nombre'
+                        : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -108,7 +131,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       border: OutlineInputBorder(),
                     ),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Ingrese su correo';
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Ingrese su correo';
+                      }
                       if (!v.contains('@')) return 'Correo inválido';
                       return null;
                     },
@@ -123,12 +148,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       prefixIcon: const Icon(Icons.lock_outlined),
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
-                        icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Ingrese su contraseña';
+                      if (v == null || v.isEmpty) {
+                        return 'Ingrese su contraseña';
+                      }
                       if (v.length < 6) return 'Mínimo 6 caracteres';
                       return null;
                     },
@@ -143,13 +176,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       prefixIcon: const Icon(Icons.lock_outlined),
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
-                        icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                        icon: Icon(
+                          _obscureConfirm
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscureConfirm = !_obscureConfirm),
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Confirme su contraseña';
-                      if (v != _passwordController.text) return 'Las contraseñas no coinciden';
+                      if (v == null || v.isEmpty) {
+                        return 'Confirme su contraseña';
+                      }
+                      if (v != _passwordController.text) {
+                        return 'Las contraseñas no coinciden';
+                      }
                       return null;
                     },
                   ),
@@ -162,8 +204,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: ElevatedButton(
                         onPressed: auth.isLoading ? null : _register,
                         child: auth.isLoading
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Text('Crear Cuenta', style: TextStyle(fontSize: 16)),
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Crear Cuenta',
+                                style: TextStyle(fontSize: 16),
+                              ),
                       ),
                     ),
                   ),
