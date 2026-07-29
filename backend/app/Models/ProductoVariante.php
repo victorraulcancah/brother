@@ -20,7 +20,7 @@ class ProductoVariante extends Model
     {
         return [
             'precio_diferencial' => 'decimal:2',
-            'stock' => 'integer',
+            'stock' => 'decimal:2',
             'activo' => 'boolean',
         ];
     }

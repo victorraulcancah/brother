@@ -6,6 +6,7 @@ use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -56,7 +57,7 @@ class UserResource extends Resource
     {
         return $schema
             ->schema([
-                Components\Section::make('Información del Usuario')
+                SchemaComponents\Section::make('Información del Usuario')
                     ->schema([
                         Components\TextInput::make('name')
                             ->label('Nombre')
@@ -77,7 +78,7 @@ class UserResource extends Resource
                             ->maxLength(255),
                     ])->columns(2),
 
-                Components\Section::make('Empresa y Rol')
+                SchemaComponents\Section::make('Empresa y Rol')
                     ->schema([
                         Components\Select::make('empresa_id')
                             ->label('Empresa')
@@ -132,7 +133,7 @@ class UserResource extends Resource
                     ->label('Empresa'),
             ])
             ->actions([
-                Actions\EditAction::make(),
+                Actions\EditAction::make()->modalWidth('screen'),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -151,8 +152,6 @@ class UserResource extends Resource
     {
         return [
             'index' => Pages\ListUsers::route('/'),
-            'create' => Pages\CreateUser::route('/create'),
-            'edit' => Pages\EditUser::route('/{record}/edit'),
         ];
     }
 }

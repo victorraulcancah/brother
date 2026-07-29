@@ -23,11 +23,11 @@ class ProductoAlmacenStock extends Model
     protected function casts(): array
     {
         return [
-            'stock_actual' => 'integer',
-            'stock_reservado' => 'integer',
-            'stock_disponible' => 'integer',
-            'stock_minimo' => 'integer',
-            'stock_maximo' => 'integer',
+            'stock_actual' => 'decimal:2',
+            'stock_reservado' => 'decimal:2',
+            'stock_disponible' => 'decimal:2',
+            'stock_minimo' => 'decimal:2',
+            'stock_maximo' => 'decimal:2',
         ];
     }
 

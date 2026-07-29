@@ -83,10 +83,10 @@ class ProductoResource extends Resource
                                             ->preload()
                                             ->required()
                                             ->live()
-                                            ->afterStateUpdated(fn(Components\Select $component) => $component->getContainer()->getComponent('sub_marca_id')?->state(null)),
+                                            ->afterStateUpdated(fn($component) => $component->getContainer()->getComponent('sub_marca_id')?->state(null)),
                                         Components\Select::make('sub_marca_id')
                                             ->label('Sub-marca')
-                                            ->relationship('subMarca', 'nombre', fn($query, Components\Get $get) => $query->where('marca_id', $get('marca_id')))
+                                            ->relationship('subMarca', 'nombre', fn($query, $get) => $query->where('marca_id', $get('marca_id')))
                                             ->searchable()
                                             ->preload(),
                                         Components\Select::make('categoria_id')

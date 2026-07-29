@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\RoleResource\Pages;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -55,7 +56,7 @@ class RoleResource extends Resource
     {
         return $schema
             ->schema([
-                Components\Section::make('Información del Rol')
+                SchemaComponents\Section::make('Información del Rol')
                     ->schema([
                         Components\TextInput::make('name')
                             ->label('Nombre')
@@ -104,7 +105,7 @@ class RoleResource extends Resource
                     ]),
             ])
             ->actions([
-                Actions\EditAction::make(),
+                Actions\EditAction::make()->modalWidth('screen'),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -118,8 +119,6 @@ class RoleResource extends Resource
     {
         return [
             'index' => Pages\ListRoles::route('/'),
-            'create' => Pages\CreateRole::route('/create'),
-            'edit' => Pages\EditRole::route('/{record}/edit'),
         ];
     }
 }

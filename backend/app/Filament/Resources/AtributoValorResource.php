@@ -6,6 +6,7 @@ use App\Filament\Resources\AtributoValorResource\Pages;
 use App\Models\AtributoValor;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -55,7 +56,7 @@ class AtributoValorResource extends Resource
     {
         return $schema
             ->schema([
-                Components\Section::make('Información del Valor')
+                SchemaComponents\Section::make('Información del Valor')
                     ->schema([
                         Components\Select::make('atributo_id')
                             ->label('Atributo')

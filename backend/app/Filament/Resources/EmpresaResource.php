@@ -6,6 +6,7 @@ use App\Filament\Resources\EmpresaResource\Pages;
 use App\Models\Empresa;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -55,7 +56,7 @@ class EmpresaResource extends Resource
     {
         return $schema
             ->schema([
-                Components\Section::make('Información de la Empresa')
+                SchemaComponents\Section::make('Información de la Empresa')
                     ->schema([
                         Components\TextInput::make('ruc')
                             ->label('RUC')
@@ -82,7 +83,7 @@ class EmpresaResource extends Resource
                             ->columnSpanFull(),
                     ])->columns(3),
 
-                Components\Section::make('Contacto')
+                SchemaComponents\Section::make('Contacto')
                     ->schema([
                         Components\TextInput::make('direccion')
                             ->label('Dirección')
@@ -142,7 +143,7 @@ class EmpresaResource extends Resource
                     ->label('Estado'),
             ])
             ->actions([
-                Actions\EditAction::make(),
+                Actions\EditAction::make()->modalWidth('screen'),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -161,8 +162,6 @@ class EmpresaResource extends Resource
     {
         return [
             'index' => Pages\ListEmpresas::route('/'),
-            'create' => Pages\CreateEmpresa::route('/create'),
-            'edit' => Pages\EditEmpresa::route('/{record}/edit'),
         ];
     }
 }
