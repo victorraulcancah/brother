@@ -115,8 +115,13 @@ class MotivoMovimientoResource extends Resource
                         'salida' => 'Salida',
                     ]),
             ])
+            ->headerActions([
+                Actions\CreateAction::make()
+                    ->modalWidth('2xl'),
+            ])
             ->actions([
-                Actions\EditAction::make(),
+                Actions\EditAction::make()
+                    ->modalWidth('2xl'),
                 Actions\DeleteAction::make()
                     ->visible(fn (MotivoMovimiento $record): bool => ! $record->es_sistema),
             ]);
@@ -131,8 +136,6 @@ class MotivoMovimientoResource extends Resource
     {
         return [
             'index' => Pages\ListMotivoMovimientos::route('/'),
-            'create' => Pages\CreateMotivoMovimiento::route('/create'),
-            'edit' => Pages\EditMotivoMovimiento::route('/{record}/edit'),
         ];
     }
 }

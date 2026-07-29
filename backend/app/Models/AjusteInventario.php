@@ -43,6 +43,6 @@ class AjusteInventario extends Model
 
     public function detalles()
     {
-        return $this->hasMany(AjusteDetalle::class);
+        return $this->hasMany(AjusteDetalle::class, 'ajuste_id');
     }
 }

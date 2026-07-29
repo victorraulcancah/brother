@@ -13,7 +13,7 @@ class ListSolicitudesCompra extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()->modalWidth('screen'),
+            Actions\CreateAction::make()->modalWidth('3xl'),
         ];
     }
 }

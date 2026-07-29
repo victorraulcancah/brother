@@ -14,7 +14,7 @@ class ListTransferencias extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->modalWidth('screen'),
+                ->modalWidth('3xl'),
         ];
     }
 }

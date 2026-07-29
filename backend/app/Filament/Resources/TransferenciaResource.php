@@ -180,7 +180,7 @@ class TransferenciaResource extends Resource
                     ]),
             ])
             ->actions([
-                Actions\EditAction::make()->modalWidth('screen'),
+                Actions\EditAction::make()->modalWidth('3xl'),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([

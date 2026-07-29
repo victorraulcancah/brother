@@ -12,6 +12,7 @@ class ProductoAlmacenStock extends Model
         'producto_id',
         'producto_variante_id',
         'almacen_id',
+        'stock_anterior',
         'stock_actual',
         'stock_reservado',
         'stock_disponible',
@@ -23,6 +24,7 @@ class ProductoAlmacenStock extends Model
     protected function casts(): array
     {
         return [
+            'stock_anterior' => 'decimal:2',
             'stock_actual' => 'decimal:2',
             'stock_reservado' => 'decimal:2',
             'stock_disponible' => 'decimal:2',

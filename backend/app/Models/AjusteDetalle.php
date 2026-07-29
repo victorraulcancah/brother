@@ -28,7 +28,7 @@ class AjusteDetalle extends Model
 
     public function ajuste()
     {
-        return $this->belongsTo(AjusteInventario::class);
+        return $this->belongsTo(AjusteInventario::class, 'ajuste_id');
     }
 
     public function producto()

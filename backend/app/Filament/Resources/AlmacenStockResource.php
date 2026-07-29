@@ -82,9 +82,16 @@ class AlmacenStockResource extends Resource
                     ->color('info')
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('stock_actual')
-                    ->label('Stock')
+                Tables\Columns\TextColumn::make('stock_anterior')
+                    ->label('Stock Anterior')
                     ->sortable()
+                    ->numeric(decimalPlaces: 2)
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('stock_actual')
+                    ->label('Stock Actual')
+                    ->sortable()
+                    ->numeric(decimalPlaces: 2)
                     ->badge()
                     ->color(fn ($state): string => (float) $state <= 0
                         ? 'danger'

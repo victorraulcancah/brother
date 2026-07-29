@@ -4,10 +4,9 @@ namespace App\Livewire;
 
 use App\Filament\Resources\MotivoMovimientoResource;
 use App\Models\MotivoMovimiento;
-use Filament\Actions\Action;
+use Filament\Actions;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
-use Filament\Actions\DeleteAction;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Tables\Columns\IconColumn;
@@ -53,18 +52,56 @@ class MotivosTable extends Component implements HasActions, HasSchemas, HasTable
                     ->boolean(),
             ])
             ->headerActions([
-                Action::make('nuevo')
+                Actions\CreateAction::make()
                     ->label('Nuevo motivo')
                     ->icon('heroicon-o-plus')
-                    ->url(fn (): string => MotivoMovimientoResource::getUrl('create')),
+                    ->modalWidth('2xl')
+                    ->model(MotivoMovimiento::class)
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('nombre')
+                            ->label('Nombre')
+                            ->required()
+                            ->maxLength(255),
+                        \Filament\Forms\Components\Select::make('tipo')
+                            ->label('Tipo')
+                            ->required()
+                            ->options([
+                                'entrada' => 'Entrada (ingreso)',
+                                'salida' => 'Salida',
+                            ]),
+                        \Filament\Forms\Components\Toggle::make('es_sistema')
+                            ->label('Del sistema'),
+                        \Filament\Forms\Components\Toggle::make('activo')
+                            ->label('Activo')
+                            ->default(true),
+                    ]),
             ])
             ->actions([
-                Action::make('editar')
+                Actions\EditAction::make()
                     ->label('Editar')
                     ->icon('heroicon-o-pencil')
-                    ->url(fn (MotivoMovimiento $record): string => MotivoMovimientoResource::getUrl('edit', ['record' => $record])),
+                    ->modalWidth('2xl')
+                    ->model(MotivoMovimiento::class)
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('nombre')
+                            ->label('Nombre')
+                            ->required()
+                            ->maxLength(255),
+                        \Filament\Forms\Components\Select::make('tipo')
+                            ->label('Tipo')
+                            ->required()
+                            ->options([
+                                'entrada' => 'Entrada (ingreso)',
+                                'salida' => 'Salida',
+                            ]),
+                        \Filament\Forms\Components\Toggle::make('es_sistema')
+                            ->label('Del sistema'),
+                        \Filament\Forms\Components\Toggle::make('activo')
+                            ->label('Activo')
+                            ->default(true),
+                    ]),
 
-                DeleteAction::make()
+                Actions\DeleteAction::make()
                     ->visible(fn (MotivoMovimiento $record): bool => ! $record->es_sistema),
             ]);
     }

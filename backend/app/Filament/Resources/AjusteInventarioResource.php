@@ -82,7 +82,8 @@ class AjusteInventarioResource extends Resource
                                             ->label('Motivo')
                                             ->options(function (callable $get): array {
                                                 $tipoAjuste = $get('tipo');
-                                                $query = \App\Models\MotivoMovimiento::where('activo', true);
+                                                $query = \App\Models\MotivoMovimiento::where('activo', true)
+                                                    ->where('es_sistema', false);
                                                 if ($tipoAjuste) {
                                                     $tipoMotivo = $tipoAjuste === 'ingreso' ? 'entrada' : 'salida';
                                                     $query->where('tipo', $tipoMotivo);
@@ -102,18 +103,7 @@ class AjusteInventarioResource extends Resource
                                         Components\DateTimePicker::make('fecha')
                                             ->label('Fecha')
                                             ->required(),
-                                        Components\Select::make('usuario_solicita_id')
-                                            ->label('Solicitado por')
-                                            ->relationship('usuarioSolicita', 'name')
-                                            ->searchable()
-                                            ->preload()
-                                            ->required(),
-                                        Components\Select::make('usuario_aprueba_id')
-                                            ->label('Aprobado por')
-                                            ->relationship('usuarioAprueba', 'name')
-                                            ->searchable()
-                                            ->preload()
-                                            ->nullable(),
+
                                         Components\Textarea::make('observaciones')
                                             ->label('Observaciones')
                                             ->maxLength(5000)
@@ -224,7 +214,7 @@ class AjusteInventarioResource extends Resource
                     ]),
             ])
             ->actions([
-                Actions\EditAction::make()->modalWidth('screen'),
+                Actions\EditAction::make()->modalWidth('3xl'),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([

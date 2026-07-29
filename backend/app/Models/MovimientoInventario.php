@@ -17,6 +17,7 @@ class MovimientoInventario extends Model
         'documento_referencia_tipo',
         'documento_referencia_id',
         'cantidad',
+        'stock_anterior',
         'costo_unitario',
         'saldo_stock',
         'fecha',
@@ -27,6 +28,7 @@ class MovimientoInventario extends Model
     {
         return [
             'cantidad' => 'decimal:2',
+            'stock_anterior' => 'decimal:2',
             'costo_unitario' => 'decimal:2',
             'saldo_stock' => 'decimal:2',
             'fecha' => 'datetime',

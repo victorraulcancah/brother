@@ -71,6 +71,10 @@ class MovimientoInventarioResource extends Resource
                     ->color('gray'),
                 Tables\Columns\TextColumn::make('almacen.nombre')
                     ->label('Almacén'),
+                Tables\Columns\TextColumn::make('stock_anterior')
+                    ->label('Stock Anterior')
+                    ->numeric(decimalPlaces: 2)
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('cantidad')
                     ->label('Cantidad')
                     ->numeric()
@@ -80,9 +84,13 @@ class MovimientoInventarioResource extends Resource
                     ->label('Costo Unit.')
                     ->money('PEN'),
                 Tables\Columns\TextColumn::make('saldo_stock')
-                    ->label('Saldo')
-                    ->numeric()
-                    ->sortable(),
+                    ->label('Stock Actual')
+                    ->numeric(decimalPlaces: 2)
+                    ->sortable()
+                    ->badge()
+                    ->color(fn($state): string => (float) $state <= 0
+                        ? 'danger'
+                        : ((float) $state <= 5 ? 'warning' : 'success')),
                 Tables\Columns\TextColumn::make('usuario.name')
                     ->label('Usuario'),
                 Tables\Columns\TextColumn::make('documento_referencia_tipo')

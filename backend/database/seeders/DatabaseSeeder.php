@@ -14,26 +14,37 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        $superAdmin = Role::create(['name' => 'super-admin']);
-        Role::create(['name' => 'admin']);
-        Role::create(['name' => 'user']);
+        $superAdmin = Role::firstOrCreate(['name' => 'super-admin']);
+        Role::firstOrCreate(['name' => 'admin']);
+        Role::firstOrCreate(['name' => 'user']);
 
-        $empresa = Empresa::create([
-            'ruc' => '20123456789',
-            'razon_social' => 'Brother Corp S.A.C.',
-            'nombre_comercial' => 'Brother',
-            'direccion' => 'Av. Principal 123',
-            'telefono' => '999888777',
-            'email' => 'contacto@brother.com',
+        $empresa = Empresa::firstOrCreate(
+            ['ruc' => '20123456789'],
+            [
+                'razon_social' => 'Brother Corp S.A.C.',
+                'nombre_comercial' => 'Brother',
+                'direccion' => 'Av. Principal 123',
+                'telefono' => '999888777',
+                'email' => 'contacto@brother.com',
+            ]
+        );
+
+        $user = User::firstOrCreate(
+            ['email' => 'admin@brother.com'],
+            [
+                'name' => 'Super Admin',
+                'password' => 'password',
+                'empresa_id' => $empresa->id,
+            ]
+        );
+
+        if (!$user->hasRole($superAdmin)) {
+            $user->assignRole($superAdmin);
+        }
+
+        $this->call([
+            MotivosMovimientoSeeder::class,
+            CatalogSeeder::class,
         ]);
-
-        $user = User::factory()->create([
-            'name' => 'Super Admin',
-            'email' => 'admin@brother.com',
-            'password' => 'password',
-            'empresa_id' => $empresa->id,
-        ]);
-
-        $user->assignRole($superAdmin);
     }
 }
