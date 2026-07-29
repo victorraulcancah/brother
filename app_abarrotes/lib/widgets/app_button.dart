@@ -42,3 +42,33 @@ class PrimaryButton extends StatelessWidget {
     );
   }
 }
+
+/// Botón secundario (contorno). Hereda del `outlinedButtonTheme` del tema.
+/// Se usa para acciones de menor peso, como "Cancelar".
+class SecondaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+
+  const SecondaryButton({
+    super.key,
+    required this.label,
+    this.onPressed,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[Icon(icon, size: 20), const SizedBox(width: 8)],
+          Text(label),
+        ],
+      ),
+    );
+  }
+}

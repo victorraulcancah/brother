@@ -7,6 +7,7 @@ import 'screens/login_screen.dart';
 import 'screens/placeholder_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/usuarios_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -30,6 +31,7 @@ class MyApp extends StatelessWidget {
           AppRoutes.login: (_) => const LoginScreen(),
           AppRoutes.register: (_) => const RegisterScreen(),
           AppRoutes.home: (_) => const HomeScreen(),
+          AppRoutes.usuarios: (_) => const UsuariosScreen(),
           AppRoutes.productos: (_) => const PlaceholderScreen(
             title: 'Productos',
             icon: Icons.inventory_2_outlined,

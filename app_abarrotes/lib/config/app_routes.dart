@@ -10,6 +10,7 @@ class AppRoutes {
   static const String register = '/register';
 
   static const String home = '/home';
+  static const String usuarios = '/usuarios';
   static const String productos = '/productos';
   static const String ventas = '/ventas';
   static const String inventario = '/inventario';

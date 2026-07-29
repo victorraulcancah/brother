@@ -24,6 +24,11 @@ class AppMenu {
   static const List<MenuItem> items = [
     MenuItem(icon: Icons.home_outlined, label: 'Inicio', route: AppRoutes.home),
     MenuItem(
+      icon: Icons.people_alt_outlined,
+      label: 'Usuarios',
+      route: AppRoutes.usuarios,
+    ),
+    MenuItem(
       icon: Icons.inventory_2_outlined,
       label: 'Productos',
       route: AppRoutes.productos,
