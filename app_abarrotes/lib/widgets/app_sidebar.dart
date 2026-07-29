@@ -22,7 +22,7 @@ class AppSidebar extends StatelessWidget {
     this.isPermanent = false,
   });
 
-  void _onTap(BuildContext context, String route) {
+  void _go(BuildContext context, String route) {
     if (!isPermanent) Navigator.pop(context); // cierra el drawer
     if (route != currentRoute) {
       Navigator.pushReplacementNamed(context, route);
@@ -48,12 +48,20 @@ class AppSidebar extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                for (final item in AppMenu.items)
-                  _SidebarTile(
-                    item: item,
-                    active: item.route == currentRoute,
-                    onTap: () => _onTap(context, item.route),
-                  ),
+                for (final entry in AppMenu.entries)
+                  if (entry is MenuLink)
+                    _SidebarTile(
+                      icon: entry.icon,
+                      label: entry.label,
+                      active: entry.route == currentRoute,
+                      onTap: () => _go(context, entry.route),
+                    )
+                  else if (entry is MenuGroup)
+                    _SidebarGroup(
+                      group: entry,
+                      currentRoute: currentRoute,
+                      onTapItem: (route) => _go(context, route),
+                    ),
               ],
             ),
           ),
@@ -125,13 +133,61 @@ class _SidebarHeader extends StatelessWidget {
   }
 }
 
+/// Grupo desplegable (ej. "Gestión").
+class _SidebarGroup extends StatelessWidget {
+  final MenuGroup group;
+  final String currentRoute;
+  final void Function(String route) onTapItem;
+
+  const _SidebarGroup({
+    required this.group,
+    required this.currentRoute,
+    required this.onTapItem,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tieneActivo = group.children.any((c) => c.route == currentRoute);
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        initiallyExpanded: tieneActivo,
+        leading: Icon(group.icon, color: AppColors.textStrong),
+        title: Text(
+          group.label,
+          style: const TextStyle(
+            color: AppColors.textStrong,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        shape: const Border(),
+        collapsedShape: const Border(),
+        childrenPadding: const EdgeInsets.only(left: 16),
+        children: [
+          for (final item in group.children)
+            _SidebarTile(
+              icon: item.icon,
+              label: item.label,
+              active: item.route == currentRoute,
+              onTap: () => onTapItem(item.route),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Un ítem clicable del menú (resalta si está activo).
 class _SidebarTile extends StatelessWidget {
-  final MenuItem item;
+  final IconData icon;
+  final String label;
   final bool active;
   final VoidCallback onTap;
 
   const _SidebarTile({
-    required this.item,
+    required this.icon,
+    required this.label,
     required this.active,
     required this.onTap,
   });
@@ -148,9 +204,9 @@ class _SidebarTile extends StatelessWidget {
             : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         child: ListTile(
-          leading: Icon(item.icon, color: color),
+          leading: Icon(icon, color: color),
           title: Text(
-            item.label,
+            label,
             style: TextStyle(
               color: color,
               fontWeight: active ? FontWeight.w600 : FontWeight.normal,

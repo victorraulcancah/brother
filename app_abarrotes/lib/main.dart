@@ -2,11 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/app_routes.dart';
 import 'providers/auth_provider.dart';
+import 'screens/almacenes_screen.dart';
+import 'screens/categorias_screen.dart';
+import 'screens/empresa_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
-import 'screens/placeholder_screen.dart';
+import 'screens/marcas_screen.dart';
+import 'screens/movimientos_screen.dart';
+import 'screens/ordenes_compra_screen.dart';
+import 'screens/productos_screen.dart';
+import 'screens/proveedores_screen.dart';
+import 'screens/recepciones_compra_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/roles_screen.dart';
+import 'screens/solicitudes_compra_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/tomas_inventario_screen.dart';
+import 'screens/unidades_screen.dart';
 import 'screens/usuarios_screen.dart';
 import 'theme/app_theme.dart';
 
@@ -31,27 +43,20 @@ class MyApp extends StatelessWidget {
           AppRoutes.login: (_) => const LoginScreen(),
           AppRoutes.register: (_) => const RegisterScreen(),
           AppRoutes.home: (_) => const HomeScreen(),
+          AppRoutes.roles: (_) => const RolesScreen(),
           AppRoutes.usuarios: (_) => const UsuariosScreen(),
-          AppRoutes.productos: (_) => const PlaceholderScreen(
-            title: 'Productos',
-            icon: Icons.inventory_2_outlined,
-          ),
-          AppRoutes.ventas: (_) => const PlaceholderScreen(
-            title: 'Ventas',
-            icon: Icons.point_of_sale_outlined,
-          ),
-          AppRoutes.inventario: (_) => const PlaceholderScreen(
-            title: 'Inventario',
-            icon: Icons.warehouse_outlined,
-          ),
-          AppRoutes.clientes: (_) => const PlaceholderScreen(
-            title: 'Clientes',
-            icon: Icons.people_outline,
-          ),
-          AppRoutes.configuracion: (_) => const PlaceholderScreen(
-            title: 'Configuración',
-            icon: Icons.settings_outlined,
-          ),
+          AppRoutes.empresa: (_) => const EmpresaScreen(),
+          AppRoutes.productos: (_) => const ProductosScreen(),
+          AppRoutes.categorias: (_) => const CategoriasScreen(),
+          AppRoutes.marcas: (_) => const MarcasScreen(),
+          AppRoutes.unidades: (_) => const UnidadesScreen(),
+          AppRoutes.proveedores: (_) => const ProveedoresScreen(),
+          AppRoutes.ordenesCompra: (_) => const OrdenesCompraScreen(),
+          AppRoutes.solicitudesCompra: (_) => const SolicitudesCompraScreen(),
+          AppRoutes.recepcionesCompra: (_) => const RecepcionesCompraScreen(),
+          AppRoutes.almacenes: (_) => const AlmacenesScreen(),
+          AppRoutes.movimientos: (_) => const MovimientosScreen(),
+          AppRoutes.tomasInventario: (_) => const TomasInventarioScreen(),
         },
       ),
     );
