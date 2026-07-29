@@ -85,7 +85,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                 return DataCard(
                   title: '${item['name'] ?? ''} (${item['email'] ?? ''})',
                   rows: [
-                    DataCardRow.text('Rol', item['roles'] is List ? (item['roles'] as List).join(', ') : ''),
+                    DataCardRow.text('Rol', item['roles'] is List ? (item['roles'] as List).map((r) => r is Map ? r['name']?.toString() ?? '' : r.toString()).join(', ') : ''),
                     DataCardRow(label: 'Verificado', value: AppBadge(item['email_verified_at'] != null ? 'Sí' : 'No', type: item['email_verified_at'] != null ? AppBadgeType.success : AppBadgeType.warning)),
                   ],
                   actions: [
@@ -113,7 +113,7 @@ class _UsuarioFormSheetState extends State<_UsuarioFormSheet> {
   late final TextEditingController _name;
   late final TextEditingController _email;
   late final TextEditingController _password;
-  List<int> _selectedRoleIds = [];
+  String? _selectedRole;
   bool _activo = true;
 
   @override
@@ -123,8 +123,9 @@ class _UsuarioFormSheetState extends State<_UsuarioFormSheet> {
     _email = TextEditingController(text: widget.initial?['email'] ?? '');
     _password = TextEditingController();
     final rolesData = widget.initial?['roles'];
-    if (rolesData is List) {
-      _selectedRoleIds = rolesData.whereType<Map<String, dynamic>>().map((r) => r['id'] as int).toList();
+    if (rolesData is List && rolesData.isNotEmpty) {
+      final first = rolesData.first;
+      _selectedRole = first is Map ? first['name']?.toString() : first.toString();
     }
     _activo = widget.initial?['activo'] as bool? ?? true;
   }
@@ -135,15 +136,18 @@ class _UsuarioFormSheetState extends State<_UsuarioFormSheet> {
   void _guardar() {
     if (!_formKey.currentState!.validate()) return;
     final data = <String, dynamic>{
-      'name': _name.text.trim(), 'email': _email.text.trim(), 'roles': _selectedRoleIds, 'activo': _activo,
+      'name': _name.text.trim(), 'email': _email.text.trim(), 'role': _selectedRole, 'activo': _activo,
     };
-    if (_password.text.trim().isNotEmpty) data['password'] = _password.text.trim();
+    if (_password.text.trim().isNotEmpty) {
+      data['password'] = _password.text.trim();
+      data['password_confirmation'] = _password.text.trim();
+    }
     Navigator.pop(context, data);
   }
 
   @override
   Widget build(BuildContext context) {
-    final roles = widget.roles.map((r) => AppSelectOption<int>(r['id'] as int, r['name'] as String)).toList();
+    final roles = widget.roles.map((r) => AppSelectOption<String>(r['name'] as String, r['name'] as String)).toList();
 
     return Form(
       key: _formKey,
@@ -158,7 +162,7 @@ class _UsuarioFormSheetState extends State<_UsuarioFormSheet> {
               return null;
             }),
             AppTextField(controller: _password, label: widget.initial == null ? 'Contraseña' : 'Nueva contraseña (opcional)', icon: Icons.lock_outlined, obscureText: true),
-            AppSelect<int>(label: 'Rol', value: _selectedRoleIds.isNotEmpty ? _selectedRoleIds.first : null, options: roles, onChanged: (v) => setState(() => _selectedRoleIds = v != null ? [v] : [])),
+            AppSelect<String>(label: 'Rol', value: _selectedRole, options: roles, onChanged: (v) => setState(() => _selectedRole = v)),
             AppToggle(label: 'Activo', value: _activo, onChanged: (v) => setState(() => _activo = v)),
           ]),
           const SizedBox(height: 16),

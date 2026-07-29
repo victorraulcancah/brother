@@ -8,13 +8,19 @@ class CrudService {
 
   Future<List<Map<String, dynamic>>> getAll() async {
     final data = await _api.get(_endpoint);
-    if (data is List) return data.cast<Map<String, dynamic>>();
-    if (data is Map && data['data'] is List) return List<Map<String, dynamic>>.from(data['data'] as List);
+    if (data is List) {
+      return data.whereType<Map<String, dynamic>>().toList();
+    }
+    if (data is Map && data['data'] is List) {
+      return (data['data'] as List).whereType<Map<String, dynamic>>().toList();
+    }
     return [];
   }
 
   Future<Map<String, dynamic>> getById(int id) async {
-    return await _api.get('$_endpoint/$id');
+    final data = await _api.get('$_endpoint/$id');
+    if (data is Map<String, dynamic>) return data;
+    return {};
   }
 
   Future<Map<String, dynamic>> create(Map<String, dynamic> body) async {

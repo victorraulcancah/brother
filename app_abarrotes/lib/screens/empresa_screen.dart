@@ -54,7 +54,7 @@ class _EmpresaScreenState extends State<EmpresaScreen> {
 
   Future<void> _delete(int index) async {
     final item = _items[index];
-    final confirmado = await showAppConfirmDialog(context, title: 'Eliminar empresa', message: '¿Eliminar "${item['nombre']}"?');
+    final confirmado = await showAppConfirmDialog(context, title: 'Eliminar empresa', message: '¿Eliminar "${item['nombre_comercial'] ?? item['razon_social']}"?');
     if (!confirmado) return;
     try {
       await _crud.delete(item['id']);
@@ -76,9 +76,10 @@ class _EmpresaScreenState extends State<EmpresaScreen> {
               itemBuilder: (context, index) {
                 final item = _items[index];
                 return DataCard(
-                  title: item['nombre'] as String,
+                  title: item['nombre_comercial'] as String? ?? item['razon_social'] as String? ?? '',
                   rows: [
                     DataCardRow.text('RUC', item['ruc'] as String? ?? ''),
+                    DataCardRow.text('Razón Social', item['razon_social'] as String? ?? ''),
                     DataCardRow.text('Dirección', item['direccion'] as String? ?? ''),
                     DataCardRow.text('Teléfono', item['telefono'] as String? ?? ''),
                     DataCardRow.text('Email', item['email'] as String? ?? ''),
@@ -104,7 +105,8 @@ class _EmpresaFormSheet extends StatefulWidget {
 
 class _EmpresaFormSheetState extends State<_EmpresaFormSheet> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nombre;
+  late final TextEditingController _razonSocial;
+  late final TextEditingController _nombreComercial;
   late final TextEditingController _ruc;
   late final TextEditingController _direccion;
   late final TextEditingController _telefono;
@@ -113,7 +115,8 @@ class _EmpresaFormSheetState extends State<_EmpresaFormSheet> {
   @override
   void initState() {
     super.initState();
-    _nombre = TextEditingController(text: widget.initial?['nombre'] ?? '');
+    _razonSocial = TextEditingController(text: widget.initial?['razon_social'] ?? '');
+    _nombreComercial = TextEditingController(text: widget.initial?['nombre_comercial'] ?? '');
     _ruc = TextEditingController(text: widget.initial?['ruc'] ?? '');
     _direccion = TextEditingController(text: widget.initial?['direccion'] ?? '');
     _telefono = TextEditingController(text: widget.initial?['telefono'] ?? '');
@@ -121,12 +124,13 @@ class _EmpresaFormSheetState extends State<_EmpresaFormSheet> {
   }
 
   @override
-  void dispose() { _nombre.dispose(); _ruc.dispose(); _direccion.dispose(); _telefono.dispose(); _email.dispose(); super.dispose(); }
+  void dispose() { _razonSocial.dispose(); _nombreComercial.dispose(); _ruc.dispose(); _direccion.dispose(); _telefono.dispose(); _email.dispose(); super.dispose(); }
 
   void _guardar() {
     if (!_formKey.currentState!.validate()) return;
     Navigator.pop(context, {
-      'nombre': _nombre.text.trim(), 'ruc': _ruc.text.trim(), 'direccion': _direccion.text.trim(),
+      'razon_social': _razonSocial.text.trim(), 'nombre_comercial': _nombreComercial.text.trim(),
+      'ruc': _ruc.text.trim(), 'direccion': _direccion.text.trim(),
       'telefono': _telefono.text.trim(), 'email': _email.text.trim(),
     });
   }
@@ -139,7 +143,8 @@ class _EmpresaFormSheetState extends State<_EmpresaFormSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           AppFormSection(title: 'Datos de la Empresa', children: [
-            AppTextField(controller: _nombre, label: 'Nombre', icon: Icons.business, validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese el nombre' : null),
+            AppTextField(controller: _razonSocial, label: 'Razón Social', icon: Icons.business, validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese la razón social' : null),
+            AppTextField(controller: _nombreComercial, label: 'Nombre Comercial', icon: Icons.business),
             AppTextField(controller: _ruc, label: 'RUC', icon: Icons.badge_outlined),
             AppTextField(controller: _direccion, label: 'Dirección', icon: Icons.location_on_outlined),
             AppTextField(controller: _telefono, label: 'Teléfono', icon: Icons.phone_outlined),
