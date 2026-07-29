@@ -1,28 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_scaffold.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Brother'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              final auth = context.read<AuthProvider>();
-              await auth.logout();
-              if (context.mounted) {
-                Navigator.pushReplacementNamed(context, '/login');
-              }
-            },
-          ),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Inicio',
       body: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           final user = auth.user;
@@ -30,7 +18,7 @@ class HomeScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          return Padding(
+          return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,20 +49,17 @@ class HomeScreen extends StatelessWidget {
                             children: [
                               Text(
                                 user.name,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                               Text(
                                 user.email,
-                                style: TextStyle(color: Colors.grey.shade600),
+                                style: const TextStyle(
+                                  color: AppColors.textMuted,
+                                ),
                               ),
                               if (user.empresaNombre != null)
-                                Text(
-                                  'Empresa: ${user.empresaNombre}',
-                                  style: const TextStyle(fontSize: 14),
-                                ),
+                                Text('Empresa: ${user.empresaNombre}'),
                             ],
                           ),
                         ),
@@ -117,13 +102,13 @@ class HomeScreen extends StatelessWidget {
   Color _roleColor(String role) {
     switch (role) {
       case 'super-admin':
-        return Colors.red;
+        return AppColors.danger;
       case 'admin':
-        return Colors.orange;
+        return AppColors.primary;
       case 'user':
-        return Colors.blue;
+        return AppColors.success;
       default:
-        return Colors.grey;
+        return AppColors.textMuted;
     }
   }
 }
