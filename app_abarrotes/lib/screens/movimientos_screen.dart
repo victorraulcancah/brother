@@ -46,36 +46,69 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
 
   Future<void> _openForm({Map<String, dynamic>? item, int? index}) async {
     final result = await showAppModal<Map<String, dynamic>>(
-      context, title: item == null ? 'Nuevo movimiento' : 'Editar movimiento',
+      context,
+      title: item == null ? 'Nuevo movimiento' : 'Editar movimiento',
       child: _MovimientoFormSheet(initial: item, productos: _productos),
     );
     if (result == null) return;
     try {
-      if (index != null) { await _crud.update(item!['id'], result); }
-      else { await _crud.create(result); }
+      if (index != null) {
+        await _crud.update(item!['id'], result);
+      } else {
+        await _crud.create(result);
+      }
       await _load();
-      if (mounted) showAppSnackbar(context, item == null ? 'Movimiento creado' : 'Movimiento actualizado', type: AppSnackbarType.success);
-    } catch (e) { if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error); }
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          item == null ? 'Movimiento creado' : 'Movimiento actualizado',
+          type: AppSnackbarType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
   }
 
   Future<void> _delete(int index) async {
     final item = _items[index];
-    final confirmado = await showAppConfirmDialog(context, title: 'Eliminar movimiento', message: '¿Eliminar movimiento #${item['id']}?');
+    final confirmado = await showAppConfirmDialog(
+      context,
+      title: 'Eliminar movimiento',
+      message: '¿Eliminar movimiento #${item['id']}?',
+    );
     if (!confirmado) return;
     try {
       await _crud.delete(item['id']);
       await _load();
-      if (mounted) showAppSnackbar(context, 'Movimiento eliminado', type: AppSnackbarType.error);
-    } catch (e) { if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error); }
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          'Movimiento eliminado',
+          type: AppSnackbarType.error,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Movimientos de Inventario',
-      floatingActionButton: FloatingActionButton(onPressed: () => _openForm(), child: const Icon(Icons.add)),
-      body: _loading ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty ? const Center(child: Text('No hay movimientos'))
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openForm(),
+        child: const Icon(Icons.add),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _items.isEmpty
+          ? const Center(child: Text('No hay movimientos'))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _items.length,
@@ -84,14 +117,33 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
                 final tipo = item['tipo'] as String? ?? '';
                 final esEntrada = tipo == 'entrada';
                 return DataCard(
-                  title: '${item['producto_nombre'] ?? ''} x ${item['cantidad']}',
+                  title:
+                      '${item['producto_nombre'] ?? ''} x ${item['cantidad']}',
                   rows: [
-                    DataCardRow(label: 'Tipo', value: AppBadge(tipo, type: esEntrada ? AppBadgeType.success : AppBadgeType.danger)),
+                    DataCardRow(
+                      label: 'Tipo',
+                      value: AppBadge(
+                        tipo,
+                        type: esEntrada
+                            ? AppBadgeType.success
+                            : AppBadgeType.danger,
+                      ),
+                    ),
                     DataCardRow.text('Nota', item['nota'] as String? ?? ''),
                   ],
                   actions: [
-                    DataCardAction(icon: Icons.edit_outlined, color: AppColors.primary, tooltip: 'Editar', onTap: () => _openForm(item: item, index: index)),
-                    DataCardAction(icon: Icons.delete_outline, color: AppColors.danger, tooltip: 'Eliminar', onTap: () => _delete(index)),
+                    DataCardAction(
+                      icon: Icons.edit_outlined,
+                      color: AppColors.primary,
+                      tooltip: 'Editar',
+                      onTap: () => _openForm(item: item, index: index),
+                    ),
+                    DataCardAction(
+                      icon: Icons.delete_outline,
+                      color: AppColors.danger,
+                      tooltip: 'Eliminar',
+                      onTap: () => _delete(index),
+                    ),
                   ],
                 );
               },
@@ -120,40 +172,87 @@ class _MovimientoFormSheetState extends State<_MovimientoFormSheet> {
   void initState() {
     super.initState();
     _productoId = widget.initial?['producto_id'] as int?;
-    _cantidad = TextEditingController(text: widget.initial?['cantidad']?.toString() ?? '');
+    _cantidad = TextEditingController(
+      text: widget.initial?['cantidad']?.toString() ?? '',
+    );
     _tipo = widget.initial?['tipo'] as String? ?? 'entrada';
     _nota = TextEditingController(text: widget.initial?['nota'] ?? '');
   }
 
   @override
-  void dispose() { _cantidad.dispose(); _nota.dispose(); super.dispose(); }
+  void dispose() {
+    _cantidad.dispose();
+    _nota.dispose();
+    super.dispose();
+  }
 
   void _guardar() {
     if (!_formKey.currentState!.validate()) return;
-    Navigator.pop(context, {'producto_id': _productoId, 'cantidad': int.tryParse(_cantidad.text.trim()) ?? 0, 'tipo': _tipo, 'nota': _nota.text.trim()});
+    Navigator.pop(context, {
+      'producto_id': _productoId,
+      'cantidad': int.tryParse(_cantidad.text.trim()) ?? 0,
+      'tipo': _tipo,
+      'nota': _nota.text.trim(),
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final productos = widget.productos.map((p) => AppSelectOption<int>(p['id'] as int, p['nombre'] as String)).toList();
+    final productos = widget.productos
+        .map((p) => AppSelectOption<int>(p['id'] as int, p['nombre'] as String))
+        .toList();
 
     return Form(
       key: _formKey,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AppFormSection(title: 'Datos del Movimiento', children: [
-            AppSelect<int>(label: 'Producto', value: _productoId, options: productos, onChanged: (v) => setState(() => _productoId = v)),
-            AppTextField(controller: _cantidad, label: 'Cantidad', icon: Icons.numbers, keyboardType: TextInputType.number),
-            AppSelect<String>(label: 'Tipo', value: _tipo, options: const [AppSelectOption('entrada', 'Entrada'), AppSelectOption('salida', 'Salida')], onChanged: (v) => setState(() => _tipo = v ?? 'entrada')),
-            AppTextField(controller: _nota, label: 'Nota', icon: Icons.note_outlined),
-          ]),
+          AppFormSection(
+            title: 'Datos del Movimiento',
+            children: [
+              AppSelect<int>(
+                label: 'Producto',
+                value: _productoId,
+                options: productos,
+                onChanged: (v) => setState(() => _productoId = v),
+              ),
+              AppTextField(
+                controller: _cantidad,
+                label: 'Cantidad',
+                icon: Icons.numbers,
+                keyboardType: TextInputType.number,
+              ),
+              AppSelect<String>(
+                label: 'Tipo',
+                value: _tipo,
+                options: const [
+                  AppSelectOption('entrada', 'Entrada'),
+                  AppSelectOption('salida', 'Salida'),
+                ],
+                onChanged: (v) => setState(() => _tipo = v ?? 'entrada'),
+              ),
+              AppTextField(
+                controller: _nota,
+                label: 'Nota',
+                icon: Icons.note_outlined,
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
-          Row(children: [
-            Expanded(child: SecondaryButton(label: 'Cancelar', onPressed: () => Navigator.pop(context))),
-            const SizedBox(width: 12),
-            Expanded(child: PrimaryButton(label: 'Guardar', onPressed: _guardar)),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: SecondaryButton(
+                  label: 'Cancelar',
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PrimaryButton(label: 'Guardar', onPressed: _guardar),
+              ),
+            ],
+          ),
         ],
       ),
     );

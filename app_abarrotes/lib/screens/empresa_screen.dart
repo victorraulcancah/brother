@@ -34,59 +34,117 @@ class _EmpresaScreenState extends State<EmpresaScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _items = await _crud.getAll(); } catch (_) {}
+    try {
+      _items = await _crud.getAll();
+    } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
 
   Future<void> _openForm({Map<String, dynamic>? item, int? index}) async {
     final result = await showAppModal<Map<String, dynamic>>(
-      context, title: item == null ? 'Nueva empresa' : 'Editar empresa',
+      context,
+      title: item == null ? 'Nueva empresa' : 'Editar empresa',
       child: _EmpresaFormSheet(initial: item),
     );
     if (result == null) return;
     try {
-      if (index != null) { await _crud.update(item!['id'], result); }
-      else { await _crud.create(result); }
+      if (index != null) {
+        await _crud.update(item!['id'], result);
+      } else {
+        await _crud.create(result);
+      }
       await _load();
-      if (mounted) showAppSnackbar(context, item == null ? 'Empresa creada' : 'Empresa actualizada', type: AppSnackbarType.success);
-    } catch (e) { if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error); }
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          item == null ? 'Empresa creada' : 'Empresa actualizada',
+          type: AppSnackbarType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
   }
 
   Future<void> _delete(int index) async {
     final item = _items[index];
-    final confirmado = await showAppConfirmDialog(context, title: 'Eliminar empresa', message: '¿Eliminar "${item['nombre_comercial'] ?? item['razon_social']}"?');
+    final confirmado = await showAppConfirmDialog(
+      context,
+      title: 'Eliminar empresa',
+      message:
+          '¿Eliminar "${item['nombre_comercial'] ?? item['razon_social']}"?',
+    );
     if (!confirmado) return;
     try {
       await _crud.delete(item['id']);
       await _load();
-      if (mounted) showAppSnackbar(context, 'Empresa eliminada', type: AppSnackbarType.error);
-    } catch (e) { if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error); }
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          'Empresa eliminada',
+          type: AppSnackbarType.error,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Empresa',
-      floatingActionButton: FloatingActionButton(onPressed: () => _openForm(), child: const Icon(Icons.add)),
-      body: _loading ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty ? const Center(child: Text('No hay empresas'))
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openForm(),
+        child: const Icon(Icons.add),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _items.isEmpty
+          ? const Center(child: Text('No hay empresas'))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _items.length,
               itemBuilder: (context, index) {
                 final item = _items[index];
                 return DataCard(
-                  title: item['nombre_comercial'] as String? ?? item['razon_social'] as String? ?? '',
+                  title:
+                      item['nombre_comercial'] as String? ??
+                      item['razon_social'] as String? ??
+                      '',
                   rows: [
                     DataCardRow.text('RUC', item['ruc'] as String? ?? ''),
-                    DataCardRow.text('Razón Social', item['razon_social'] as String? ?? ''),
-                    DataCardRow.text('Dirección', item['direccion'] as String? ?? ''),
-                    DataCardRow.text('Teléfono', item['telefono'] as String? ?? ''),
+                    DataCardRow.text(
+                      'Razón Social',
+                      item['razon_social'] as String? ?? '',
+                    ),
+                    DataCardRow.text(
+                      'Dirección',
+                      item['direccion'] as String? ?? '',
+                    ),
+                    DataCardRow.text(
+                      'Teléfono',
+                      item['telefono'] as String? ?? '',
+                    ),
                     DataCardRow.text('Email', item['email'] as String? ?? ''),
                   ],
                   actions: [
-                    DataCardAction(icon: Icons.edit_outlined, color: AppColors.primary, tooltip: 'Editar', onTap: () => _openForm(item: item, index: index)),
-                    DataCardAction(icon: Icons.delete_outline, color: AppColors.danger, tooltip: 'Eliminar', onTap: () => _delete(index)),
+                    DataCardAction(
+                      icon: Icons.edit_outlined,
+                      color: AppColors.primary,
+                      tooltip: 'Editar',
+                      onTap: () => _openForm(item: item, index: index),
+                    ),
+                    DataCardAction(
+                      icon: Icons.delete_outline,
+                      color: AppColors.danger,
+                      tooltip: 'Eliminar',
+                      onTap: () => _delete(index),
+                    ),
                   ],
                 );
               },
@@ -115,23 +173,40 @@ class _EmpresaFormSheetState extends State<_EmpresaFormSheet> {
   @override
   void initState() {
     super.initState();
-    _razonSocial = TextEditingController(text: widget.initial?['razon_social'] ?? '');
-    _nombreComercial = TextEditingController(text: widget.initial?['nombre_comercial'] ?? '');
+    _razonSocial = TextEditingController(
+      text: widget.initial?['razon_social'] ?? '',
+    );
+    _nombreComercial = TextEditingController(
+      text: widget.initial?['nombre_comercial'] ?? '',
+    );
     _ruc = TextEditingController(text: widget.initial?['ruc'] ?? '');
-    _direccion = TextEditingController(text: widget.initial?['direccion'] ?? '');
+    _direccion = TextEditingController(
+      text: widget.initial?['direccion'] ?? '',
+    );
     _telefono = TextEditingController(text: widget.initial?['telefono'] ?? '');
     _email = TextEditingController(text: widget.initial?['email'] ?? '');
   }
 
   @override
-  void dispose() { _razonSocial.dispose(); _nombreComercial.dispose(); _ruc.dispose(); _direccion.dispose(); _telefono.dispose(); _email.dispose(); super.dispose(); }
+  void dispose() {
+    _razonSocial.dispose();
+    _nombreComercial.dispose();
+    _ruc.dispose();
+    _direccion.dispose();
+    _telefono.dispose();
+    _email.dispose();
+    super.dispose();
+  }
 
   void _guardar() {
     if (!_formKey.currentState!.validate()) return;
     Navigator.pop(context, {
-      'razon_social': _razonSocial.text.trim(), 'nombre_comercial': _nombreComercial.text.trim(),
-      'ruc': _ruc.text.trim(), 'direccion': _direccion.text.trim(),
-      'telefono': _telefono.text.trim(), 'email': _email.text.trim(),
+      'razon_social': _razonSocial.text.trim(),
+      'nombre_comercial': _nombreComercial.text.trim(),
+      'ruc': _ruc.text.trim(),
+      'direccion': _direccion.text.trim(),
+      'telefono': _telefono.text.trim(),
+      'email': _email.text.trim(),
     });
   }
 
@@ -142,20 +217,59 @@ class _EmpresaFormSheetState extends State<_EmpresaFormSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AppFormSection(title: 'Datos de la Empresa', children: [
-            AppTextField(controller: _razonSocial, label: 'Razón Social', icon: Icons.business, validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese la razón social' : null),
-            AppTextField(controller: _nombreComercial, label: 'Nombre Comercial', icon: Icons.business),
-            AppTextField(controller: _ruc, label: 'RUC', icon: Icons.badge_outlined),
-            AppTextField(controller: _direccion, label: 'Dirección', icon: Icons.location_on_outlined),
-            AppTextField(controller: _telefono, label: 'Teléfono', icon: Icons.phone_outlined),
-            AppTextField(controller: _email, label: 'Email', icon: Icons.email_outlined),
-          ]),
+          AppFormSection(
+            title: 'Datos de la Empresa',
+            children: [
+              AppTextField(
+                controller: _razonSocial,
+                label: 'Razón Social',
+                icon: Icons.business,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Ingrese la razón social'
+                    : null,
+              ),
+              AppTextField(
+                controller: _nombreComercial,
+                label: 'Nombre Comercial',
+                icon: Icons.business,
+              ),
+              AppTextField(
+                controller: _ruc,
+                label: 'RUC',
+                icon: Icons.badge_outlined,
+              ),
+              AppTextField(
+                controller: _direccion,
+                label: 'Dirección',
+                icon: Icons.location_on_outlined,
+              ),
+              AppTextField(
+                controller: _telefono,
+                label: 'Teléfono',
+                icon: Icons.phone_outlined,
+              ),
+              AppTextField(
+                controller: _email,
+                label: 'Email',
+                icon: Icons.email_outlined,
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
-          Row(children: [
-            Expanded(child: SecondaryButton(label: 'Cancelar', onPressed: () => Navigator.pop(context))),
-            const SizedBox(width: 12),
-            Expanded(child: PrimaryButton(label: 'Guardar', onPressed: _guardar)),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: SecondaryButton(
+                  label: 'Cancelar',
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PrimaryButton(label: 'Guardar', onPressed: _guardar),
+              ),
+            ],
+          ),
         ],
       ),
     );

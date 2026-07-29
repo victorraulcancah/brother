@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AjusteInventarioController;
 use App\Http\Controllers\AlmacenController;
+use App\Http\Controllers\AtributoController;
+use App\Http\Controllers\AtributoValorController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CosteoController;
@@ -14,6 +16,8 @@ use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RecepcionCompraController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SolicitudCompraController;
+use App\Http\Controllers\SubCategoriaController;
+use App\Http\Controllers\SubMarcaController;
 use App\Http\Controllers\TomaInventarioController;
 use App\Http\Controllers\TransferenciaController;
 use App\Http\Controllers\UnidadMedidaController;
@@ -29,8 +33,12 @@ Route::middleware('auth:api')->group(function () {
     Route::get('me', [AuthController::class, 'me']);
 
     // Catálogo
-    Route::get('categorias', [CategoriaController::class, 'index']);
-    Route::get('marcas', [MarcaController::class, 'index']);
+    Route::apiResource('categorias', CategoriaController::class);
+    Route::apiResource('sub-categorias', SubCategoriaController::class);
+    Route::apiResource('marcas', MarcaController::class);
+    Route::apiResource('sub-marcas', SubMarcaController::class);
+    Route::apiResource('atributos', AtributoController::class);
+    Route::apiResource('atributo-valores', AtributoValorController::class);
     Route::apiResource('productos', ProductoController::class);
     Route::apiResource('unidades-medida', UnidadMedidaController::class);
 
@@ -41,6 +49,7 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('recepciones-compra', RecepcionCompraController::class);
 
     // Inventario
+    Route::get('existencias', [AlmacenController::class, 'existencias']);
     Route::apiResource('almacenes', AlmacenController::class);
     Route::get('movimientos', [MovimientoInventarioController::class, 'index']);
     Route::apiResource('transferencias', TransferenciaController::class);

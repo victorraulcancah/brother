@@ -15,24 +15,24 @@ import '../widgets/app_text_field.dart';
 import '../widgets/app_toggle.dart';
 import '../widgets/data_card.dart';
 
-class UsuariosScreen extends StatefulWidget {
-  const UsuariosScreen({super.key});
+class SubCategoriasScreen extends StatefulWidget {
+  const SubCategoriasScreen({super.key});
 
   @override
-  State<UsuariosScreen> createState() => _UsuariosScreenState();
+  State<SubCategoriasScreen> createState() => _SubCategoriasScreenState();
 }
 
-class _UsuariosScreenState extends State<UsuariosScreen> {
+class _SubCategoriasScreenState extends State<SubCategoriasScreen> {
   final ApiService _api = ApiService();
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
-  List<Map<String, dynamic>> _roles = [];
+  List<Map<String, dynamic>> _categorias = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _crud = CrudService(_api, ApiEndpoints.usuarios);
+    _crud = CrudService(_api, ApiEndpoints.subCategorias);
     _load();
   }
 
@@ -40,7 +40,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     setState(() => _loading = true);
     try {
       _items = await _crud.getAll();
-      _roles = await CrudService(_api, ApiEndpoints.roles).getAll();
+      _categorias = await CrudService(_api, ApiEndpoints.categorias).getAll();
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -48,8 +48,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
   Future<void> _openForm({Map<String, dynamic>? item, int? index}) async {
     final result = await showAppModal<Map<String, dynamic>>(
       context,
-      title: item == null ? 'Nuevo usuario' : 'Editar usuario',
-      child: _UsuarioFormSheet(initial: item, roles: _roles),
+      title: item == null ? 'Nueva sub-categoría' : 'Editar sub-categoría',
+      child: _SubCategoriaFormSheet(initial: item, categorias: _categorias),
     );
     if (result == null) return;
     try {
@@ -62,7 +62,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
       if (mounted) {
         showAppSnackbar(
           context,
-          item == null ? 'Usuario creado' : 'Usuario actualizado',
+          item == null ? 'Sub-categoría creada' : 'Sub-categoría actualizada',
           type: AppSnackbarType.success,
         );
       }
@@ -77,8 +77,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     final item = _items[index];
     final confirmado = await showAppConfirmDialog(
       context,
-      title: 'Eliminar usuario',
-      message: '¿Eliminar "${item['name']}"?',
+      title: 'Eliminar sub-categoría',
+      message: '¿Eliminar "${item['nombre']}"?',
     );
     if (!confirmado) return;
     try {
@@ -87,7 +87,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
       if (mounted) {
         showAppSnackbar(
           context,
-          'Usuario eliminado',
+          'Sub-categoría eliminada',
           type: AppSnackbarType.error,
         );
       }
@@ -98,10 +98,22 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     }
   }
 
+  String _categoriaNombre(Map<String, dynamic> item) {
+    if (item['categoria'] is Map) {
+      return (item['categoria'] as Map)['nombre']?.toString() ?? '';
+    }
+    final id = item['categoria_id'];
+    final match = _categorias.firstWhere(
+      (c) => c['id'] == id,
+      orElse: () => const {},
+    );
+    return match['nombre']?.toString() ?? '';
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Usuarios',
+      title: 'Sub-categorías',
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
         child: const Icon(Icons.add),
@@ -109,34 +121,24 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
-          ? const Center(child: Text('No hay usuarios'))
+          ? const Center(child: Text('No hay sub-categorías'))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _items.length,
               itemBuilder: (context, index) {
                 final item = _items[index];
+                final activo = item['activo'] == true;
                 return DataCard(
-                  title: '${item['name'] ?? ''} (${item['email'] ?? ''})',
+                  title: item['nombre']?.toString() ?? '',
                   rows: [
-                    DataCardRow.text(
-                      'Rol',
-                      item['roles'] is List
-                          ? (item['roles'] as List)
-                                .map(
-                                  (r) => r is Map
-                                      ? r['name']?.toString() ?? ''
-                                      : r.toString(),
-                                )
-                                .join(', ')
-                          : '',
-                    ),
+                    DataCardRow.text('Categoría', _categoriaNombre(item)),
                     DataCardRow(
-                      label: 'Verificado',
+                      label: 'Estado',
                       value: AppBadge(
-                        item['email_verified_at'] != null ? 'Sí' : 'No',
-                        type: item['email_verified_at'] != null
+                        activo ? 'Activo' : 'Inactivo',
+                        type: activo
                             ? AppBadgeType.success
-                            : AppBadgeType.warning,
+                            : AppBadgeType.danger,
                       ),
                     ),
                   ],
@@ -161,68 +163,56 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
   }
 }
 
-class _UsuarioFormSheet extends StatefulWidget {
+class _SubCategoriaFormSheet extends StatefulWidget {
   final Map<String, dynamic>? initial;
-  final List<Map<String, dynamic>> roles;
-  const _UsuarioFormSheet({this.initial, required this.roles});
+  final List<Map<String, dynamic>> categorias;
+
+  const _SubCategoriaFormSheet({this.initial, required this.categorias});
 
   @override
-  State<_UsuarioFormSheet> createState() => _UsuarioFormSheetState();
+  State<_SubCategoriaFormSheet> createState() => _SubCategoriaFormSheetState();
 }
 
-class _UsuarioFormSheetState extends State<_UsuarioFormSheet> {
+class _SubCategoriaFormSheetState extends State<_SubCategoriaFormSheet> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _name;
-  late final TextEditingController _email;
-  late final TextEditingController _password;
-  String? _selectedRole;
+  late final TextEditingController _nombre;
+  int? _categoriaId;
   bool _activo = true;
 
   @override
   void initState() {
     super.initState();
-    _name = TextEditingController(text: widget.initial?['name'] ?? '');
-    _email = TextEditingController(text: widget.initial?['email'] ?? '');
-    _password = TextEditingController();
-    final rolesData = widget.initial?['roles'];
-    if (rolesData is List && rolesData.isNotEmpty) {
-      final first = rolesData.first;
-      _selectedRole = first is Map
-          ? first['name']?.toString()
-          : first.toString();
+    _nombre = TextEditingController(text: widget.initial?['nombre'] ?? '');
+    _categoriaId = widget.initial?['categoria_id'] as int?;
+    if (_categoriaId == null && widget.initial?['categoria'] is Map) {
+      _categoriaId = (widget.initial!['categoria'] as Map)['id'] as int?;
     }
-    _activo = widget.initial?['activo'] as bool? ?? true;
+    _activo = widget.initial?['activo'] == true || widget.initial == null;
   }
 
   @override
   void dispose() {
-    _name.dispose();
-    _email.dispose();
-    _password.dispose();
+    _nombre.dispose();
     super.dispose();
   }
 
   void _guardar() {
     if (!_formKey.currentState!.validate()) return;
-    final data = <String, dynamic>{
-      'name': _name.text.trim(),
-      'email': _email.text.trim(),
-      'role': _selectedRole,
+    Navigator.pop(context, {
+      'categoria_id': _categoriaId,
+      'nombre': _nombre.text.trim(),
       'activo': _activo,
-    };
-    if (_password.text.trim().isNotEmpty) {
-      data['password'] = _password.text.trim();
-      data['password_confirmation'] = _password.text.trim();
-    }
-    Navigator.pop(context, data);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final roles = widget.roles
+    final opciones = widget.categorias
         .map(
-          (r) =>
-              AppSelectOption<String>(r['name'] as String, r['name'] as String),
+          (c) => AppSelectOption<int>(
+            c['id'] as int,
+            c['nombre']?.toString() ?? '',
+          ),
         )
         .toList();
 
@@ -232,39 +222,23 @@ class _UsuarioFormSheetState extends State<_UsuarioFormSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           AppFormSection(
-            title: 'Datos del Usuario',
+            title: 'Datos de la sub-categoría',
             children: [
+              AppSelect<int>(
+                label: 'Categoría',
+                icon: Icons.category_outlined,
+                value: _categoriaId,
+                options: opciones,
+                onChanged: (v) => setState(() => _categoriaId = v),
+                validator: (v) => v == null ? 'Seleccione una categoría' : null,
+              ),
               AppTextField(
-                controller: _name,
+                controller: _nombre,
                 label: 'Nombre',
-                icon: Icons.person,
+                icon: Icons.label_outline,
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Ingrese el nombre'
                     : null,
-              ),
-              AppTextField(
-                controller: _email,
-                label: 'Email',
-                icon: Icons.email_outlined,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Ingrese el email';
-                  if (!v.contains('@')) return 'Email inválido';
-                  return null;
-                },
-              ),
-              AppTextField(
-                controller: _password,
-                label: widget.initial == null
-                    ? 'Contraseña'
-                    : 'Nueva contraseña (opcional)',
-                icon: Icons.lock_outlined,
-                obscureText: true,
-              ),
-              AppSelect<String>(
-                label: 'Rol',
-                value: _selectedRole,
-                options: roles,
-                onChanged: (v) => setState(() => _selectedRole = v),
               ),
               AppToggle(
                 label: 'Activo',

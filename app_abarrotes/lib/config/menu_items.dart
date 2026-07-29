@@ -75,9 +75,29 @@ class AppMenu {
           route: AppRoutes.categorias,
         ),
         MenuLink(
+          icon: Icons.account_tree_outlined,
+          label: 'Sub-categorías',
+          route: AppRoutes.subCategorias,
+        ),
+        MenuLink(
           icon: Icons.sell_outlined,
           label: 'Marcas',
           route: AppRoutes.marcas,
+        ),
+        MenuLink(
+          icon: Icons.style_outlined,
+          label: 'Sub-marcas',
+          route: AppRoutes.subMarcas,
+        ),
+        MenuLink(
+          icon: Icons.tune,
+          label: 'Atributos',
+          route: AppRoutes.atributos,
+        ),
+        MenuLink(
+          icon: Icons.label_outline,
+          label: 'Valores de atributo',
+          route: AppRoutes.atributoValores,
         ),
         MenuLink(
           icon: Icons.straighten,
@@ -118,7 +138,7 @@ class AppMenu {
       children: [
         MenuLink(
           icon: Icons.warehouse_outlined,
-          label: 'Almacenes',
+          label: 'Existencias',
           route: AppRoutes.almacenes,
         ),
         MenuLink(

@@ -10,7 +10,6 @@ import '../widgets/app_form_section.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_snackbar.dart';
-import '../widgets/app_text_area.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_toggle.dart';
 import '../widgets/data_card.dart';
@@ -37,7 +36,9 @@ class _MarcasScreenState extends State<MarcasScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _items = await _crud.getAll(); } catch (_) {}
+    try {
+      _items = await _crud.getAll();
+    } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
 
@@ -49,46 +50,95 @@ class _MarcasScreenState extends State<MarcasScreen> {
     );
     if (result == null) return;
     try {
-      if (index != null) { await _crud.update(item!['id'], result); }
-      else { await _crud.create(result); }
+      if (index != null) {
+        await _crud.update(item!['id'], result);
+      } else {
+        await _crud.create(result);
+      }
       await _load();
-      if (mounted) showAppSnackbar(context, item == null ? 'Marca creada' : 'Marca actualizada', type: AppSnackbarType.success);
-    } catch (e) { if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error); }
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          item == null ? 'Marca creada' : 'Marca actualizada',
+          type: AppSnackbarType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
   }
 
   Future<void> _delete(int index) async {
     final item = _items[index];
-    final confirmado = await showAppConfirmDialog(context, title: 'Eliminar marca', message: '¿Eliminar "${item['nombre']}"?');
+    final confirmado = await showAppConfirmDialog(
+      context,
+      title: 'Eliminar marca',
+      message: '¿Eliminar "${item['nombre']}"?',
+    );
     if (!confirmado) return;
     try {
       await _crud.delete(item['id']);
       await _load();
-      if (mounted) showAppSnackbar(context, 'Marca eliminada', type: AppSnackbarType.error);
-    } catch (e) { if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error); }
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          'Marca eliminada',
+          type: AppSnackbarType.error,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Marcas',
-      floatingActionButton: FloatingActionButton(onPressed: () => _openForm(), child: const Icon(Icons.add)),
-      body: _loading ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty ? const Center(child: Text('No hay marcas'))
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openForm(),
+        child: const Icon(Icons.add),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _items.isEmpty
+          ? const Center(child: Text('No hay marcas'))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _items.length,
               itemBuilder: (context, index) {
                 final item = _items[index];
-                final activo = item['activo'] as bool? ?? true;
+                final activo = item['activo'] == true;
                 return DataCard(
-                  title: item['nombre'] as String,
+                  title: item['nombre']?.toString() ?? '',
                   rows: [
-                    DataCardRow.text('Descripción', item['descripcion'] as String? ?? ''),
-                    DataCardRow(label: 'Estado', value: AppBadge(activo ? 'Activo' : 'Inactivo', type: activo ? AppBadgeType.success : AppBadgeType.danger)),
+                    DataCardRow(
+                      label: 'Estado',
+                      value: AppBadge(
+                        activo ? 'Activo' : 'Inactivo',
+                        type: activo
+                            ? AppBadgeType.success
+                            : AppBadgeType.danger,
+                      ),
+                    ),
                   ],
                   actions: [
-                    DataCardAction(icon: Icons.edit_outlined, color: AppColors.primary, tooltip: 'Editar', onTap: () => _openForm(item: item, index: index)),
-                    DataCardAction(icon: Icons.delete_outline, color: AppColors.danger, tooltip: 'Eliminar', onTap: () => _delete(index)),
+                    DataCardAction(
+                      icon: Icons.edit_outlined,
+                      color: AppColors.primary,
+                      tooltip: 'Editar',
+                      onTap: () => _openForm(item: item, index: index),
+                    ),
+                    DataCardAction(
+                      icon: Icons.delete_outline,
+                      color: AppColors.danger,
+                      tooltip: 'Eliminar',
+                      onTap: () => _delete(index),
+                    ),
                   ],
                 );
               },
@@ -99,6 +149,7 @@ class _MarcasScreenState extends State<MarcasScreen> {
 
 class _MarcaFormSheet extends StatefulWidget {
   final Map<String, dynamic>? initial;
+
   const _MarcaFormSheet({this.initial});
 
   @override
@@ -108,23 +159,24 @@ class _MarcaFormSheet extends StatefulWidget {
 class _MarcaFormSheetState extends State<_MarcaFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nombre;
-  late final TextEditingController _descripcion;
   bool _activo = true;
 
   @override
   void initState() {
     super.initState();
     _nombre = TextEditingController(text: widget.initial?['nombre'] ?? '');
-    _descripcion = TextEditingController(text: widget.initial?['descripcion'] ?? '');
-    _activo = widget.initial?['activo'] as bool? ?? true;
+    _activo = widget.initial?['activo'] == true || widget.initial == null;
   }
 
   @override
-  void dispose() { _nombre.dispose(); _descripcion.dispose(); super.dispose(); }
+  void dispose() {
+    _nombre.dispose();
+    super.dispose();
+  }
 
   void _guardar() {
     if (!_formKey.currentState!.validate()) return;
-    Navigator.pop(context, {'nombre': _nombre.text.trim(), 'descripcion': _descripcion.text.trim(), 'activo': _activo});
+    Navigator.pop(context, {'nombre': _nombre.text.trim(), 'activo': _activo});
   }
 
   @override
@@ -137,17 +189,36 @@ class _MarcaFormSheetState extends State<_MarcaFormSheet> {
           AppFormSection(
             title: 'Datos de la marca',
             children: [
-              AppTextField(controller: _nombre, label: 'Nombre', icon: Icons.branding_watermark_outlined, validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese el nombre' : null),
-              AppTextArea(controller: _descripcion, label: 'Descripción'),
-              AppToggle(label: 'Activo', value: _activo, onChanged: (v) => setState(() => _activo = v)),
+              AppTextField(
+                controller: _nombre,
+                label: 'Nombre',
+                icon: Icons.sell_outlined,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Ingrese el nombre'
+                    : null,
+              ),
+              AppToggle(
+                label: 'Activo',
+                value: _activo,
+                onChanged: (v) => setState(() => _activo = v),
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          Row(children: [
-            Expanded(child: SecondaryButton(label: 'Cancelar', onPressed: () => Navigator.pop(context))),
-            const SizedBox(width: 12),
-            Expanded(child: PrimaryButton(label: 'Guardar', onPressed: _guardar)),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: SecondaryButton(
+                  label: 'Cancelar',
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PrimaryButton(label: 'Guardar', onPressed: _guardar),
+              ),
+            ],
+          ),
         ],
       ),
     );

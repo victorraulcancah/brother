@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Almacen;
+use App\Models\ProductoAlmacenStock;
 use Illuminate\Http\Request;
 
 class AlmacenController extends Controller
@@ -16,12 +17,31 @@ class AlmacenController extends Controller
         return response()->json(Almacen::all());
     }
 
+    /**
+     * Existencias (stock de productos) por almacén.
+     * Si viene `almacen_id`, filtra; si no, devuelve todas ("Todos").
+     */
+    public function existencias(Request $request)
+    {
+        $query = ProductoAlmacenStock::with([
+            'producto:id,codigo,nombre,categoria_id,precio_base',
+            'producto.categoria:id,nombre',
+            'almacen:id,nombre',
+        ]);
+
+        if ($request->filled('almacen_id')) {
+            $query->where('almacen_id', $request->integer('almacen_id'));
+        }
+
+        return response()->json($query->get());
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
             'nombre' => 'required|string|max:255',
             'codigo' => 'required|string|max:50|unique:almacenes,codigo',
-            'tipo' => 'required|string|max:50',
+            'tipo' => 'nullable|string|max:50',
             'direccion' => 'nullable|string|max:500',
             'activo' => 'boolean',
         ]);
@@ -38,7 +58,7 @@ class AlmacenController extends Controller
         $data = $request->validate([
             'nombre' => 'required|string|max:255',
             'codigo' => 'required|string|max:50|unique:almacenes,codigo,' . $almacene->id,
-            'tipo' => 'required|string|max:50',
+            'tipo' => 'nullable|string|max:50',
             'direccion' => 'nullable|string|max:500',
             'activo' => 'boolean',
         ]);

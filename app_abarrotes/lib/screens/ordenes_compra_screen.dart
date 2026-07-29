@@ -48,44 +48,84 @@ class _OrdenesCompraScreenState extends State<OrdenesCompraScreen> {
 
   Future<void> _openForm({Map<String, dynamic>? item, int? index}) async {
     final result = await showAppModal<Map<String, dynamic>>(
-      context, title: item == null ? 'Nueva orden' : 'Editar orden',
+      context,
+      title: item == null ? 'Nueva orden' : 'Editar orden',
       child: _OrdenFormSheet(initial: item, proveedores: _proveedores),
     );
     if (result == null) return;
     try {
-      if (index != null) { await _crud.update(item!['id'], result); }
-      else { await _crud.create(result); }
+      if (index != null) {
+        await _crud.update(item!['id'], result);
+      } else {
+        await _crud.create(result);
+      }
       await _load();
-      if (mounted) showAppSnackbar(context, item == null ? 'Orden creada' : 'Orden actualizada', type: AppSnackbarType.success);
-    } catch (e) { if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error); }
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          item == null ? 'Orden creada' : 'Orden actualizada',
+          type: AppSnackbarType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
   }
 
   Future<void> _delete(int index) async {
     final item = _items[index];
-    final confirmado = await showAppConfirmDialog(context, title: 'Eliminar orden', message: '¿Eliminar "${item['codigo']}"?');
+    final confirmado = await showAppConfirmDialog(
+      context,
+      title: 'Eliminar orden',
+      message: '¿Eliminar "${item['codigo']}"?',
+    );
     if (!confirmado) return;
     try {
       await _crud.delete(item['id']);
       await _load();
-      if (mounted) showAppSnackbar(context, 'Orden eliminada', type: AppSnackbarType.error);
-    } catch (e) { if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error); }
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          'Orden eliminada',
+          type: AppSnackbarType.error,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
   }
 
   String _estadoLabel(String estado) => switch (estado) {
-    'borrador' => 'Borrador', 'enviada' => 'Enviada', 'recibida' => 'Recibida', 'anulada' => 'Anulada', _ => estado,
+    'borrador' => 'Borrador',
+    'enviada' => 'Enviada',
+    'recibida' => 'Recibida',
+    'anulada' => 'Anulada',
+    _ => estado,
   };
 
   AppBadgeType _estadoType(String estado) => switch (estado) {
-    'enviada' => AppBadgeType.info, 'recibida' => AppBadgeType.success, 'anulada' => AppBadgeType.danger, _ => AppBadgeType.neutral,
+    'enviada' => AppBadgeType.info,
+    'recibida' => AppBadgeType.success,
+    'anulada' => AppBadgeType.danger,
+    _ => AppBadgeType.neutral,
   };
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Órdenes de compra',
-      floatingActionButton: FloatingActionButton(onPressed: () => _openForm(), child: const Icon(Icons.add)),
-      body: _loading ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty ? const Center(child: Text('No hay órdenes'))
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openForm(),
+        child: const Icon(Icons.add),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _items.isEmpty
+          ? const Center(child: Text('No hay órdenes'))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _items.length,
@@ -95,14 +135,39 @@ class _OrdenesCompraScreenState extends State<OrdenesCompraScreen> {
                 return DataCard(
                   title: item['codigo'] as String? ?? '',
                   rows: [
-                    DataCardRow.text('Proveedor', item['proveedor'] is Map ? (item['proveedor'] as Map)['nombre'] as String? ?? '' : ''),
-                    DataCardRow.text('Fecha', item['fecha_emision'] as String? ?? ''),
+                    DataCardRow.text(
+                      'Proveedor',
+                      item['proveedor'] is Map
+                          ? (item['proveedor'] as Map)['nombre'] as String? ??
+                                ''
+                          : '',
+                    ),
+                    DataCardRow.text(
+                      'Fecha',
+                      item['fecha_emision'] as String? ?? '',
+                    ),
                     DataCardRow.text('Moneda', item['moneda'] as String? ?? ''),
-                    DataCardRow(label: 'Estado', value: AppBadge(_estadoLabel(estado), type: _estadoType(estado))),
+                    DataCardRow(
+                      label: 'Estado',
+                      value: AppBadge(
+                        _estadoLabel(estado),
+                        type: _estadoType(estado),
+                      ),
+                    ),
                   ],
                   actions: [
-                    DataCardAction(icon: Icons.edit_outlined, color: AppColors.primary, tooltip: 'Editar', onTap: () => _openForm(item: item, index: index)),
-                    DataCardAction(icon: Icons.delete_outline, color: AppColors.danger, tooltip: 'Eliminar', onTap: () => _delete(index)),
+                    DataCardAction(
+                      icon: Icons.edit_outlined,
+                      color: AppColors.primary,
+                      tooltip: 'Editar',
+                      onTap: () => _openForm(item: item, index: index),
+                    ),
+                    DataCardAction(
+                      icon: Icons.delete_outline,
+                      color: AppColors.danger,
+                      tooltip: 'Eliminar',
+                      onTap: () => _delete(index),
+                    ),
                   ],
                 );
               },
@@ -133,8 +198,12 @@ class _OrdenFormSheetState extends State<_OrdenFormSheet> {
   void initState() {
     super.initState();
     _codigo = TextEditingController(text: widget.initial?['codigo'] ?? '');
-    _fecha = TextEditingController(text: widget.initial?['fecha_emision'] ?? '');
-    _observaciones = TextEditingController(text: widget.initial?['observaciones'] ?? '');
+    _fecha = TextEditingController(
+      text: widget.initial?['fecha_emision'] ?? '',
+    );
+    _observaciones = TextEditingController(
+      text: widget.initial?['observaciones'] ?? '',
+    );
     _proveedorId = widget.initial?['proveedor_id'] as int?;
     if (_proveedorId == null && widget.initial?['proveedor'] is Map) {
       _proveedorId = (widget.initial!['proveedor'] as Map)['id'] as int?;
@@ -144,7 +213,12 @@ class _OrdenFormSheetState extends State<_OrdenFormSheet> {
   }
 
   @override
-  void dispose() { _codigo.dispose(); _fecha.dispose(); _observaciones.dispose(); super.dispose(); }
+  void dispose() {
+    _codigo.dispose();
+    _fecha.dispose();
+    _observaciones.dispose();
+    super.dispose();
+  }
 
   void _guardar() {
     if (!_formKey.currentState!.validate()) return;
@@ -160,27 +234,81 @@ class _OrdenFormSheetState extends State<_OrdenFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final proveedores = widget.proveedores.map((p) => AppSelectOption<int>(p['id'] as int, p['nombre'] as String)).toList();
+    final proveedores = widget.proveedores
+        .map((p) => AppSelectOption<int>(p['id'] as int, p['nombre'] as String))
+        .toList();
 
     return Form(
       key: _formKey,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AppFormSection(title: 'Datos de la orden', children: [
-            AppTextField(controller: _codigo, label: 'Código', icon: Icons.tag, validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese el código' : null),
-            AppSelect<int>(label: 'Proveedor', icon: Icons.local_shipping_outlined, value: _proveedorId, options: proveedores, onChanged: (v) => setState(() => _proveedorId = v), validator: (v) => v == null ? 'Seleccione un proveedor' : null),
-            AppTextField(controller: _fecha, label: 'Fecha emisión (AAAA-MM-DD)', icon: Icons.event_outlined, validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese la fecha' : null),
-            AppSelect<String>(label: 'Moneda', icon: Icons.payments_outlined, value: _moneda, options: const [AppSelectOption('PEN', 'Soles (PEN)'), AppSelectOption('USD', 'Dólares (USD)')], onChanged: (v) => setState(() => _moneda = v ?? 'PEN')),
-            AppSelect<String>(label: 'Estado', icon: Icons.flag_outlined, value: _estado, options: const [AppSelectOption('borrador', 'Borrador'), AppSelectOption('enviada', 'Enviada'), AppSelectOption('recibida', 'Recibida'), AppSelectOption('anulada', 'Anulada')], onChanged: (v) => setState(() => _estado = v ?? 'borrador')),
-            AppTextArea(controller: _observaciones, label: 'Observaciones'),
-          ]),
+          AppFormSection(
+            title: 'Datos de la orden',
+            children: [
+              AppTextField(
+                controller: _codigo,
+                label: 'Código',
+                icon: Icons.tag,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Ingrese el código'
+                    : null,
+              ),
+              AppSelect<int>(
+                label: 'Proveedor',
+                icon: Icons.local_shipping_outlined,
+                value: _proveedorId,
+                options: proveedores,
+                onChanged: (v) => setState(() => _proveedorId = v),
+                validator: (v) => v == null ? 'Seleccione un proveedor' : null,
+              ),
+              AppTextField(
+                controller: _fecha,
+                label: 'Fecha emisión (AAAA-MM-DD)',
+                icon: Icons.event_outlined,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Ingrese la fecha' : null,
+              ),
+              AppSelect<String>(
+                label: 'Moneda',
+                icon: Icons.payments_outlined,
+                value: _moneda,
+                options: const [
+                  AppSelectOption('PEN', 'Soles (PEN)'),
+                  AppSelectOption('USD', 'Dólares (USD)'),
+                ],
+                onChanged: (v) => setState(() => _moneda = v ?? 'PEN'),
+              ),
+              AppSelect<String>(
+                label: 'Estado',
+                icon: Icons.flag_outlined,
+                value: _estado,
+                options: const [
+                  AppSelectOption('borrador', 'Borrador'),
+                  AppSelectOption('enviada', 'Enviada'),
+                  AppSelectOption('recibida', 'Recibida'),
+                  AppSelectOption('anulada', 'Anulada'),
+                ],
+                onChanged: (v) => setState(() => _estado = v ?? 'borrador'),
+              ),
+              AppTextArea(controller: _observaciones, label: 'Observaciones'),
+            ],
+          ),
           const SizedBox(height: 16),
-          Row(children: [
-            Expanded(child: SecondaryButton(label: 'Cancelar', onPressed: () => Navigator.pop(context))),
-            const SizedBox(width: 12),
-            Expanded(child: PrimaryButton(label: 'Guardar', onPressed: _guardar)),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: SecondaryButton(
+                  label: 'Cancelar',
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PrimaryButton(label: 'Guardar', onPressed: _guardar),
+              ),
+            ],
+          ),
         ],
       ),
     );

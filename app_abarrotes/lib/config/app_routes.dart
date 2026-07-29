@@ -19,7 +19,11 @@ class AppRoutes {
   // Catálogo
   static const String productos = '/productos';
   static const String categorias = '/categorias';
+  static const String subCategorias = '/sub-categorias';
   static const String marcas = '/marcas';
+  static const String subMarcas = '/sub-marcas';
+  static const String atributos = '/atributos';
+  static const String atributoValores = '/atributo-valores';
   static const String unidades = '/unidades';
 
   // Compras

@@ -3,11 +3,7 @@ class Role {
   final String name;
   final String guardName;
 
-  Role({
-    required this.id,
-    required this.name,
-    this.guardName = 'web',
-  });
+  Role({required this.id, required this.name, this.guardName = 'web'});
 
   factory Role.fromJson(Map<String, dynamic> json) {
     return Role(
