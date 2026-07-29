@@ -19,6 +19,15 @@ class AjusteInventario extends Model
         'observaciones',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $ajuste) {
+            if (!$ajuste->usuario_solicita_id && auth()->check()) {
+                $ajuste->usuario_solicita_id = auth()->id();
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [
