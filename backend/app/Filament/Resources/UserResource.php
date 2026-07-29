@@ -133,7 +133,7 @@ class UserResource extends Resource
                     ->label('Empresa'),
             ])
             ->actions([
-                Actions\EditAction::make()->modalWidth('screen'),
+                Actions\EditAction::make(),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([

@@ -13,8 +13,7 @@ class ListUsers extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
-                ->modalWidth('screen'),
+            Actions\CreateAction::make(),
         ];
     }
 }

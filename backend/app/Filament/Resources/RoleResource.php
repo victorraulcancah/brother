@@ -105,7 +105,7 @@ class RoleResource extends Resource
                     ]),
             ])
             ->actions([
-                Actions\EditAction::make()->modalWidth('screen'),
+                Actions\EditAction::make(),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([
