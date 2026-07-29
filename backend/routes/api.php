@@ -12,6 +12,7 @@ use App\Http\Controllers\OrdenCompraController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RecepcionCompraController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SolicitudCompraController;
 use App\Http\Controllers\TomaInventarioController;
 use App\Http\Controllers\TransferenciaController;
@@ -55,5 +56,5 @@ Route::middleware('auth:api')->group(function () {
     Route::put('users/{id}', [UserController::class, 'update']);
     Route::delete('users/{id}', [UserController::class, 'destroy']);
     Route::post('users/{id}/assign-role', [UserController::class, 'assignRole']);
-    Route::get('roles', [UserController::class, 'roles']);
+    Route::apiResource('roles', RoleController::class);
 });
