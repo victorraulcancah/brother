@@ -12,7 +12,6 @@ import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_tabs.dart';
 import '../widgets/app_text_field.dart';
-import '../widgets/data_card.dart';
 
 /// Existencias por almacén: una pestaña por almacén (+ Todos), cada una
 /// con la tabla de productos y su stock. Los almacenes se gestionan con
@@ -148,37 +147,56 @@ class _AlmacenesScreenState extends State<AlmacenesScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final e = items[index];
-        final p = e['producto'] is Map ? e['producto'] as Map : const {};
-        final stock = (e['stock_actual'] as num?)?.toInt() ?? 0;
-        final categoria = p['categoria'] is Map
-            ? (p['categoria'] as Map)['nombre']?.toString() ?? '—'
-            : '—';
-
-        return DataCard(
-          title: p['nombre']?.toString() ?? '',
-          rows: [
-            DataCardRow.text('Código', p['codigo']?.toString() ?? ''),
-            DataCardRow.text('Categoría', categoria),
-            DataCardRow(
-              label: 'Stock',
-              value: AppBadge(
-                '$stock',
-                type: stock <= 0
-                    ? AppBadgeType.danger
-                    : (stock <= 5
-                          ? AppBadgeType.warning
-                          : AppBadgeType.success),
-              ),
-            ),
-            DataCardRow.text('Precio', 'S/ ${p['precio_base'] ?? ''}'),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(12),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.all(AppColors.surface),
+          columnSpacing: 22,
+          headingTextStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textStrong,
+          ),
+          columns: const [
+            DataColumn(label: Text('Código')),
+            DataColumn(label: Text('Descripción')),
+            DataColumn(label: Text('Categoría')),
+            DataColumn(label: Text('Stock')),
+            DataColumn(label: Text('Precio')),
           ],
-        );
-      },
+          rows: [for (final e in items) _fila(e)],
+        ),
+      ),
+    );
+  }
+
+  DataRow _fila(Map<String, dynamic> e) {
+    final p = e['producto'] is Map ? e['producto'] as Map : const {};
+    final stock = (e['stock_actual'] as num?)?.toInt() ?? 0;
+    final categoria = p['categoria'] is Map
+        ? (p['categoria'] as Map)['nombre']?.toString() ?? ''
+        : '';
+
+    return DataRow(
+      cells: [
+        DataCell(Text(p['codigo']?.toString() ?? '')),
+        DataCell(Text(p['nombre']?.toString() ?? '')),
+        DataCell(
+          categoria.isEmpty
+              ? const Text('—', style: TextStyle(color: AppColors.textMuted))
+              : AppBadge(categoria, type: AppBadgeType.neutral),
+        ),
+        DataCell(
+          AppBadge(
+            '$stock',
+            type: stock <= 0
+                ? AppBadgeType.danger
+                : (stock <= 5 ? AppBadgeType.warning : AppBadgeType.success),
+          ),
+        ),
+        DataCell(Text('S/ ${p['precio_base'] ?? ''}')),
+      ],
     );
   }
 
