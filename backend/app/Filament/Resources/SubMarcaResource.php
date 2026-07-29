@@ -6,6 +6,7 @@ use App\Filament\Resources\SubMarcaResource\Pages;
 use App\Models\SubMarca;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -32,7 +33,7 @@ class SubMarcaResource extends Resource
     {
         return $schema
             ->schema([
-                Components\Section::make('Información de la Sub-marca')
+                SchemaComponents\Section::make('Información de la Sub-marca')
                     ->schema([
                         Components\Select::make('marca_id')
                             ->label('Marca')

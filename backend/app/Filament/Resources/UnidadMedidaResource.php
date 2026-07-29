@@ -6,6 +6,7 @@ use App\Filament\Resources\UnidadMedidaResource\Pages;
 use App\Models\UnidadMedida;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -50,7 +51,7 @@ class UnidadMedidaResource extends Resource
     {
         return $schema
             ->schema([
-                Components\Section::make('Información de la Unidad')
+                SchemaComponents\Section::make('Información de la Unidad')
                     ->schema([
                         Components\TextInput::make('nombre')
                             ->label('Nombre')

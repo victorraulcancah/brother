@@ -6,6 +6,7 @@ use App\Filament\Resources\AtributoResource\Pages;
 use App\Models\Atributo;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -55,7 +56,7 @@ class AtributoResource extends Resource
     {
         return $schema
             ->schema([
-                Components\Section::make('Información del Atributo')
+                SchemaComponents\Section::make('Información del Atributo')
                     ->schema([
                         Components\TextInput::make('nombre')
                             ->label('Nombre')
