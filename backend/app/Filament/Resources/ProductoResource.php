@@ -237,7 +237,7 @@ class ProductoResource extends Resource
                     ->label('Afecto a IGV'),
             ])
             ->actions([
-                Actions\EditAction::make()->modalWidth('screen'),
+                Actions\EditAction::make(),
                 Actions\DeleteAction::make(),
             ])
             ->bulkActions([
