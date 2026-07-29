@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CategoriaResource\Pages;
@@ -17,85 +16,33 @@ class CategoriaResource extends Resource
 {
     protected static ?string $model = Categoria::class;
 
-    public static function getNavigationIcon(): string
-    {
-        return 'heroicon-o-rectangle-group';
-    }
-
-    public static function getNavigationLabel(): string
-    {
-        return 'Categorías';
-    }
-
-    public static function getPluralModelLabel(): string
-    {
-        return 'Categorías';
-    }
-
-    public static function getSlug(?Panel $panel = null): string
-    {
-        return 'categorias';
-    }
-
-    public static function getNavigationGroup(): string
-    {
-        return 'Catálogo';
-    }
-
-    public static function getNavigationSort(): ?int
-    {
-        return 3;
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        return (string) static::getModel()::count();
-    }
+    public static function getNavigationIcon(): string { return 'heroicon-o-rectangle-group'; }
+    public static function getNavigationLabel(): string { return 'Categorías'; }
+    public static function getPluralModelLabel(): string { return 'Categorías'; }
+    public static function getSlug(?Panel $panel = null): string { return 'categorias'; }
+    public static function getNavigationGroup(): string { return 'Catálogo'; }
+    public static function getNavigationSort(): ?int { return 3; }
+    public static function getNavigationBadge(): ?string { return (string) static::getModel()::count(); }
 
     public static function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
-                SchemaComponents\Tabs::make('Categoría')
-                    ->tabs([
-                        SchemaComponents\Tabs\Tab::make('Información')
-                            ->icon('heroicon-o-information-circle')
-                            ->schema([
-                                SchemaComponents\Section::make('Datos de la Categoría')
-                                    ->schema([
-                                        Components\TextInput::make('nombre')
-                                            ->label('Nombre')
-                                            ->required()
-                                            ->maxLength(255),
-                                        Components\Toggle::make('activo')
-                                            ->label('Activo')
-                                            ->default(true),
-                                    ])->columns(2),
-                            ]),
-
-                        SchemaComponents\Tabs\Tab::make('Sub Categorías')
-                            ->icon('heroicon-o-rectangle-stack')
-                            ->schema([
-                                Components\Repeater::make('subCategorias')
-                                    ->relationship('subCategorias')
-                                    ->schema([
-                                        SchemaComponents\Grid::make(2)
-                                            ->schema([
-                                                Components\TextInput::make('nombre')
-                                                    ->label('Nombre')
-                                                    ->required()
-                                                    ->maxLength(255),
-                                                Components\Toggle::make('activo')
-                                                    ->label('Activo')
-                                                    ->default(true),
-                                            ]),
-                                    ])
-                                    ->defaultItems(0)
-                                    ->addActionLabel('Agregar Sub Categoría')
-                                    ->collapsible()
-                                    ->cloneable(),
-                            ]),
-                    ])->columnSpanFull(),
+                SchemaComponents\Section::make('Datos de la Categoría')
+                    ->schema([
+                        Components\TextInput::make('nombre')
+                            ->label('Nombre')
+                            ->required()
+                            ->maxLength(255),
+                        Components\Select::make('categoria_padre_id')
+                            ->label('Categoría padre')
+                            ->relationship('padre', 'nombre')
+                            ->searchable()
+                            ->preload(),
+                        Components\Toggle::make('activo')
+                            ->label('Activo')
+                            ->default(true),
+                    ])->columns(2),
             ]);
     }
 
@@ -107,23 +54,21 @@ class CategoriaResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('sub_categorias_count')
-                    ->label('Sub Categorías')
-                    ->counts('subCategorias')
+                Tables\Columns\TextColumn::make('padre.nombre')
+                    ->label('Categoría padre')
+                    ->sortable()
+                    ->placeholder('—'),
+                Tables\Columns\TextColumn::make('hijos_count')
+                    ->label('Sub-categorías')
+                    ->counts('hijos')
                     ->sortable(),
                 Tables\Columns\IconColumn::make('activo')
                     ->label('Activo')
                     ->boolean()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Creado')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\TernaryFilter::make('activo')
-                    ->label('Estado'),
+                Tables\Filters\TernaryFilter::make('activo')->label('Estado'),
             ])
             ->actions([
                 Actions\EditAction::make()->modalWidth('2xl'),
@@ -136,10 +81,7 @@ class CategoriaResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array
-    {
-        return [];
-    }
+    public static function getRelations(): array { return []; }
 
     public static function getPages(): array
     {

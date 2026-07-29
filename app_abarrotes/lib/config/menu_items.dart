@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'app_routes.dart';
 
-/// Entrada del menú lateral: puede ser un enlace directo ([MenuLink])
-/// o un grupo desplegable ([MenuGroup]).
 sealed class MenuEntry {
   const MenuEntry();
 }
 
-/// Enlace directo a una ruta.
 class MenuLink extends MenuEntry {
   final IconData icon;
   final String label;
@@ -20,7 +17,6 @@ class MenuLink extends MenuEntry {
   });
 }
 
-/// Grupo desplegable que contiene varios [MenuLink].
 class MenuGroup extends MenuEntry {
   final IconData icon;
   final String label;
@@ -33,7 +29,6 @@ class MenuGroup extends MenuEntry {
   });
 }
 
-/// Menú de navegación de la app, definido UNA sola vez.
 class AppMenu {
   AppMenu._();
 
@@ -43,114 +38,39 @@ class AppMenu {
       icon: Icons.tune,
       label: 'Gestión',
       children: [
-        MenuLink(
-          icon: Icons.shield_outlined,
-          label: 'Roles',
-          route: AppRoutes.roles,
-        ),
-        MenuLink(
-          icon: Icons.people_alt_outlined,
-          label: 'Usuarios',
-          route: AppRoutes.usuarios,
-        ),
-        MenuLink(
-          icon: Icons.business_outlined,
-          label: 'Empresa',
-          route: AppRoutes.empresa,
-        ),
+        MenuLink(icon: Icons.shield_outlined, label: 'Roles', route: AppRoutes.roles),
+        MenuLink(icon: Icons.people_alt_outlined, label: 'Usuarios', route: AppRoutes.usuarios),
+        MenuLink(icon: Icons.business_outlined, label: 'Empresa', route: AppRoutes.empresa),
       ],
     ),
     MenuGroup(
       icon: Icons.book_outlined,
       label: 'Catálogo',
       children: [
-        MenuLink(
-          icon: Icons.inventory_2_outlined,
-          label: 'Productos',
-          route: AppRoutes.productos,
-        ),
-        MenuLink(
-          icon: Icons.category_outlined,
-          label: 'Categorías',
-          route: AppRoutes.categorias,
-        ),
-        MenuLink(
-          icon: Icons.account_tree_outlined,
-          label: 'Sub-categorías',
-          route: AppRoutes.subCategorias,
-        ),
-        MenuLink(
-          icon: Icons.sell_outlined,
-          label: 'Marcas',
-          route: AppRoutes.marcas,
-        ),
-        MenuLink(
-          icon: Icons.style_outlined,
-          label: 'Sub-marcas',
-          route: AppRoutes.subMarcas,
-        ),
-        MenuLink(
-          icon: Icons.tune,
-          label: 'Atributos',
-          route: AppRoutes.atributos,
-        ),
-        MenuLink(
-          icon: Icons.label_outline,
-          label: 'Valores de atributo',
-          route: AppRoutes.atributoValores,
-        ),
-        MenuLink(
-          icon: Icons.straighten,
-          label: 'Unidades de medida',
-          route: AppRoutes.unidades,
-        ),
+        MenuLink(icon: Icons.inventory_2_outlined, label: 'Productos', route: AppRoutes.productos),
+        MenuLink(icon: Icons.category_outlined, label: 'Categorías', route: AppRoutes.categorias),
+        MenuLink(icon: Icons.sell_outlined, label: 'Marcas', route: AppRoutes.marcas),
+        MenuLink(icon: Icons.style_outlined, label: 'Sub-marcas', route: AppRoutes.subMarcas),
+        MenuLink(icon: Icons.straighten, label: 'Unidades de medida', route: AppRoutes.unidades),
       ],
     ),
     MenuGroup(
       icon: Icons.shopping_cart_outlined,
       label: 'Compras',
       children: [
-        MenuLink(
-          icon: Icons.local_shipping_outlined,
-          label: 'Proveedores',
-          route: AppRoutes.proveedores,
-        ),
-        MenuLink(
-          icon: Icons.receipt_long_outlined,
-          label: 'Órdenes de compra',
-          route: AppRoutes.ordenesCompra,
-        ),
-        MenuLink(
-          icon: Icons.request_quote_outlined,
-          label: 'Solicitudes de compra',
-          route: AppRoutes.solicitudesCompra,
-        ),
-        MenuLink(
-          icon: Icons.inventory_outlined,
-          label: 'Recepciones de compra',
-          route: AppRoutes.recepcionesCompra,
-        ),
+        MenuLink(icon: Icons.local_shipping_outlined, label: 'Proveedores', route: AppRoutes.proveedores),
+        MenuLink(icon: Icons.receipt_long_outlined, label: 'Órdenes de compra', route: AppRoutes.ordenesCompra),
+        MenuLink(icon: Icons.request_quote_outlined, label: 'Solicitudes de compra', route: AppRoutes.solicitudesCompra),
+        MenuLink(icon: Icons.inventory_outlined, label: 'Recepciones de compra', route: AppRoutes.recepcionesCompra),
       ],
     ),
     MenuGroup(
       icon: Icons.warehouse_outlined,
       label: 'Inventario',
       children: [
-        MenuLink(
-          icon: Icons.warehouse_outlined,
-          label: 'Existencias',
-          route: AppRoutes.almacenes,
-        ),
-        MenuLink(
-          icon: Icons.swap_vert,
-          label: 'Movimientos',
-          route: AppRoutes.movimientos,
-        ),
-        MenuLink(
-          icon: Icons.fact_check_outlined,
-          label: 'Tomas de inventario',
-          route: AppRoutes.tomasInventario,
-        ),
+        MenuLink(icon: Icons.warehouse_outlined, label: 'Existencias', route: AppRoutes.almacenes),
+        MenuLink(icon: Icons.swap_vert, label: 'Movimientos', route: AppRoutes.movimientos),
+        MenuLink(icon: Icons.fact_check_outlined, label: 'Tomas de inventario', route: AppRoutes.tomasInventario),
       ],
     ),
   ];

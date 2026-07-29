@@ -6,7 +6,7 @@ use App\Filament\Resources\AlmacenStockResource;
 use App\Filament\Resources\AlmacenStockResource\Widgets\AlmacenStockStats;
 use App\Models\Almacen;
 use App\Models\MovimientoInventario;
-use App\Models\Producto;
+use App\Models\ProductoPresentacion;
 use App\Models\ProductoAlmacenStock;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -63,17 +63,16 @@ class ListAlmacenStock extends ListRecords
                 ->options(fn () => $this->almacenes()->pluck('nombre', 'id')->toArray())
                 ->required(),
 
-            Select::make('producto_id')
-                ->label('Producto')
-                ->options(fn () => Producto::orderBy('nombre')->limit(500)->pluck('nombre', 'id')->toArray())
+            Select::make('producto_presentacion_id')
+                ->label('Presentación')
+                ->options(fn () => ProductoPresentacion::with('producto')->orderBy('nombre')->limit(500)->get()->mapWithKeys(fn ($p) => [$p->id => $p->producto->nombre . ' — ' . $p->nombre])->toArray())
                 ->searchable()
                 ->required(),
 
             TextInput::make('cantidad')
-                ->label('Cantidad')
+                ->label('Cantidad (en unidades de la presentación)')
                 ->numeric()
-                ->integer()
-                ->minValue(1)
+                ->minValue(0.01)
                 ->required(),
 
             TextInput::make('observacion')
@@ -82,35 +81,46 @@ class ListAlmacenStock extends ListRecords
         ];
     }
 
-    /** Registra el movimiento y actualiza el stock del producto en el almacén. */
+    /**
+     * Convierte la presentación a unidad base (cantidad × factor) y actualiza
+     * el stock del PRODUCTO en el almacén. El Kardex se guarda en unidad base.
+     */
     protected function registrarMovimiento(array $data, string $tipo): void
     {
         DB::transaction(function () use ($data, $tipo): void {
+            $presentacion = ProductoPresentacion::findOrFail($data['producto_presentacion_id']);
+            $productoId = $presentacion->producto_id;
+            $factor = (float) $presentacion->factor_conversion ?: 1;
+            $base = (float) $data['cantidad'] * $factor;
+
             $stock = ProductoAlmacenStock::firstOrCreate(
                 [
-                    'producto_id' => $data['producto_id'],
+                    'producto_id' => $productoId,
                     'almacen_id' => $data['almacen_id'],
                 ],
                 ['stock_actual' => 0],
             );
 
-            $anterior = (int) $stock->stock_actual;
-            $cant = (int) $data['cantidad'];
+            $anterior = (float) $stock->stock_actual;
 
-            if ($tipo === 'salida' && $cant > $anterior) {
-                throw new \RuntimeException("Stock insuficiente en ese almacén. Disponible: {$anterior}.");
+            if ($tipo === 'salida' && $base > $anterior) {
+                throw new \RuntimeException("Stock insuficiente. Disponible: {$anterior} (u. base).");
             }
 
-            $nuevo = $tipo === 'entrada' ? $anterior + $cant : $anterior - $cant;
-            $stock->update(['stock_actual' => $nuevo]);
+            $nuevo = $tipo === 'entrada' ? $anterior + $base : $anterior - $base;
+            $stock->update([
+                'stock_actual' => $nuevo,
+                'stock_disponible' => $nuevo - (float) $stock->stock_reservado,
+            ]);
 
             MovimientoInventario::create([
                 'almacen_id' => $data['almacen_id'],
-                'producto_id' => $data['producto_id'],
+                'producto_id' => $productoId,
                 'tipo_movimiento' => $tipo,
                 'origen' => $data['observacion'] ?: ($tipo === 'entrada' ? 'Ingreso manual' : 'Salida manual'),
-                'cantidad' => $cant,
+                'cantidad' => $base,
                 'costo_unitario' => 0,
+                'stock_anterior' => $anterior,
                 'saldo_stock' => $nuevo,
                 'fecha' => now(),
                 'usuario_id' => auth()->id(),

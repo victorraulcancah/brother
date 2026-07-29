@@ -1,7 +1,3 @@
-/// Nombres de ruta de la app en un solo lugar.
-///
-/// Se usan en `main.dart` (registro) y en el menú lateral. Nunca
-/// escribas el string de la ruta a mano ('/home'): usa `AppRoutes.home`.
 class AppRoutes {
   AppRoutes._();
 
@@ -19,11 +15,8 @@ class AppRoutes {
   // Catálogo
   static const String productos = '/productos';
   static const String categorias = '/categorias';
-  static const String subCategorias = '/sub-categorias';
   static const String marcas = '/marcas';
   static const String subMarcas = '/sub-marcas';
-  static const String atributos = '/atributos';
-  static const String atributoValores = '/atributo-valores';
   static const String unidades = '/unidades';
 
   // Compras

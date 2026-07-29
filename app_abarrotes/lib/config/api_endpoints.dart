@@ -11,13 +11,13 @@ class ApiEndpoints {
 
   static const String productos = '/productos';
   static String producto(int id) => '/productos/$id';
+  static String presentaciones(int productoId) => '/productos/$productoId/presentaciones';
+  static const String presentacionesBase = '/presentaciones';
+  static String presentacion(int id) => '/presentaciones/$id';
 
   static const String categorias = '/categorias';
-  static const String subCategorias = '/sub-categorias';
   static const String marcas = '/marcas';
   static const String subMarcas = '/sub-marcas';
-  static const String atributos = '/atributos';
-  static const String atributoValores = '/atributo-valores';
 
   static const String unidades = '/unidades-medida';
   static String unidad(int id) => '/unidades-medida/$id';

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -10,8 +9,7 @@ class TomaInventarioDetalle extends Model
 
     protected $fillable = [
         'toma_id',
-        'producto_id',
-        'producto_variante_id',
+        'producto_presentacion_id',
         'stock_sistema',
         'stock_contado',
         'diferencia',
@@ -26,18 +24,6 @@ class TomaInventarioDetalle extends Model
         ];
     }
 
-    public function toma()
-    {
-        return $this->belongsTo(TomaInventario::class);
-    }
-
-    public function producto()
-    {
-        return $this->belongsTo(Producto::class);
-    }
-
-    public function productoVariante()
-    {
-        return $this->belongsTo(ProductoVariante::class);
-    }
+    public function toma() { return $this->belongsTo(TomaInventario::class); }
+    public function presentacion() { return $this->belongsTo(ProductoPresentacion::class, 'producto_presentacion_id'); }
 }

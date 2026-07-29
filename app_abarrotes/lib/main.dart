@@ -3,8 +3,6 @@ import 'package:provider/provider.dart';
 import 'config/app_routes.dart';
 import 'providers/auth_provider.dart';
 import 'screens/almacenes_screen.dart';
-import 'screens/atributo_valores_screen.dart';
-import 'screens/atributos_screen.dart';
 import 'screens/categorias_screen.dart';
 import 'screens/empresa_screen.dart';
 import 'screens/home_screen.dart';
@@ -19,7 +17,6 @@ import 'screens/register_screen.dart';
 import 'screens/roles_screen.dart';
 import 'screens/solicitudes_compra_screen.dart';
 import 'screens/splash_screen.dart';
-import 'screens/subcategorias_screen.dart';
 import 'screens/submarcas_screen.dart';
 import 'screens/tomas_inventario_screen.dart';
 import 'screens/unidades_screen.dart';
@@ -52,11 +49,8 @@ class MyApp extends StatelessWidget {
           AppRoutes.empresa: (_) => const EmpresaScreen(),
           AppRoutes.productos: (_) => const ProductosScreen(),
           AppRoutes.categorias: (_) => const CategoriasScreen(),
-          AppRoutes.subCategorias: (_) => const SubCategoriasScreen(),
           AppRoutes.marcas: (_) => const MarcasScreen(),
           AppRoutes.subMarcas: (_) => const SubMarcasScreen(),
-          AppRoutes.atributos: (_) => const AtributosScreen(),
-          AppRoutes.atributoValores: (_) => const AtributoValoresScreen(),
           AppRoutes.unidades: (_) => const UnidadesScreen(),
           AppRoutes.proveedores: (_) => const ProveedoresScreen(),
           AppRoutes.ordenesCompra: (_) => const OrdenesCompraScreen(),

@@ -2,8 +2,6 @@
 
 use App\Http\Controllers\AjusteInventarioController;
 use App\Http\Controllers\AlmacenController;
-use App\Http\Controllers\AtributoController;
-use App\Http\Controllers\AtributoValorController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CosteoController;
@@ -12,11 +10,11 @@ use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\MovimientoInventarioController;
 use App\Http\Controllers\OrdenCompraController;
 use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\ProductoPresentacionController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RecepcionCompraController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SolicitudCompraController;
-use App\Http\Controllers\SubCategoriaController;
 use App\Http\Controllers\SubMarcaController;
 use App\Http\Controllers\TomaInventarioController;
 use App\Http\Controllers\TransferenciaController;
@@ -34,12 +32,10 @@ Route::middleware('auth:api')->group(function () {
 
     // Catálogo
     Route::apiResource('categorias', CategoriaController::class);
-    Route::apiResource('sub-categorias', SubCategoriaController::class);
     Route::apiResource('marcas', MarcaController::class);
     Route::apiResource('sub-marcas', SubMarcaController::class);
-    Route::apiResource('atributos', AtributoController::class);
-    Route::apiResource('atributo-valores', AtributoValorController::class);
     Route::apiResource('productos', ProductoController::class);
+    Route::apiResource('productos.presentaciones', ProductoPresentacionController::class)->shallow();
     Route::apiResource('unidades-medida', UnidadMedidaController::class);
 
     // Compras

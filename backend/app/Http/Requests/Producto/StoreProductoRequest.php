@@ -1,15 +1,11 @@
 <?php
-
 namespace App\Http\Requests\Producto;
 
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreProductoRequest extends FormRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
+    public function authorize(): bool { return true; }
 
     public function rules(): array
     {
@@ -20,7 +16,11 @@ class StoreProductoRequest extends FormRequest
             'sub_marca_id' => 'nullable|exists:sub_marcas,id',
             'categoria_id' => 'nullable|exists:categorias,id',
             'unidad_medida_id' => 'required|exists:unidades_medida,id',
+            'unidad_compra_id' => 'nullable|exists:unidades_medida,id',
+            'unidad_base_id' => 'nullable|exists:unidades_medida,id',
+            'factor_compra_base' => 'nullable|numeric|min:0.01',
             'descripcion' => 'nullable|string|max:5000',
+            'imagen' => 'nullable|string|max:255',
             'precio_base' => 'required|numeric|min:0',
             'afecto_igv' => 'boolean',
             'activo' => 'boolean',

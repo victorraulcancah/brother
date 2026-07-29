@@ -65,7 +65,7 @@ class AlmacenStockResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('producto.nombre')
-                    ->label('Descripción')
+                    ->label('Producto')
                     ->searchable()
                     ->wrap()
                     ->limit(55),
@@ -84,21 +84,21 @@ class AlmacenStockResource extends Resource
 
                 Tables\Columns\TextColumn::make('stock_anterior')
                     ->label('Stock Anterior')
-                    ->sortable()
                     ->numeric(decimalPlaces: 2)
-                    ->toggleable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('stock_actual')
-                    ->label('Stock Actual')
-                    ->sortable()
+                    ->label('Stock Actual (u. base)')
                     ->numeric(decimalPlaces: 2)
+                    ->sortable()
                     ->badge()
                     ->color(fn ($state): string => (float) $state <= 0
                         ? 'danger'
                         : ((float) $state <= 5 ? 'warning' : 'success')),
 
                 Tables\Columns\TextColumn::make('producto.precio_base')
-                    ->label('Precio')
+                    ->label('Precio base')
                     ->money('PEN')
                     ->sortable(),
             ])

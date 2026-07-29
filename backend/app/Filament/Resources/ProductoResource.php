@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductoResource\Pages;
@@ -95,19 +94,39 @@ class ProductoResource extends Resource
                                             ->searchable()
                                             ->preload(),
                                         Components\Select::make('unidad_medida_id')
-                                            ->label('Unidad de Medida')
+                                            ->label('Unidad de Medida (general)')
                                             ->relationship('unidadMedida', 'nombre')
                                             ->searchable()
                                             ->preload()
                                             ->required(),
                                     ])->columns(2),
 
+                                SchemaComponents\Section::make('Unidades y Conversión')
+                                    ->schema([
+                                        Components\Select::make('unidad_compra_id')
+                                            ->label('Unidad de Compra')
+                                            ->placeholder('Ej: Saco, Caja, Bolsa')
+                                            ->relationship('unidadCompra', 'nombre')
+                                            ->searchable()
+                                            ->preload(),
+                                        Components\Select::make('unidad_base_id')
+                                            ->label('Unidad Base (inventario)')
+                                            ->placeholder('Ej: kg, g, L, unidad')
+                                            ->relationship('unidadBase', 'nombre')
+                                            ->searchable()
+                                            ->preload(),
+                                        Components\TextInput::make('factor_compra_base')
+                                            ->label('Factor (1 unidad compra = ? unidad base)')
+                                            ->numeric()
+                                            ->default(1)
+                                            ->prefix('='),
+                                    ])->columns(3),
+
                                 SchemaComponents\Section::make('Precio y Configuración')
                                     ->schema([
                                         Components\TextInput::make('precio_base')
-                                            ->label('Precio Base')
+                                            ->label('Precio Base (referencia)')
                                             ->numeric()
-                                            ->required()
                                             ->default(0)
                                             ->prefix('S/'),
                                         Components\Toggle::make('afecto_igv')
@@ -117,73 +136,54 @@ class ProductoResource extends Resource
                                             ->label('Descripción')
                                             ->maxLength(5000)
                                             ->columnSpanFull(),
+                                        Components\FileUpload::make('imagen')
+                                            ->label('Imagen')
+                                            ->image()
+                                            ->directory('productos')
+                                            ->columnSpanFull(),
                                         Components\Toggle::make('activo')
                                             ->label('Producto Activo')
                                             ->default(true),
                                     ])->columns(2),
                             ]),
 
-                        SchemaComponents\Tabs\Tab::make('Variantes')
+                        SchemaComponents\Tabs\Tab::make('Presentaciones')
                             ->icon('heroicon-o-variable')
                             ->schema([
-                                Components\Repeater::make('variantes')
-                                    ->relationship('variantes')
+                                Components\Repeater::make('presentaciones')
+                                    ->relationship('presentaciones')
                                     ->schema([
-                                        SchemaComponents\Grid::make(3)
+                                        SchemaComponents\Grid::make(4)
                                             ->schema([
-                                                Components\TextInput::make('sku_variante')
-                                                    ->label('SKU Variante')
+                                                Components\TextInput::make('nombre')
+                                                    ->label('Presentación')
+                                                    ->placeholder('500g, 1kg, 3L')
                                                     ->required()
                                                     ->maxLength(255),
-                                                Components\TextInput::make('precio_diferencial')
-                                                    ->label('Precio Diferencial')
+                                                Components\TextInput::make('codigo_barras')
+                                                    ->label('Código de Barras')
+                                                    ->maxLength(255),
+                                                Components\TextInput::make('precio_venta')
+                                                    ->label('Precio Venta')
                                                     ->numeric()
                                                     ->default(0)
-                                                    ->prefix('S/'),
-                                                Components\TextInput::make('stock')
-                                                    ->label('Stock')
+                                                    ->prefix('S/')
+                                                    ->required(),
+                                                Components\TextInput::make('factor_conversion')
+                                                    ->label('Factor (a unidad base)')
                                                     ->numeric()
-                                                    ->default(0)
-                                                    ->integer(),
+                                                    ->default(1)
+                                                    ->required(),
                                             ]),
-                                        Components\Select::make('atributoValores')
-                                            ->label('Valores de Atributos')
-                                            ->relationship('atributoValores', 'valor')
-                                            ->multiple()
+                                        Components\Select::make('unidad_base_id')
+                                            ->label('Unidad Base (opcional)')
+                                            ->relationship('unidadBase', 'nombre')
                                             ->searchable()
                                             ->preload(),
                                     ])
                                     ->defaultItems(0)
-                                    ->addActionLabel('Agregar variante')
+                                    ->addActionLabel('Agregar presentación')
                                     ->collapsible()
-                                    ->cloneable(),
-                            ]),
-
-                        SchemaComponents\Tabs\Tab::make('Imágenes')
-                            ->icon('heroicon-o-photo')
-                            ->schema([
-                                Components\Repeater::make('imagenes')
-                                    ->relationship('imagenes')
-                                    ->schema([
-                                        SchemaComponents\Grid::make(3)
-                                            ->schema([
-                                                Components\TextInput::make('url')
-                                                    ->label('URL de la Imagen')
-                                                    ->required()
-                                                    ->maxLength(255),
-                                                Components\TextInput::make('orden')
-                                                    ->label('Orden')
-                                                    ->numeric()
-                                                    ->default(0)
-                                                    ->integer(),
-                                                Components\Checkbox::make('es_principal')
-                                                    ->label('Imagen Principal'),
-                                            ]),
-                                    ])
-                                    ->defaultItems(0)
-                                    ->addActionLabel('Agregar imagen')
-                                    ->collapsible()
-                                    ->reorderable()
                                     ->cloneable(),
                             ]),
                     ])->columnSpanFull(),

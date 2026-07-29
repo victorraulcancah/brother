@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -10,8 +9,7 @@ class TransferenciaDetalle extends Model
 
     protected $fillable = [
         'transferencia_id',
-        'producto_id',
-        'producto_variante_id',
+        'producto_presentacion_id',
         'cantidad_enviada',
         'cantidad_recibida',
     ];
@@ -24,18 +22,6 @@ class TransferenciaDetalle extends Model
         ];
     }
 
-    public function transferencia()
-    {
-        return $this->belongsTo(Transferencia::class);
-    }
-
-    public function producto()
-    {
-        return $this->belongsTo(Producto::class);
-    }
-
-    public function productoVariante()
-    {
-        return $this->belongsTo(ProductoVariante::class);
-    }
+    public function transferencia() { return $this->belongsTo(Transferencia::class); }
+    public function presentacion() { return $this->belongsTo(ProductoPresentacion::class, 'producto_presentacion_id'); }
 }

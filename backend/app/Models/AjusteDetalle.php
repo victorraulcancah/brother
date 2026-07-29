@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -10,8 +9,7 @@ class AjusteDetalle extends Model
 
     protected $fillable = [
         'ajuste_id',
-        'producto_id',
-        'producto_variante_id',
+        'producto_presentacion_id',
         'cantidad_sistema',
         'cantidad_fisica',
         'diferencia',
@@ -26,18 +24,6 @@ class AjusteDetalle extends Model
         ];
     }
 
-    public function ajuste()
-    {
-        return $this->belongsTo(AjusteInventario::class, 'ajuste_id');
-    }
-
-    public function producto()
-    {
-        return $this->belongsTo(Producto::class);
-    }
-
-    public function productoVariante()
-    {
-        return $this->belongsTo(ProductoVariante::class);
-    }
+    public function ajuste() { return $this->belongsTo(AjusteInventario::class, 'ajuste_id'); }
+    public function presentacion() { return $this->belongsTo(ProductoPresentacion::class, 'producto_presentacion_id'); }
 }

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -10,8 +9,7 @@ class OrdenCompraDetalle extends Model
 
     protected $fillable = [
         'orden_compra_id',
-        'producto_id',
-        'producto_variante_id',
+        'producto_presentacion_id',
         'cantidad',
         'precio_unitario',
         'descuento',
@@ -28,18 +26,6 @@ class OrdenCompraDetalle extends Model
         ];
     }
 
-    public function ordenCompra()
-    {
-        return $this->belongsTo(OrdenCompra::class);
-    }
-
-    public function producto()
-    {
-        return $this->belongsTo(Producto::class);
-    }
-
-    public function productoVariante()
-    {
-        return $this->belongsTo(ProductoVariante::class);
-    }
+    public function ordenCompra() { return $this->belongsTo(OrdenCompra::class); }
+    public function presentacion() { return $this->belongsTo(ProductoPresentacion::class, 'producto_presentacion_id'); }
 }

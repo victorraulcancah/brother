@@ -160,10 +160,10 @@ class _AlmacenesScreenState extends State<AlmacenesScreen> {
           ),
           columns: const [
             DataColumn(label: Text('Código')),
-            DataColumn(label: Text('Descripción')),
+            DataColumn(label: Text('Producto — Presentación')),
             DataColumn(label: Text('Categoría')),
-            DataColumn(label: Text('Stock')),
-            DataColumn(label: Text('Precio')),
+            DataColumn(label: Text('Stock (unidad base)')),
+            DataColumn(label: Text('Precio Venta')),
           ],
           rows: [for (final e in items) _fila(e)],
         ),
@@ -172,16 +172,28 @@ class _AlmacenesScreenState extends State<AlmacenesScreen> {
   }
 
   DataRow _fila(Map<String, dynamic> e) {
-    final p = e['producto'] is Map ? e['producto'] as Map : const {};
-    final stock = (e['stock_actual'] as num?)?.toInt() ?? 0;
-    final categoria = p['categoria'] is Map
-        ? (p['categoria'] as Map)['nombre']?.toString() ?? ''
+    final pres = e['presentacion'] is Map ? e['presentacion'] as Map : const {};
+    final prod = pres['producto'] is Map ? pres['producto'] as Map : const {};
+    final stock = (e['stock_actual'] as num?)?.toDouble() ?? 0;
+    final categoria = prod['categoria'] is Map
+        ? (prod['categoria'] as Map)['nombre']?.toString() ?? ''
         : '';
+    final presentacionNombre = pres['nombre']?.toString() ?? '';
+    final prodUnidad = prod['unidad_base'] is Map
+        ? (prod['unidad_base'] as Map)['abreviatura']?.toString() ?? ''
+        : '';
+    final presUnidad = pres['unidad_base'] is Map
+        ? (pres['unidad_base'] as Map)['abreviatura']?.toString() ?? '';
+    final unidad = presUnidad.isNotEmpty ? presUnidad : prodUnidad;
+
+    final stockStr = stock == stock.roundToDouble()
+        ? '${stock.toInt()}'
+        : stock.toStringAsFixed(2);
 
     return DataRow(
       cells: [
-        DataCell(Text(p['codigo']?.toString() ?? '')),
-        DataCell(Text(p['nombre']?.toString() ?? '')),
+        DataCell(Text(prod['codigo']?.toString() ?? '')),
+        DataCell(Text('${prod['nombre']?.toString() ?? ''} — $presentacionNombre')),
         DataCell(
           categoria.isEmpty
               ? const Text('—', style: TextStyle(color: AppColors.textMuted))
@@ -189,13 +201,13 @@ class _AlmacenesScreenState extends State<AlmacenesScreen> {
         ),
         DataCell(
           AppBadge(
-            '$stock',
+            '$stockStr $unidad',
             type: stock <= 0
                 ? AppBadgeType.danger
                 : (stock <= 5 ? AppBadgeType.warning : AppBadgeType.success),
           ),
         ),
-        DataCell(Text('S/ ${p['precio_base'] ?? ''}')),
+        DataCell(Text('S/ ${pres['precio_venta'] ?? prod['precio_base'] ?? ''}')),
       ],
     );
   }

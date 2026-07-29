@@ -24,8 +24,9 @@ class AlmacenController extends Controller
     public function existencias(Request $request)
     {
         $query = ProductoAlmacenStock::with([
-            'producto:id,codigo,nombre,categoria_id,precio_base',
+            'producto:id,codigo,nombre,categoria_id,precio_base,unidad_base_id',
             'producto.categoria:id,nombre',
+            'producto.unidadBase:id,nombre,abreviatura',
             'almacen:id,nombre',
         ]);
 

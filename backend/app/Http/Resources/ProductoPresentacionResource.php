@@ -1,22 +1,22 @@
 <?php
-
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ProductoVarianteResource extends JsonResource
+class ProductoPresentacionResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
         return [
             'id' => $this->id,
             'producto_id' => $this->producto_id,
-            'sku_variante' => $this->sku_variante,
-            'precio_diferencial' => $this->precio_diferencial,
-            'stock' => $this->stock,
+            'nombre' => $this->nombre,
+            'codigo_barras' => $this->codigo_barras,
+            'precio_venta' => $this->precio_venta,
+            'factor_conversion' => $this->factor_conversion,
+            'unidad_base' => new UnidadMedidaResource($this->whenLoaded('unidadBase')),
             'activo' => $this->activo,
-            'atributo_valores' => AtributoValorResource::collection($this->whenLoaded('atributoValores')),
             'created_at' => $this->created_at,
         ];
     }
