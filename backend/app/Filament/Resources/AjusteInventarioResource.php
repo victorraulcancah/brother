@@ -56,104 +56,64 @@ class AjusteInventarioResource extends Resource
     {
         return $schema
             ->schema([
-                SchemaComponents\Tabs::make('Ajuste')
-                    ->tabs([
-                        SchemaComponents\Tabs\Tab::make('Información')
-                            ->icon('heroicon-o-information-circle')
+                SchemaComponents\Section::make('Datos del Ajuste')
+                    ->schema([
+                        Components\Select::make('almacen_id')
+                            ->label('Almacén')
+                            ->relationship('almacen', 'nombre')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                        Components\Select::make('tipo')
+                            ->label('Tipo')
+                            ->options([
+                                'ingreso' => 'Ingreso',
+                                'salida' => 'Salida',
+                            ])
+                            ->live()
+                            ->afterStateUpdated(fn (callable $set) => $set('motivo', null))
+                            ->required(),
+                        Components\Select::make('motivo')
+                            ->label('Motivo')
+                            ->options(function (callable $get): array {
+                                $tipoAjuste = $get('tipo');
+                                $query = \App\Models\MotivoMovimiento::where('activo', true)
+                                    ->where('es_sistema', false);
+                                if ($tipoAjuste) {
+                                    $tipoMotivo = $tipoAjuste === 'ingreso' ? 'entrada' : 'salida';
+                                    $query->where('tipo', $tipoMotivo);
+                                }
+                                return $query->orderBy('nombre')->pluck('nombre', 'nombre')->toArray();
+                            })
+                            ->searchable()
+                            ->required(),
+                        Components\Textarea::make('observaciones')
+                            ->label('Observación')
+                            ->maxLength(5000)
+                            ->columnSpanFull(),
+                        Components\Repeater::make('detalles')
+                            ->relationship('detalles')
+                            ->compact(true)
                             ->schema([
-                                SchemaComponents\Section::make('Datos del Ajuste')
+                                SchemaComponents\Grid::make(3)
                                     ->schema([
-                                        Components\Select::make('almacen_id')
-                                            ->label('Almacén')
-                                            ->relationship('almacen', 'nombre')
+                                        Components\Select::make('producto_id')
+                                            ->label('Producto')
+                                            ->relationship('producto', 'nombre')
                                             ->searchable()
                                             ->preload()
-                                            ->required(),
-                                        Components\Select::make('tipo')
-                                            ->label('Tipo')
-                                            ->options([
-                                                'ingreso' => 'Ingreso',
-                                                'salida' => 'Salida',
-                                            ])
-                                            ->live()
-                                            ->afterStateUpdated(fn (callable $set) => $set('motivo', null))
-                                            ->required(),
-                                        Components\Select::make('motivo')
-                                            ->label('Motivo')
-                                            ->options(function (callable $get): array {
-                                                $tipoAjuste = $get('tipo');
-                                                $query = \App\Models\MotivoMovimiento::where('activo', true)
-                                                    ->where('es_sistema', false);
-                                                if ($tipoAjuste) {
-                                                    $tipoMotivo = $tipoAjuste === 'ingreso' ? 'entrada' : 'salida';
-                                                    $query->where('tipo', $tipoMotivo);
-                                                }
-                                                return $query->orderBy('nombre')->pluck('nombre', 'nombre')->toArray();
-                                            })
-                                            ->searchable()
-                                            ->required(),
-                                        Components\Select::make('estado')
-                                            ->label('Estado')
-                                            ->options([
-                                                'pendiente' => 'Pendiente',
-                                                'aprobado' => 'Aprobado',
-                                                'rechazado' => 'Rechazado',
-                                            ])
-                                            ->required(),
-                                        Components\DateTimePicker::make('fecha')
-                                            ->label('Fecha')
-                                            ->required(),
-
-                                        Components\Textarea::make('observaciones')
-                                            ->label('Observaciones')
-                                            ->maxLength(5000)
-                                            ->columnSpanFull(),
-                                    ])->columns(2),
-                            ]),
-                        SchemaComponents\Tabs\Tab::make('Productos')
-                            ->icon('heroicon-o-cube')
-                            ->schema([
-                                Components\Repeater::make('detalles')
-                                    ->relationship('detalles')
-                                    ->schema([
-                                        SchemaComponents\Grid::make(3)
-                                            ->schema([
-                                                Components\Select::make('producto_id')
-                                                    ->label('Producto')
-                                                    ->relationship('producto', 'nombre')
-                                                    ->searchable()
-                                                    ->preload()
-                                                    ->required()
-                                                    ->live()
-                                                    ->afterStateUpdated(fn($set) => $set('producto_variante_id', null)),
-                                                Components\Select::make('producto_variante_id')
-                                                    ->label('Variante')
-                                                    ->relationship('productoVariante', 'sku_variante')
-                                                    ->searchable()
-                                                    ->preload()
-                                                    ->nullable(),
-                                                Components\TextInput::make('cantidad_sistema')
-                                                    ->label('Cantidad en Sistema')
-                                                    ->numeric()
-                                                    ->required()
-                                                    ->default(0),
-                                                Components\TextInput::make('cantidad_fisica')
-                                                    ->label('Cantidad Física')
-                                                    ->numeric()
-                                                    ->required()
-                                                    ->default(0),
-                                                Components\TextInput::make('diferencia')
-                                                    ->label('Diferencia')
-                                                    ->numeric()
-                                                    ->default(0),
-                                            ]),
-                                    ])
-                                    ->defaultItems(0)
-                                    ->addActionLabel('Agregar Producto')
-                                    ->collapsible()
-                                    ->cloneable(),
-                            ]),
-                    ])->columnSpanFull(),
+                                            ->required()
+                                            ->columnSpan(2),
+                                        Components\TextInput::make('cantidad_fisica')
+                                            ->label('Nuevo stock')
+                                            ->numeric()
+                                            ->required()
+                                            ->default(0),
+                                    ]),
+                            ])
+                            ->defaultItems(1)
+                            ->addActionLabel('Agregar Producto'),
+                    ])->columns(3),
             ]);
     }
 
@@ -161,8 +121,9 @@ class AjusteInventarioResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')
-                    ->label('#')
+                Tables\Columns\TextColumn::make('fecha')
+                    ->label('Fecha')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('almacen.nombre')
                     ->label('Almacén')
@@ -170,11 +131,15 @@ class AjusteInventarioResource extends Resource
                 Tables\Columns\TextColumn::make('tipo')
                     ->label('Tipo')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => $state === 'ingreso' ? 'Ingreso' : 'Salida')
                     ->color(fn(string $state): string => $state === 'ingreso' ? 'success' : 'danger'),
                 Tables\Columns\TextColumn::make('motivo')
                     ->label('Motivo')
                     ->badge()
                     ->color('gray'),
+                Tables\Columns\TextColumn::make('detalles_count')
+                    ->label('Productos')
+                    ->counts('detalles'),
                 Tables\Columns\TextColumn::make('estado')
                     ->label('Estado')
                     ->badge()
@@ -184,17 +149,6 @@ class AjusteInventarioResource extends Resource
                         'rechazado' => 'danger',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('fecha')
-                    ->label('Fecha')
-                    ->dateTime()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('usuarioSolicita.name')
-                    ->label('Solicitado por'),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Creado')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('tipo')
@@ -203,25 +157,12 @@ class AjusteInventarioResource extends Resource
                 Tables\Filters\SelectFilter::make('estado')
                     ->label('Estado')
                     ->options(['pendiente' => 'Pendiente', 'aprobado' => 'Aprobado', 'rechazado' => 'Rechazado']),
-                Tables\Filters\SelectFilter::make('motivo')
-                    ->label('Motivo')
-                    ->options([
-                        'inventario_fisico' => 'Inventario Físico',
-                        'merma' => 'Merma',
-                        'robo' => 'Robo',
-                        'obsolescencia' => 'Obsolescencia',
-                        'error_sistema' => 'Error de Sistema',
-                    ]),
             ])
             ->actions([
                 Actions\EditAction::make()->modalWidth('3xl'),
                 Actions\DeleteAction::make(),
             ])
-            ->bulkActions([
-                Actions\BulkActionGroup::make([
-                    Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->defaultSort('id', 'desc');
     }
 
     public static function getRelations(): array

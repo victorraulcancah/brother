@@ -4,6 +4,7 @@ namespace App\Filament\Resources\AjusteInventarioResource\Pages;
 
 use App\Filament\Resources\AjusteInventarioResource;
 use App\Livewire\MotivosTable;
+use App\Models\ProductoAlmacenStock;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\EmbeddedTable;
@@ -20,11 +21,24 @@ class ListAjustesInventario extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->modalWidth('3xl'),
+                ->modalWidth('3xl')
+                ->mutateFormDataUsing(function (array $data): array {
+                    $data['estado'] = 'pendiente';
+                    $data['fecha'] = now();
+
+                    foreach ($data['detalles'] ?? [] as $i => $detalle) {
+                        $stock = ProductoAlmacenStock::where('producto_id', $detalle['producto_id'])
+                            ->where('almacen_id', $data['almacen_id'])
+                            ->value('stock_actual') ?? 0;
+                        $data['detalles'][$i]['cantidad_sistema'] = $stock;
+                        $data['detalles'][$i]['diferencia'] = $detalle['cantidad_fisica'] - $stock;
+                    }
+
+                    return $data;
+                }),
         ];
     }
 
-    /** Dos pestañas en la misma página: Ajustes y Motivos. */
     public function content(Schema $schema): Schema
     {
         return $schema->components([
