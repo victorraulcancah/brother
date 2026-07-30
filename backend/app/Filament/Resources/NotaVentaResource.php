@@ -3,18 +3,18 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\NotaVentaResource\Pages;
+use App\Models\MetodoPago;
 use App\Models\NotaVenta;
+use App\Models\Producto;
+use App\Models\ProductoPresentacion;
 use Filament\Actions;
 use Filament\Forms\Components;
-use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components as SchemaComponents;
+use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use App\Models\ProductoPresentacion;
-use App\Models\MetodoPago;
-use App\Models\Producto;
+use Filament\Tables;
 use Illuminate\Support\Facades\DB;
 
 class NotaVentaResource extends Resource
@@ -36,32 +36,33 @@ class NotaVentaResource extends Resource
                 SchemaComponents\Section::make('Datos del Documento')
                     ->compact()
                     ->schema([
-                        SchemaComponents\Grid::make(['default' => 6])
+                        SchemaComponents\Grid::make(12)
                             ->schema([
-                                Components\TextInput::make('serie')->label('Serie')->required()->maxLength(10),
-                                Components\TextInput::make('numero')->label('Número')->required()->maxLength(10),
+                                Components\TextInput::make('serie')->label('Serie')->required()->maxLength(10)->columnSpan(1),
+                                Components\TextInput::make('numero')->label('Número')->required()->maxLength(10)->columnSpan(1),
                                 Components\Select::make('cliente_id')->label('Cliente')
-                                    ->relationship('cliente', 'nombre')->searchable()->preload()->nullable(),
+                                    ->relationship('cliente', 'nombre')->searchable()->preload()->nullable()->columnSpan(4),
                                 Components\Select::make('almacen_id')->label('Almacén')
                                     ->relationship('almacen', 'nombre')->searchable()->preload()->required()
                                     ->live()
-                                    ->afterStateUpdated(fn (callable $set) => $set('detalles', [])),
+                                    ->afterStateUpdated(fn (callable $set) => $set('detalles', []))
+                                    ->columnSpan(2),
                                 Components\Select::make('vendedor_id')->label('Vendedor')
-                                    ->relationship('vendedor', 'name')->searchable()->preload()->required(),
-                                Components\DatePicker::make('fecha_emision')->label('Fecha Emisión')->required(),
+                                    ->relationship('vendedor', 'name')->searchable()->preload()->required()->columnSpan(2),
+                                Components\DatePicker::make('fecha_emision')->label('Fecha Emisión')->required()->columnSpan(2),
                                 Components\Select::make('moneda')->label('Moneda')
-                                    ->options(['PEN' => 'Soles (PEN)', 'USD' => 'Dólares (USD)'])->required(),
+                                    ->options(['PEN' => 'Soles (PEN)', 'USD' => 'Dólares (USD)'])->required()->columnSpan(2),
                                 Components\Select::make('tipo_pago')->label('Tipo Pago')
-                                    ->options(['contado' => 'Contado', 'credito' => 'Crédito'])->required(),
+                                    ->options(['contado' => 'Contado', 'credito' => 'Crédito'])->required()->columnSpan(2),
                                 Components\Select::make('estado')->label('Estado')
                                     ->options([
                                         'en_espera' => 'En Espera',
                                         'emitida' => 'Emitida',
                                         'anulada' => 'Anulada',
-                                    ])->required(),
-                                Components\TextInput::make('subtotal')->label('Subtotal')->numeric()->required()->prefix('S/'),
-                                Components\TextInput::make('descuento_total')->label('Descuento')->numeric()->default(0)->prefix('S/'),
-                                Components\TextInput::make('total')->label('Total')->numeric()->required()->prefix('S/'),
+                                    ])->required()->columnSpan(2),
+                                Components\TextInput::make('subtotal')->label('Subtotal')->numeric()->required()->prefix('S/')->columnSpan(2),
+                                Components\TextInput::make('descuento_total')->label('Descuento')->numeric()->default(0)->prefix('S/')->columnSpan(2),
+                                Components\TextInput::make('total')->label('Total')->numeric()->required()->prefix('S/')->columnSpan(2),
                             ]),
                         Components\Textarea::make('observaciones')->label('Observaciones')->columnSpanFull(),
                         Components\Textarea::make('motivo_anulacion')->label('Motivo Anulación')
@@ -74,7 +75,7 @@ class NotaVentaResource extends Resource
                         Components\Repeater::make('detalles')
                             ->relationship('detalles')
                             ->schema([
-                                SchemaComponents\Grid::make(['default' => 6])
+                                SchemaComponents\Grid::make(6)
                                     ->schema([
                                         Components\Select::make('producto_presentacion_id')->label('Producto / Código')
                                             ->options(function ($get) {
@@ -91,7 +92,7 @@ class NotaVentaResource extends Resource
                                                 }
                                                 return $query->get()
                                                     ->mapWithKeys(fn ($pp) => [
-                                                        $pp->id => $pp->nombre . ' | ' . ($pp->producto?->nombre ?? '') . ' [' . $pp->codigo_barras . ']'
+                                                        $pp->id => $pp->nombre . ' | ' . ($pp->producto?->nombre ?? '') . ' [' . $pp->codigo_barras . ']',
                                                     ]);
                                             })
                                             ->searchable()
@@ -102,7 +103,8 @@ class NotaVentaResource extends Resource
                                                 if ($pp) {
                                                     $set('precio_unitario', $pp->precio_venta);
                                                 }
-                                            }),
+                                            })
+                                            ->columnSpan(2),
                                         Components\TextInput::make('cantidad')->label('Cantidad')->numeric()->required()->default(1)
                                             ->live()
                                             ->afterStateUpdated(function (callable $set, $get) {
@@ -110,8 +112,9 @@ class NotaVentaResource extends Resource
                                                 $pu = (float) $get('precio_unitario');
                                                 $desc = (float) $get('descuento');
                                                 $set('subtotal', $cant * $pu - $desc);
-                                            }),
-                                        Components\TextInput::make('precio_unitario')->label('Precio Unit.')->numeric()->required()->default(0)->prefix('S/'),
+                                            })
+                                            ->columnSpan(1),
+                                        Components\TextInput::make('precio_unitario')->label('Precio Unit.')->numeric()->required()->default(0)->prefix('S/')->columnSpan(1),
                                         Components\TextInput::make('descuento')->label('Descuento')->numeric()->default(0)->prefix('S/')
                                             ->live()
                                             ->afterStateUpdated(function (callable $set, $get) {
@@ -119,14 +122,14 @@ class NotaVentaResource extends Resource
                                                 $pu = (float) $get('precio_unitario');
                                                 $desc = (float) $get('descuento');
                                                 $set('subtotal', $cant * $pu - $desc);
-                                            }),
-                                        Components\TextInput::make('subtotal')->label('Subtotal')->numeric()->required()->default(0)->prefix('S/'),
+                                            })
+                                            ->columnSpan(1),
+                                        Components\TextInput::make('subtotal')->label('Subtotal')->numeric()->required()->default(0)->prefix('S/')->columnSpan(1),
                                     ]),
                             ])
-                            ->defaultItems(0)
+                            ->defaultItems(1)
+                            ->createItemButtonLabel('Agregar Producto')
                             ->addActionLabel('Agregar Producto')
-                            ->collapsible()
-                            ->cloneable()
                             ->columnSpanFull(),
                     ]),
 
@@ -136,7 +139,7 @@ class NotaVentaResource extends Resource
                         Components\Repeater::make('pagos')
                             ->relationship('pagos')
                             ->schema([
-                                SchemaComponents\Grid::make(['default' => 4])
+                                SchemaComponents\Grid::make(12)
                                     ->schema([
                                         Components\Select::make('metodo_pago_id')->label('Forma de Pago')
                                             ->options(fn () => MetodoPago::where('activo', true)->pluck('nombre', 'id'))
@@ -145,17 +148,19 @@ class NotaVentaResource extends Resource
                                             ->afterStateUpdated(function (callable $set, $state) {
                                                 $mp = MetodoPago::find($state);
                                                 $set('forma_pago', $mp?->nombre ?? '');
-                                            }),
+                                            })
+                                            ->columnSpan(4),
                                         Components\Hidden::make('forma_pago'),
-                                        Components\TextInput::make('monto')->label('Monto')->numeric()->required()->prefix('S/'),
-                                        Components\DatePicker::make('fecha')->label('Fecha')->required(),
+                                        Components\TextInput::make('monto')->label('Monto')->numeric()->required()->prefix('S/')->columnSpan(3),
+                                        Components\DatePicker::make('fecha')->label('Fecha')->required()->columnSpan(3),
                                         Components\TextInput::make('referencia')->label('Referencia (N° operación)')
                                             ->maxLength(100)
-                                            ->helperText('Requerido para transferencias y billeteras digitales'),
+                                            ->helperText('Requerido para transferencias y billeteras digitales')
+                                            ->columnSpan(2),
                                     ]),
                             ])
                             ->defaultItems(1)
-                            ->addActionLabel('Agregar otro pago')
+                            ->createItemButtonLabel('Agregar otro pago')
                             ->helperText('Puedes agregar múltiples formas de pago')
                             ->columnSpanFull(),
                     ]),
