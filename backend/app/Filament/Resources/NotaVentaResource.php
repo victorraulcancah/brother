@@ -5,10 +5,11 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\NotaVentaResource\Pages;
 use App\Models\MetodoPago;
 use App\Models\NotaVenta;
-use App\Models\Producto;
 use App\Models\ProductoPresentacion;
+use App\Services\NotaVentaService;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Notifications\Notification;
 use Filament\Panel;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components as SchemaComponents;
@@ -34,23 +35,16 @@ class NotaVentaResource extends Resource
         return $schema
             ->schema([
 
-                // ── Datos del Comprobante ─────────────────────────────────────────
-                SchemaComponents\Section::make('Datos del Documento')
+                SchemaComponents\Section::make()
                     ->compact()
                     ->schema([
                         SchemaComponents\Grid::make(12)
                             ->schema([
-                                Components\TextInput::make('serie')
-                                    ->label('Serie')
+                                Components\DatePicker::make('fecha_emision')
+                                    ->label('Fecha')
                                     ->required()
-                                    ->maxLength(10)
-                                    ->columnSpan(1),
-
-                                Components\TextInput::make('numero')
-                                    ->label('Número')
-                                    ->required()
-                                    ->maxLength(10)
-                                    ->columnSpan(1),
+                                    ->default(now())
+                                    ->columnSpan(2),
 
                                 Components\Select::make('cliente_id')
                                     ->label('Cliente')
@@ -78,39 +72,51 @@ class NotaVentaResource extends Resource
                                     ->required()
                                     ->columnSpan(2),
 
-                                Components\DatePicker::make('fecha_emision')
-                                    ->label('Fecha Emisión')
-                                    ->required()
-                                    ->columnSpan(2),
-
                                 Components\Select::make('moneda')
                                     ->label('Moneda')
-                                    ->options(['PEN' => 'Soles (PEN)', 'USD' => 'Dólares (USD)'])
+                                    ->options(['PEN' => 'Soles', 'USD' => 'Dólares'])
                                     ->required()
+                                    ->default('PEN')
                                     ->columnSpan(2),
 
                                 Components\Select::make('tipo_pago')
                                     ->label('Tipo de Pago')
                                     ->options(['contado' => 'Contado', 'credito' => 'Crédito'])
                                     ->required()
+                                    ->default('contado')
                                     ->columnSpan(2),
 
                                 Components\Select::make('estado')
                                     ->label('Estado')
                                     ->options([
-                                        'en_espera' => 'En Espera',
                                         'emitida'   => 'Emitida',
+                                        'en_espera' => 'En Espera',
                                         'anulada'   => 'Anulada',
                                     ])
-                                    ->required()
-                                    ->columnSpan(2),
+                                    ->default('emitida')
+                                    ->columnSpan(2)
+                                    ->hiddenOn('create'),
+
+                                Components\TextInput::make('serie')
+                                    ->label('Serie')
+                                    ->maxLength(10)
+                                    ->default('NV01')
+                                    ->columnSpan(1)
+                                    ->hiddenOn('create'),
+
+                                Components\TextInput::make('numero')
+                                    ->label('N°')
+                                    ->maxLength(10)
+                                    ->columnSpan(1)
+                                    ->hiddenOn('create'),
 
                                 Components\TextInput::make('subtotal')
                                     ->label('Subtotal')
                                     ->numeric()
-                                    ->required()
                                     ->prefix('S/')
-                                    ->columnSpan(2),
+                                    ->default(0)
+                                    ->columnSpan(2)
+                                    ->dehydrated(),
 
                                 Components\TextInput::make('descuento_total')
                                     ->label('Descuento')
@@ -122,26 +128,27 @@ class NotaVentaResource extends Resource
                                 Components\TextInput::make('total')
                                     ->label('Total')
                                     ->numeric()
-                                    ->required()
                                     ->prefix('S/')
-                                    ->columnSpan(2),
+                                    ->default(0)
+                                    ->columnSpan(2)
+                                    ->dehydrated(),
+
+                                Components\Textarea::make('observaciones')
+                                    ->label('Observaciones')
+                                    ->rows(2)
+                                    ->columnSpan(12),
+
+                                Components\Textarea::make('motivo_anulacion')
+                                    ->label('Motivo de Anulación')
+                                    ->rows(2)
+                                    ->visible(fn ($get) => $get('estado') === 'anulada')
+                                    ->columnSpan(12),
                             ]),
-
-                        Components\Textarea::make('observaciones')
-                            ->label('Observaciones')
-                            ->rows(3)
-                            ->columnSpanFull(),
-
-                        Components\Textarea::make('motivo_anulacion')
-                            ->label('Motivo de Anulación')
-                            ->rows(2)
-                            ->visible(fn ($get) => $get('estado') === 'anulada')
-                            ->columnSpanFull(),
                     ]),
 
-                // ── Productos ─────────────────────────────────────────────────────
-                SchemaComponents\Section::make('Productos de Venta')
+                SchemaComponents\Section::make()
                     ->compact()
+                    ->description('Productos de la venta')
                     ->schema([
                         Components\Repeater::make('detalles')
                             ->relationship('detalles')
@@ -231,19 +238,20 @@ class NotaVentaResource extends Resource
             ]);
     }
 
-    /**
-     * Schema del formulario de pagos — reutilizado en el modal de Create y Edit.
-     */
     public static function pagosSchema(): array
     {
         return [
-            // Cards de totales superiores usando View
             SchemaComponents\View::make('filament.pagos.cards-totales')
-                ->viewData([
-                    'total' => 100.00,
-                    'pagado' => 0.00,
-                    'saldo' => 100.00,
-                ]),
+                ->viewData(function ($get) {
+                    $total  = (float) ($get('total') ?? 0);
+                    $pagado = (float) ($get('pagado') ?? 0);
+                    $saldo  = $total - $pagado;
+                    return [
+                        'total'  => max($total, 0),
+                        'pagado' => max($pagado, 0),
+                        'saldo'  => max($saldo, 0),
+                    ];
+                }),
 
             Components\Repeater::make('pagos')
                 ->relationship('pagos')
@@ -292,16 +300,19 @@ class NotaVentaResource extends Resource
                 ->reorderable(false)
                 ->collapsible()
                 ->collapsed(false)
-                ->itemLabel(fn (array $state): ?string => 
-                    isset($state['forma_pago']) && isset($state['monto']) 
+                ->itemLabel(fn (array $state): ?string =>
+                    isset($state['forma_pago']) && isset($state['monto'])
                         ? $state['forma_pago'] . ' - S/. ' . number_format($state['monto'], 2)
                         : null
                 )
                 ->columnSpanFull(),
 
-            // Vuelto total usando View
             SchemaComponents\View::make('filament.pagos.vuelto-total')
-                ->viewData(['vuelto' => 0.00]),
+                ->viewData(function ($get) {
+                    $total  = (float) ($get('total') ?? 0);
+                    $pagado = (float) ($get('pagado') ?? 0);
+                    return ['vuelto' => max($pagado - $total, 0)];
+                }),
         ];
     }
 
@@ -344,6 +355,9 @@ class NotaVentaResource extends Resource
                     }),
                 Tables\Columns\TextColumn::make('vendedor.name')
                     ->label('Vendedor'),
+                Tables\Columns\TextColumn::make('almacen.nombre')
+                    ->label('Almacén')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('estado')
@@ -353,6 +367,14 @@ class NotaVentaResource extends Resource
                 Tables\Filters\SelectFilter::make('almacen_id')
                     ->label('Almacén')
                     ->relationship('almacen', 'nombre'),
+                Tables\Filters\Filter::make('fecha_emision')
+                    ->form([
+                        Components\DatePicker::make('desde')->label('Desde'),
+                        Components\DatePicker::make('hasta')->label('Hasta'),
+                    ])
+                    ->query(fn ($query, array $data) => $query
+                        ->when($data['desde'], fn ($q) => $q->whereDate('fecha_emision', '>=', $data['desde']))
+                        ->when($data['hasta'], fn ($q) => $q->whereDate('fecha_emision', '<=', $data['hasta']))),
             ])
             ->actions([
                 Actions\EditAction::make()
@@ -371,21 +393,30 @@ class NotaVentaResource extends Resource
                             ->maxLength(500),
                     ])
                     ->action(function (array $data, NotaVenta $record): void {
-                        $record->update([
-                            'estado'             => 'anulada',
-                            'motivo_anulacion'   => $data['motivo_anulacion'],
-                            'usuario_anula_id'   => auth()->id(),
-                            'fecha_anulacion'    => now(),
-                        ]);
+                        try {
+                            app(NotaVentaService::class)->anular($record, $data['motivo_anulacion']);
+                            Notification::make()
+                                ->success()
+                                ->title('Nota de venta anulada')
+                                ->body('Stock repuesto correctamente.')
+                                ->send();
+                        } catch (\InvalidArgumentException $e) {
+                            Notification::make()
+                                ->danger()
+                                ->title($e->getMessage())
+                                ->send();
+                        }
                     })
                     ->visible(fn (NotaVenta $record): bool =>
                         $record->estado === 'emitida' || $record->estado === 'en_espera'
                     ),
-                Actions\DeleteAction::make(),
+                Actions\DeleteAction::make()
+                    ->visible(fn (NotaVenta $record): bool => $record->estado === 'en_espera'),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([
-                    Actions\DeleteBulkAction::make(),
+                    Actions\DeleteBulkAction::make()
+                        ->visible(fn () => false),
                 ]),
             ])
             ->defaultSort('id', 'desc');

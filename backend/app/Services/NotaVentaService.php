@@ -3,7 +3,6 @@ namespace App\Services;
 
 use App\Models\AperturaCaja;
 use App\Models\CuentaPorCobrar;
-use App\Models\MetodoPago;
 use App\Models\MovimientoCaja;
 use App\Models\NotaVenta;
 use App\Models\SerieDocumento;
@@ -19,10 +18,13 @@ class NotaVentaService
     {
         return DB::transaction(function () use ($data) {
             $serie = $data['serie'] ?? 'NV01';
-            $serieDoc = SerieDocumento::firstOrCreate(
-                ['tipo_documento' => 'nota_venta', 'serie' => $serie],
-                ['numero_actual' => 0, 'activo' => true]
-            );
+            $serieDoc = SerieDocumento::where('tipo_documento', 'nota_venta')
+                ->where('serie', $serie)
+                ->lockForUpdate()
+                ->firstOrCreate(
+                    ['tipo_documento' => 'nota_venta', 'serie' => $serie],
+                    ['numero_actual' => 0, 'activo' => true]
+                );
             $serieDoc->increment('numero_actual');
             $numero = str_pad($serieDoc->numero_actual, 3, '0', STR_PAD_LEFT);
 
@@ -68,7 +70,7 @@ class NotaVentaService
 
             if ($apertura && $data['tipo_pago'] === 'contado') {
                 foreach ($data['pagos'] as $pago) {
-                    $movData = [
+                    MovimientoCaja::create([
                         'apertura_caja_id' => $apertura->id,
                         'tipo' => 'ingreso',
                         'metodo_pago_id' => $pago['metodo_pago_id'] ?? null,
@@ -77,23 +79,7 @@ class NotaVentaService
                         'numero_operacion' => $pago['referencia'] ?? null,
                         'documento_referencia_tipo' => 'nota_venta',
                         'documento_referencia_id' => $nota->id,
-                    ];
-
-                    $mpId = $pago['metodo_pago_id'] ?? null;
-                    if ($mpId) {
-                        $mp = MetodoPago::find($mpId);
-                        if ($mp) {
-                            if ($mp->tipo === 'banco') {
-                                $movData['cuenta_bancaria_id'] = null;
-                            } elseif ($mp->tipo === 'tarjeta') {
-                                $movData['tarjeta_id'] = null;
-                            } elseif ($mp->tipo === 'billetera') {
-                                $movData['billetera_id'] = null;
-                            }
-                        }
-                    }
-
-                    MovimientoCaja::create($movData);
+                    ]);
                 }
             }
 
@@ -118,6 +104,10 @@ class NotaVentaService
 
     public function anular(NotaVenta $notaVenta, string $motivo): NotaVenta
     {
+        if ($notaVenta->estado !== 'emitida') {
+            throw new \InvalidArgumentException('Solo se pueden anular notas de venta emitidas');
+        }
+
         return DB::transaction(function () use ($notaVenta, $motivo) {
             $notaVenta->update([
                 'estado' => 'anulada',

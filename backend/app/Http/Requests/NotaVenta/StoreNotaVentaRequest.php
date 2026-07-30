@@ -2,6 +2,8 @@
 namespace App\Http\Requests\NotaVenta;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Contracts\Validation\Validator;
 
 class StoreNotaVentaRequest extends FormRequest
 {
@@ -65,5 +67,16 @@ class StoreNotaVentaRequest extends FormRequest
             'pagos.*.monto.min' => 'El monto del pago debe ser mayor a 0',
             'pagos.*.fecha.required' => 'La fecha del pago es obligatoria',
         ];
+    }
+
+    protected function failedValidation(Validator $validator): never
+    {
+        throw new HttpResponseException(
+            response()->json([
+                'res' => false,
+                'message' => 'Error de validación.',
+                'errors' => $validator->errors(),
+            ], 422)
+        );
     }
 }

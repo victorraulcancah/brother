@@ -39,13 +39,12 @@ class NotaVentaController extends Controller
 
     public function anular(AnularNotaVentaRequest $request, NotaVenta $notaVenta)
     {
-        if ($notaVenta->estado !== 'emitida') {
-            return response()->json(['message' => 'Solo se pueden anular notas de venta emitidas'], 422);
+        try {
+            $nota = $this->notaVentaService->anular($notaVenta, $request->validated()['motivo_anulacion']);
+            return new NotaVentaResource($nota);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
-
-        $nota = $this->notaVentaService->anular($notaVenta, $request->validated()['motivo_anulacion']);
-
-        return new NotaVentaResource($nota);
     }
 
     public function destroy(NotaVenta $notaVenta)
