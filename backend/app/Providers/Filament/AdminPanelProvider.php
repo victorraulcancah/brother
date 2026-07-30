@@ -12,6 +12,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
@@ -46,6 +47,7 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('16rem')
             ->collapsibleNavigationGroups(true)
+            ->maxContentWidth(Width::Full)
             ->navigationGroups([
                 NavigationGroup::make('Escritorio')
                     ->icon('heroicon-o-home')
