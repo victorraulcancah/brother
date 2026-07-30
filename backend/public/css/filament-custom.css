@@ -1,3 +1,32 @@
+/* ========================================================================
+   FILAMENT CUSTOM STYLES - NOTA DE VENTA
+   Basado en el diseño de crear-compra.html
+   ======================================================================== */
+
+/* ── Variables CSS ────────────────────────────────────────────────────── */
+:root {
+    --nv-bg: #eef0fb;
+    --nv-card: #ffffff;
+    --nv-border: #e6e8f5;
+    --nv-ink-900: #1c2033;
+    --nv-ink-700: #3b3f57;
+    --nv-ink-500: #767992;
+    --nv-muted: #8b8fa8;
+    --nv-blue-600: #3557e8;
+    --nv-blue-700: #2a45c4;
+    --nv-blue-50: #e9edfd;
+    --nv-blue-100: #dbe2fc;
+    --nv-orange-500: #ee9b3a;
+    --nv-orange-50: #fdf1e2;
+    --nv-green-600: #2fa96b;
+    --nv-green-50: #e5f8ee;
+    --nv-gray-500: #9aa0b5;
+    --nv-gray-50: #f1f2f8;
+    --nv-red-500: #e15b52;
+    --nv-red-50: #fdecea;
+}
+
+/* ── Sidebar (mantener estilos existentes) ────────────────────────────── */
 .fi-sidebar {
     background-color: #ffffff !important;
 }
@@ -28,4 +57,491 @@
     height: 5.5rem !important;
     max-width: 100%;
     margin: 0 auto;
+}
+
+/* ── Eliminar Double Card en Resources ────────────────────────────────── */
+.fi-resource-create-record-page .fi-section,
+.fi-resource-edit-record-page .fi-section {
+    background: var(--nv-card) !important;
+    border: 1px solid var(--nv-border) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 2px rgba(28, 32, 51, 0.04), 0 8px 20px -12px rgba(28, 32, 51, 0.08) !important;
+}
+
+/* Remover el wrapper card de Filament para evitar double-card */
+.fi-resource-create-record-page .fi-form,
+.fi-resource-edit-record-page .fi-form {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+/* ── Campos de Entrada (Field Inputs) ─────────────────────────────────── */
+.fi-input,
+.fi-select,
+.fi-textarea {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 6px !important;
+    font-size: 14px !important;
+    color: var(--nv-ink-900) !important;
+    padding: 8px 12px !important;
+    transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+.fi-input:focus,
+.fi-select:focus,
+.fi-textarea:focus {
+    outline: none !important;
+    border-color: #3b82f6 !important;
+    background: #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.fi-input:disabled,
+.fi-select:disabled,
+.fi-textarea:disabled {
+    background: #f9fafb !important;
+    color: #9ca3af !important;
+    border-color: #e5e7eb !important;
+}
+
+/* Input wrapper adjustments */
+.fi-input-wrp,
+.fi-select-wrp {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* ── Labels (Field Labels) ────────────────────────────────────────────── */
+.fi-fo-field-wrp-label {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    color: var(--nv-ink-700) !important;
+    margin-bottom: 6px !important;
+}
+
+/* Ocultar labels redundantes en repeaters */
+.fi-repeater-item .fi-fo-field-wrp-label {
+    display: none !important;
+}
+
+/* ── Section Headers ──────────────────────────────────────────────────── */
+.fi-section-header-heading {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    color: var(--nv-ink-900) !important;
+}
+
+.fi-section-header-description {
+    display: none !important;
+}
+
+/* ── Tablas (Repeater como tabla) ─────────────────────────────────────── */
+.fi-repeater-item {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px !important;
+    padding: 16px !important;
+    margin-bottom: 12px !important;
+}
+
+/* Ocultar header del repeater para hacerlo más limpio */
+.fi-repeater .fi-section-header {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: var(--nv-ink-900) !important;
+    margin-bottom: 12px !important;
+}
+
+/* Botón de agregar más limpio */
+.fi-repeater .fi-btn[type="button"] {
+    border: 2px dashed #d1d5db !important;
+    background: transparent !important;
+    color: #6b7280 !important;
+    padding: 10px !important;
+    font-weight: 500 !important;
+}
+
+.fi-repeater .fi-btn[type="button"]:hover {
+    border-color: #3b82f6 !important;
+    background: #eff6ff !important;
+    color: #3b82f6 !important;
+}
+
+/* Header de tabla azul (para tablas estándar de Filament) */
+.fi-table thead tr {
+    background: var(--nv-blue-600) !important;
+}
+
+.fi-table thead th {
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
+    text-transform: uppercase !important;
+    padding: 11px 10px !important;
+}
+
+.fi-table tbody td {
+    padding: 7px 8px !important;
+    font-size: 12.5px !important;
+    border-bottom: 1px solid var(--nv-border) !important;
+}
+
+/* ── Botones ──────────────────────────────────────────────────────────── */
+.fi-btn {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    transition: all 0.15s !important;
+}
+
+/* Botón primario (azul) */
+.fi-btn-color-primary {
+    background: var(--nv-blue-600) !important;
+    color: #fff !important;
+    box-shadow: 0 6px 16px -6px rgba(53, 87, 232, 0.55) !important;
+}
+
+.fi-btn-color-primary:hover {
+    background: var(--nv-blue-700) !important;
+}
+
+.fi-btn-color-primary:active {
+    transform: translateY(1px) !important;
+}
+
+/* Botón ghost (outline) */
+.fi-btn[wire\:loading\.attr="disabled"]:not(.fi-btn-color-primary) {
+    background: #fff !important;
+    border: 1px solid var(--nv-border) !important;
+    color: var(--nv-ink-700) !important;
+}
+
+.fi-btn[wire\:loading\.attr="disabled"]:not(.fi-btn-color-primary):hover {
+    border-color: var(--nv-blue-600) !important;
+    color: var(--nv-blue-700) !important;
+    background: var(--nv-blue-50) !important;
+}
+
+/* Botones de recuperar en el header */
+.fi-header-actions .fi-btn {
+    font-size: 11.5px !important;
+    padding: 7px 12px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--nv-border) !important;
+    background: #fff !important;
+    color: var(--nv-ink-700) !important;
+    white-space: nowrap !important;
+}
+
+.fi-header-actions .fi-btn:hover {
+    border-color: var(--nv-blue-600) !important;
+    background: var(--nv-blue-50) !important;
+    color: var(--nv-blue-700) !important;
+}
+
+/* ── Badge / Folio ────────────────────────────────────────────────────── */
+.badge-folio {
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 11px !important;
+    letter-spacing: 0.04em !important;
+    color: var(--nv-blue-700) !important;
+    background: var(--nv-blue-50) !important;
+    border: 1px solid var(--nv-blue-100) !important;
+    padding: 4px 10px !important;
+    border-radius: 20px !important;
+}
+
+/* ── Stat Cards (mini stats) ──────────────────────────────────────────── */
+.stat-card {
+    background: var(--nv-card) !important;
+    border: 1px solid var(--nv-border) !important;
+    border-radius: 14px !important;
+    padding: 14px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    box-shadow: 0 1px 2px rgba(28, 32, 51, 0.04) !important;
+}
+
+.stat-icon {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+.stat-label {
+    font-size: 11.5px !important;
+    color: var(--nv-muted) !important;
+    font-weight: 500 !important;
+}
+
+.stat-value {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: var(--nv-ink-900) !important;
+    line-height: 1.1 !important;
+}
+
+/* ── Totales (total rows) ─────────────────────────────────────────────── */
+.total-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px dashed var(--nv-border) !important;
+}
+
+.total-row:last-child {
+    border-bottom: none !important;
+}
+
+.total-label {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: var(--nv-muted) !important;
+}
+
+.total-value {
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: var(--nv-ink-900) !important;
+}
+
+/* ── Espaciado y Layout ───────────────────────────────────────────────── */
+.fi-resource-create-record-page .fi-form > * + *,
+.fi-resource-edit-record-page .fi-form > * + * {
+    margin-top: 1.5rem !important;
+}
+
+/* ── Modales ──────────────────────────────────────────────────────────── */
+.fi-modal-window {
+    border-radius: 14px !important;
+    box-shadow: 0 8px 32px rgba(28, 32, 51, 0.15) !important;
+}
+
+.fi-modal-heading {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: var(--nv-ink-900) !important;
+}
+
+.fi-modal-description {
+    font-size: 13px !important;
+    color: var(--nv-muted) !important;
+}
+
+/* ── Modal de Pagos (Cards superiores) ────────────────────────────────── */
+.pago-total-card,
+.pago-pagado-card,
+.pago-saldo-card {
+    padding: 16px 20px !important;
+    border-radius: 10px !important;
+    border: 2px solid !important;
+    margin-bottom: 12px !important;
+}
+
+.pago-total-card {
+    background: #dbeafe !important;
+    border-color: #60a5fa !important;
+}
+
+.pago-total-card .fi-placeholder-label {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #1e40af !important;
+    margin-bottom: 4px !important;
+}
+
+.pago-total-card .fi-placeholder-content {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: #1e3a8a !important;
+}
+
+.pago-pagado-card {
+    background: #d1fae5 !important;
+    border-color: #34d399 !important;
+}
+
+.pago-pagado-card .fi-placeholder-label {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #065f46 !important;
+    margin-bottom: 4px !important;
+}
+
+.pago-pagado-card .fi-placeholder-content {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: #047857 !important;
+}
+
+.pago-saldo-card {
+    background: #fed7aa !important;
+    border-color: #fb923c !important;
+}
+
+.pago-saldo-card .fi-placeholder-label {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #9a3412 !important;
+    margin-bottom: 4px !important;
+}
+
+.pago-saldo-card .fi-placeholder-content {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: #c2410c !important;
+}
+
+/* ── Sección de métodos de pago ───────────────────────────────────────── */
+.pago-vuelto-info {
+    padding: 12px 16px !important;
+    background: #fef3c7 !important;
+    border: 2px solid #fbbf24 !important;
+    border-radius: 8px !important;
+    margin-top: 16px !important;
+}
+
+.pago-vuelto-info .fi-placeholder-content {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: #78350f !important;
+}
+
+.pago-confirmar-btn {
+    margin-top: 16px !important;
+}
+
+/* Botón del modal más prominente */
+.fi-modal-footer .fi-btn-color-success {
+    background: #10b981 !important;
+    padding: 12px 32px !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+}
+
+/* ── Scrollbar personalizado ──────────────────────────────────────────── */
+::-webkit-scrollbar {
+    height: 8px !important;
+    width: 8px !important;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--nv-border) !important;
+    border-radius: 4px !important;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+/* ── Responsive adjustments ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .fi-section {
+        border-radius: 10px !important;
+    }
+    
+    .fi-header-actions {
+        flex-wrap: wrap !important;
+    }
+}
+
+
+/* ── Ajustes adicionales para formularios limpios ─────────────────────── */
+
+/* Reducir espacio entre campos */
+.fi-fo-field-wrp + .fi-fo-field-wrp {
+    margin-top: 0 !important;
+}
+
+/* Mejorar apariencia de los selects */
+.fi-select-wrp::after {
+    color: #6b7280 !important;
+}
+
+/* Placeholder más visible */
+.fi-input::placeholder {
+    color: #9ca3af !important;
+}
+
+/* Mejorar helper text */
+.fi-fo-field-wrp-hint,
+.fi-fo-field-wrp-helper-text {
+    font-size: 12px !important;
+    color: #6b7280 !important;
+    margin-top: 4px !important;
+}
+
+/* Asterisco requerido más discreto */
+.fi-fo-field-wrp-label::after {
+    color: #ef4444 !important;
+}
+
+/* Botones del formulario principal más grandes */
+.fi-form-actions .fi-btn {
+    padding: 10px 24px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+}
+
+/* Header de la página más limpio */
+.fi-page-heading {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+}
+
+/* Breadcrumbs más discretos */
+.fi-breadcrumbs {
+    font-size: 13px !important;
+    color: #6b7280 !important;
+}
+
+/* Mejorar espaciado de secciones */
+.fi-section + .fi-section {
+    margin-top: 24px !important;
+}
+
+/* Grid más compacto en repeaters */
+.fi-repeater-item .fi-grid {
+    gap: 12px !important;
+}
+
+/* Inputs de fecha más consistentes */
+input[type="date"] {
+    padding: 8px 12px !important;
+}
+
+/* Mejorar visibilidad de errors */
+.fi-fo-field-wrp-error-message {
+    font-size: 12px !important;
+    color: #dc2626 !important;
+    margin-top: 4px !important;
+    font-weight: 500 !important;
+}
+
+/* Campo con error */
+.fi-input-wrp-error .fi-input,
+.fi-select-wrp-error .fi-select {
+    border-color: #dc2626 !important;
+}
+
+/* Tooltip más legible */
+.fi-tooltip {
+    font-size: 12px !important;
+    max-width: 300px !important;
 }
