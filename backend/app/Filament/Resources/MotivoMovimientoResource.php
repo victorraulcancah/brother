@@ -8,6 +8,7 @@ use Filament\Actions;
 use Filament\Forms\Components;
 use Filament\Panel;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components as SchemaComponents;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -60,7 +61,7 @@ class MotivoMovimientoResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([
-            Components\Section::make('Datos del motivo')
+            SchemaComponents\Section::make('Datos del motivo')
                 ->schema([
                     Components\TextInput::make('nombre')
                         ->label('Nombre')

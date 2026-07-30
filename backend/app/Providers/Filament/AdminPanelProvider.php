@@ -56,6 +56,12 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Catálogo')
                     ->icon('heroicon-o-book-open')
                     ->collapsed(true),
+                NavigationGroup::make('Ventas')
+                    ->icon('heroicon-o-receipt-percent')
+                    ->collapsed(true),
+                NavigationGroup::make('Tesorería')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->collapsed(true),
                 NavigationGroup::make('Compras')
                     ->icon('heroicon-o-shopping-cart')
                     ->collapsed(true),

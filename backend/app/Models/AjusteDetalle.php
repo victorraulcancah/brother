@@ -9,7 +9,8 @@ class AjusteDetalle extends Model
 
     protected $fillable = [
         'ajuste_id',
-        'producto_presentacion_id',
+        'producto_id',
+        'producto_variante_id',
         'cantidad_sistema',
         'cantidad_fisica',
         'diferencia',
@@ -25,5 +26,6 @@ class AjusteDetalle extends Model
     }
 
     public function ajuste() { return $this->belongsTo(AjusteInventario::class, 'ajuste_id'); }
-    public function presentacion() { return $this->belongsTo(ProductoPresentacion::class, 'producto_presentacion_id'); }
+    public function producto() { return $this->belongsTo(Producto::class, 'producto_id'); }
+    public function variante() { return $this->belongsTo(ProductoVariante::class, 'producto_variante_id'); }
 }

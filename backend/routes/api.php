@@ -4,10 +4,12 @@ use App\Http\Controllers\AjusteInventarioController;
 use App\Http\Controllers\AlmacenController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CosteoController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\MovimientoInventarioController;
+use App\Http\Controllers\NotaVentaController;
 use App\Http\Controllers\OrdenCompraController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProductoPresentacionController;
@@ -53,6 +55,14 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('tomas-inventario', TomaInventarioController::class);
     Route::get('costeo', [CosteoController::class, 'index']);
     Route::put('costeo', [CosteoController::class, 'update']);
+
+    // Facturación
+    Route::apiResource('clientes', ClienteController::class);
+    Route::get('notas-venta', [NotaVentaController::class, 'index']);
+    Route::post('notas-venta', [NotaVentaController::class, 'store']);
+    Route::get('notas-venta/{notaVenta}', [NotaVentaController::class, 'show']);
+    Route::post('notas-venta/{notaVenta}/anular', [NotaVentaController::class, 'anular']);
+    Route::delete('notas-venta/{notaVenta}', [NotaVentaController::class, 'destroy']);
 
     // Gestión
     Route::apiResource('empresas', EmpresaController::class);
