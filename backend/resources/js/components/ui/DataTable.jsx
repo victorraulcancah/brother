@@ -18,7 +18,7 @@ function ToolbarButton({ label, children, onClick }) {
     );
 }
 
-function Dropdown({ open, onClose, children, align = 'right' }) {
+function Dropdown({ open, onClose, children, align = 'right', width = 'w-64' }) {
     const ref = useRef(null);
 
     useEffect(() => {
@@ -37,7 +37,8 @@ function Dropdown({ open, onClose, children, align = 'right' }) {
         <div
             ref={ref}
             className={cn(
-                'absolute z-30 mt-1 w-64 rounded-lg border border-edge bg-white p-2 shadow-lg',
+                'absolute z-50 mt-1 rounded-lg border border-edge bg-white p-2 shadow-xl',
+                width,
                 align === 'right' ? 'right-0' : 'left-0',
             )}
         >
@@ -108,20 +109,31 @@ export default function DataTable({
                     <div className="flex flex-wrap items-center gap-2 border-b border-edge px-3 py-2.5 sm:px-4">
                         <div className="flex items-center gap-2">
                             {filterable && (
-                                <ToolbarButton
-                                    label="Filtros"
-                                    onClick={() => {
-                                        setFilterOpen((v) => !v);
-                                        setColumnsOpen(false);
-                                    }}
-                                >
-                                    <SlidersHorizontal className="h-4 w-4" />
-                                    {filterCount > 0 && (
-                                        <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary-600 text-[10px] font-bold text-white">
-                                            {filterCount}
-                                        </span>
-                                    )}
-                                </ToolbarButton>
+                                <div className="relative">
+                                    <ToolbarButton
+                                        label="Filtros"
+                                        onClick={() => {
+                                            setFilterOpen((v) => !v);
+                                            setColumnsOpen(false);
+                                        }}
+                                    >
+                                        <SlidersHorizontal className="h-4 w-4" />
+                                        {filterCount > 0 && (
+                                            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary-600 text-[10px] font-bold text-white">
+                                                {filterCount}
+                                            </span>
+                                        )}
+                                    </ToolbarButton>
+                                    <Dropdown
+                                        open={filterOpen}
+                                        onClose={() => setFilterOpen(false)}
+                                        width="w-80"
+                                    >
+                                        <div className="max-h-96 overflow-y-auto">
+                                            {filters}
+                                        </div>
+                                    </Dropdown>
+                                </div>
                             )}
 
                             {toggleableColumns && (
@@ -197,12 +209,6 @@ export default function DataTable({
                             </div>
                         )}
                     </div>
-
-                    {filterable && filterOpen && (
-                        <div className="absolute left-0 right-0 top-full z-30 border-t border-edge bg-white p-4 shadow-xl">
-                            {filters}
-                        </div>
-                    )}
                 </>
             )}
 
