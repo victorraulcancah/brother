@@ -31,19 +31,24 @@
     background-color: #ffffff !important;
 }
 
-.fi-sidebar .fi-sidebar-item-active > a,
-.fi-sidebar .fi-sidebar-item-active .fi-sidebar-item-button {
+/* Item activo del sidebar: fondo naranja + texto/ícono blanco (Filament v5) */
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
     background-color: #f59e0b !important;
     color: #ffffff !important;
 }
 
-.fi-sidebar .fi-sidebar-item-active .fi-sidebar-item-label,
-.fi-sidebar .fi-sidebar-item-active .fi-sidebar-item-icon {
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-label,
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-icon,
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-icon {
     color: #ffffff !important;
 }
 
-.fi-sidebar .fi-sidebar-item-active > a:hover,
-.fi-sidebar .fi-sidebar-item-active .fi-sidebar-item-button:hover {
+/* Punto conector de los items agrupados (ej. "Clientes" dentro de "Ventas") */
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-grouped-border-part {
+    background-color: #ffffff !important;
+}
+
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn:hover {
     background-color: #d97706 !important;
 }
 

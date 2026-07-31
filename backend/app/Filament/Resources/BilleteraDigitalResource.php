@@ -23,6 +23,7 @@ class BilleteraDigitalResource extends Resource
     public static function getSlug(?Panel $panel = null): string { return 'billeteras-digitales'; }
     public static function getNavigationGroup(): string { return 'Tesorería'; }
     public static function getNavigationSort(): ?int { return 5; }
+    public static function shouldRegisterNavigation(): bool { return false; } // Gestionado desde la página "Cuentas y Medios de Pago"
 
     public static function form(Schema $schema): Schema
     {

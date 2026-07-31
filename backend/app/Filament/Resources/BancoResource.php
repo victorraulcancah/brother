@@ -23,6 +23,7 @@ class BancoResource extends Resource
     public static function getSlug(?Panel $panel = null): string { return 'bancos'; }
     public static function getNavigationGroup(): string { return 'Tesorería'; }
     public static function getNavigationSort(): ?int { return 2; }
+    public static function shouldRegisterNavigation(): bool { return false; } // Gestionado desde la página "Cuentas y Medios de Pago"
 
     public static function form(Schema $schema): Schema
     {

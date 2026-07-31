@@ -51,7 +51,7 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 NavigationGroup::make('Escritorio')
                     ->icon('heroicon-o-home')
-                    ->collapsed(false),
+                    ->collapsed(true),
                 NavigationGroup::make('Inventario')
                     ->icon('heroicon-o-archive-box')
                     ->collapsed(true),
@@ -79,7 +79,11 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::HEAD_START,
-                fn(): string => '<link rel="stylesheet" href="' . asset('css/filament-custom.css') . '">',
+                function (): string {
+                    $path = public_path('css/filament-custom.css');
+                    $version = is_file($path) ? filemtime($path) : null;
+                    return '<link rel="stylesheet" href="' . asset('css/filament-custom.css') . ($version ? '?v=' . $version : '') . '">';
+                },
             )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
