@@ -95,9 +95,9 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }) {
                     ) : (
                         <>
                             <img
-                                src="/images/brava-monograma.png"
+                                src="/images/brava-horizontal.png"
                                 alt="BRAVA"
-                                className="h-9 w-auto"
+                                className="h-8 w-auto"
                             />
                             <div className="flex items-center gap-1">
                                 <button
