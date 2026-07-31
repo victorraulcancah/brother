@@ -35,6 +35,7 @@ export default function Marcas() {
     const [deleting, setDeleting] = useState(false);
 
     const [filterMarca, setFilterMarca] = useState('');
+    const [filterEstado, setFilterEstado] = useState('');
     const [activeFilters, setActiveFilters] = useState({});
 
     const load = useCallback(async () => {
@@ -192,14 +193,27 @@ export default function Marcas() {
         setActiveFilters(next);
     };
 
+    const applyEstadoFilters = () => {
+        const next = {};
+        if (filterEstado) next.estado = filterEstado;
+        setActiveFilters(next);
+    };
+
     const clearFilters = () => {
         setFilterMarca('');
+        setFilterEstado('');
         setActiveFilters({});
     };
 
     const filteredSubs = subMarcas.filter(
         (s) => !activeFilters.marca || String(s.marca_id) === activeFilters.marca,
     );
+
+    const filteredMarcas = marcas.filter((m) => {
+        if (activeFilters.estado === 'activos') return m.activo !== false;
+        if (activeFilters.estado === 'inactivos') return m.activo === false;
+        return true;
+    });
 
     const filterCount = Object.keys(activeFilters).length;
 
@@ -342,6 +356,30 @@ export default function Marcas() {
         </div>
     );
 
+    const marcaFilters = (
+        <div className="flex flex-wrap items-end gap-3">
+            <Select
+                label="Estado"
+                value={filterEstado}
+                onChange={(e) => setFilterEstado(e.target.value)}
+                options={[
+                    { value: '', label: 'Todos' },
+                    { value: 'activos', label: 'Solo activas' },
+                    { value: 'inactivos', label: 'Solo inactivas' },
+                ]}
+                className="w-44"
+            />
+            <Button variant="primary" size="sm" onClick={applyEstadoFilters}>
+                Aplicar
+            </Button>
+            {filterCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Limpiar
+                </Button>
+            )}
+        </div>
+    );
+
     return (
         <Layout>
             <PageHeader
@@ -372,9 +410,12 @@ export default function Marcas() {
             {tab === 'marcas' ? (
                 <DataTable
                     columns={marcaColumns}
-                    rows={marcas}
+                    rows={filteredMarcas}
                     loading={loading}
                     searchPlaceholder="Buscar marcas..."
+                    filterable
+                    filters={marcaFilters}
+                    filterCount={filterCount}
                 />
             ) : (
                 <DataTable

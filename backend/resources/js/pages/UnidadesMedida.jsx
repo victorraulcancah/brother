@@ -4,13 +4,16 @@ import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
-import { Alert, Badge, Button, DataTable, Input, Modal } from '../components/ui';
+import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
 
 export default function UnidadesMedida() {
     const toast = useToast();
     const [unidades, setUnidades] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    const [filterAbrev, setFilterAbrev] = useState('');
+    const [activeFilters, setActiveFilters] = useState({});
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -95,6 +98,50 @@ export default function UnidadesMedida() {
         }
     };
 
+    const applyFilters = () => {
+        const next = {};
+        if (filterAbrev) next.abrev = filterAbrev;
+        setActiveFilters(next);
+    };
+
+    const clearFilters = () => {
+        setFilterAbrev('');
+        setActiveFilters({});
+    };
+
+    const filtered = unidades.filter((u) => {
+        const len = (u.abreviatura ?? '').length;
+        if (activeFilters.abrev === 'corta') return len > 0 && len <= 2;
+        if (activeFilters.abrev === 'larga') return len >= 3;
+        return true;
+    });
+
+    const filterCount = Object.keys(activeFilters).length;
+
+    const filters = (
+        <div className="flex flex-wrap items-end gap-3">
+            <Select
+                label="Abreviatura"
+                value={filterAbrev}
+                onChange={(e) => setFilterAbrev(e.target.value)}
+                options={[
+                    { value: '', label: 'Todas' },
+                    { value: 'corta', label: 'Corta (1-2 caracteres)' },
+                    { value: 'larga', label: 'Larga (3+ caracteres)' },
+                ]}
+                className="w-56"
+            />
+            <Button variant="primary" size="sm" onClick={applyFilters}>
+                Aplicar
+            </Button>
+            {filterCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Limpiar
+                </Button>
+            )}
+        </div>
+    );
+
     const columns = [
         {
             key: 'nombre',
@@ -148,9 +195,12 @@ export default function UnidadesMedida() {
 
             <DataTable
                 columns={columns}
-                rows={unidades}
+                rows={filtered}
                 loading={loading}
                 searchPlaceholder="Buscar unidades..."
+                filterable
+                filters={filters}
+                filterCount={filterCount}
             />
 
             <Modal

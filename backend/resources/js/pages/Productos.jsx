@@ -61,6 +61,9 @@ export default function Productos() {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
 
+    const [filterEstado, setFilterEstado] = useState('');
+    const [activeFilters, setActiveFilters] = useState({});
+
     const load = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -377,6 +380,49 @@ export default function Productos() {
         label: u.nombre,
     }));
 
+    const applyFilters = () => {
+        const next = {};
+        if (filterEstado) next.estado = filterEstado;
+        setActiveFilters(next);
+    };
+
+    const clearFilters = () => {
+        setFilterEstado('');
+        setActiveFilters({});
+    };
+
+    const filteredProductos = productos.filter((p) => {
+        if (activeFilters.estado === 'activos') return p.activo !== false;
+        if (activeFilters.estado === 'inactivos') return p.activo === false;
+        return true;
+    });
+
+    const filterCount = Object.keys(activeFilters).length;
+
+    const productFilters = (
+        <div className="flex flex-wrap items-end gap-3">
+            <Select
+                label="Estado"
+                value={filterEstado}
+                onChange={(e) => setFilterEstado(e.target.value)}
+                options={[
+                    { value: '', label: 'Todos' },
+                    { value: 'activos', label: 'Solo activos' },
+                    { value: 'inactivos', label: 'Solo inactivos' },
+                ]}
+                className="w-44"
+            />
+            <Button variant="primary" size="sm" onClick={applyFilters}>
+                Aplicar
+            </Button>
+            {filterCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Limpiar
+                </Button>
+            )}
+        </div>
+    );
+
     return (
         <Layout>
             <PageHeader
@@ -389,9 +435,12 @@ export default function Productos() {
 
             <DataTable
                 columns={columns}
-                rows={productos}
+                rows={filteredProductos}
                 loading={loading}
                 searchPlaceholder="Buscar productos..."
+                filterable
+                filters={productFilters}
+                filterCount={filterCount}
             />
 
             <Modal

@@ -36,6 +36,7 @@ function Dropdown({ open, onClose, children, align = 'right', width = 'w-64' }) 
     return (
         <div
             ref={ref}
+            style={{ animation: 'dropdown-in 0.15s ease-out' }}
             className={cn(
                 'absolute z-50 mt-1 rounded-lg border border-edge bg-white p-2 shadow-xl',
                 width,
