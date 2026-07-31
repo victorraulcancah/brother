@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, Search, SlidersHorizontal, X } from 'lucide-react';
+import { Columns3, Funnel, Search, X } from 'lucide-react';
 import useDebounce from '../../hooks/useDebounce';
 import { cn } from './cn';
 import Spinner from './Spinner';
@@ -105,9 +105,32 @@ export default function DataTable({
     return (
         <div className="relative rounded-lg border border-edge bg-white shadow-sm">
             {(searchable || filterable || toggleableColumns) && (
-                <>
-                    <div className="flex flex-wrap items-center gap-2 border-b border-edge px-3 py-2.5 sm:px-4">
-                        <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2 border-b border-edge px-3 py-2.5 sm:px-4">
+                    {searchable && (
+                        <div className="relative w-full sm:w-64">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="search"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder={searchPlaceholder}
+                                className="block w-full rounded-lg border-0 bg-white py-2 pl-9 pr-9 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary-600"
+                            />
+                            {search && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearch('')}
+                                    aria-label="Limpiar búsqueda"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:text-gray-600"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {(filterable || toggleableColumns) && (
+                        <div className="flex items-center gap-1">
                             {filterable && (
                                 <div className="relative">
                                     <ToolbarButton
@@ -117,7 +140,7 @@ export default function DataTable({
                                             setColumnsOpen(false);
                                         }}
                                     >
-                                        <SlidersHorizontal className="h-4 w-4" />
+                                        <Funnel className="h-4 w-4" />
                                         {filterCount > 0 && (
                                             <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary-600 text-[10px] font-bold text-white">
                                                 {filterCount}
@@ -129,7 +152,10 @@ export default function DataTable({
                                         onClose={() => setFilterOpen(false)}
                                         width="w-80"
                                     >
-                                        <div className="max-h-96 overflow-y-auto">
+                                        <p className="px-2 pb-2 pt-0.5 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                            Filtros
+                                        </p>
+                                        <div className="max-h-96 overflow-y-auto px-2 pb-1">
                                             {filters}
                                         </div>
                                     </Dropdown>
@@ -139,13 +165,13 @@ export default function DataTable({
                             {toggleableColumns && (
                                 <div className="relative">
                                     <ToolbarButton
-                                        label="Mostrar / ocultar columnas"
+                                        label="Alternar columnas"
                                         onClick={() => {
                                             setColumnsOpen((v) => !v);
                                             setFilterOpen(false);
                                         }}
                                     >
-                                        <Eye className="h-4 w-4" />
+                                        <Columns3 className="h-4 w-4" />
                                     </ToolbarButton>
                                     <Dropdown
                                         open={columnsOpen}
@@ -185,31 +211,8 @@ export default function DataTable({
                                 </div>
                             )}
                         </div>
-
-                        {searchable && (
-                            <div className="relative ml-auto w-full sm:w-64">
-                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="search"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder={searchPlaceholder}
-                                    className="block w-full rounded-md border-0 bg-gray-50 py-2 pl-9 pr-9 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary-600"
-                                />
-                                {search && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setSearch('')}
-                                        aria-label="Limpiar búsqueda"
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:text-gray-600"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </>
+                    )}
+                </div>
             )}
 
             <div className="overflow-x-auto">
