@@ -1,14 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import {
-    ChevronDown,
-    ChevronsDownUp,
-    ChevronsLeft,
-    ChevronsRight,
-    ChevronsUpDown,
-    Menu,
-    X,
-} from 'lucide-react';
+import { ChevronDown, ChevronsLeft, ChevronsRight, Menu, X } from 'lucide-react';
 import { navigation } from '../config/navigation';
 import { cn } from './ui';
 import UserMenu from './UserMenu';
@@ -53,20 +45,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }) {
     // El sidebar se contrae a iconos solo en escritorio; en móvil siempre es el drawer completo.
     const rail = collapsed && isDesktop;
 
-    const allCollapsed = GROUP_LABELS.every((label) => collapsedGroups[label]);
-
     const toggleGroup = (label) => {
         setCollapsedGroups((prev) => {
             const next = { ...prev, [label]: !prev[label] };
             persistGroups(next);
             return next;
         });
-    };
-
-    const toggleAllGroups = () => {
-        const next = Object.fromEntries(GROUP_LABELS.map((label) => [label, !allCollapsed]));
-        setCollapsedGroups(next);
-        persistGroups(next);
     };
 
     return (
@@ -173,23 +157,8 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }) {
                         })
                     ) : (
                         <>
-                            <div className="mb-1 flex items-center justify-between px-3">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                                    Principal
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={toggleAllGroups}
-                                    aria-label={allCollapsed ? 'Desplegar todo' : 'Contraer todo'}
-                                    title={allCollapsed ? 'Desplegar todo' : 'Contraer todo'}
-                                    className="rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-                                >
-                                    {allCollapsed ? (
-                                        <ChevronsUpDown className="h-4 w-4" />
-                                    ) : (
-                                        <ChevronsDownUp className="h-4 w-4" />
-                                    )}
-                                </button>
+                            <div className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                                Principal
                             </div>
                             {navigation.map((item) => {
                                 if (!item.children) {
