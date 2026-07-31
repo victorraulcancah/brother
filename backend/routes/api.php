@@ -7,6 +7,7 @@ use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\MarcaController;
+use App\Http\Controllers\MotivoMovimientoController;
 use App\Http\Controllers\MovimientoInventarioController;
 use App\Http\Controllers\NotaVentaController;
 use App\Http\Controllers\OrdenCompraController;
@@ -53,6 +54,7 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('transferencias', TransferenciaController::class);
     Route::apiResource('ajustes', AjusteInventarioController::class);
     Route::apiResource('tomas-inventario', TomaInventarioController::class);
+    Route::apiResource('motivos-movimiento', MotivoMovimientoController::class);
     Route::apiResource('prestamos', PrestamoController::class);
     Route::post('prestamos/{prestamo}/devoluciones', [PrestamoController::class, 'devolucion']);
     // Facturación
