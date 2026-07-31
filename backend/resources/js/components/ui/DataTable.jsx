@@ -102,7 +102,7 @@ export default function DataTable({
     const isActionsColumn = (col) => col.type === 'actions';
 
     return (
-        <div className="rounded-lg border border-edge bg-white shadow-sm">
+        <div className="relative rounded-lg border border-edge bg-white shadow-sm">
             {(searchable || filterable || toggleableColumns) && (
                 <>
                     <div className="flex flex-wrap items-center gap-2 border-b border-edge px-3 py-2.5 sm:px-4">
@@ -199,7 +199,7 @@ export default function DataTable({
                     </div>
 
                     {filterable && filterOpen && (
-                        <div className="border-b border-edge bg-gray-50 px-4 py-3">
+                        <div className="absolute left-0 right-0 top-full z-30 border-t border-edge bg-white p-4 shadow-xl">
                             {filters}
                         </div>
                     )}
