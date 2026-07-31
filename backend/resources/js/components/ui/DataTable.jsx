@@ -296,7 +296,8 @@ export default function DataTable({
                         </table>
                     </div>
 
-                    <div className="divide-y divide-gray-100 md:hidden">                        {filteredRows.length === 0 && (
+                    <div className="space-y-3 bg-gray-50 p-3 md:hidden">
+                        {filteredRows.length === 0 && (
                             <p className="px-4 py-12 text-center text-sm text-gray-400">
                                 {emptyMessage}
                             </p>
@@ -320,7 +321,7 @@ export default function DataTable({
                                         onRowClick ? () => onRowClick(row) : undefined
                                     }
                                     className={cn(
-                                        'px-4 py-3',
+                                        'rounded-xl border border-edge bg-white p-4 shadow-sm',
                                         onRowClick && 'cursor-pointer',
                                     )}
                                 >

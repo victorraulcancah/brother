@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
 import { cn } from './cn';
 
 const sizes = {
@@ -54,34 +53,24 @@ export default function Modal({
                     )}
                 >
                 {(title || description) && (
-                    <div className="flex items-start justify-between gap-4 border-b border-edge px-6 py-4">
-                        <div>
-                            {title && (
-                                <h2 className="text-lg font-semibold text-warm-900">
-                                    {title}
-                                </h2>
-                            )}
-                            {description && (
-                                <p className="mt-0.5 text-sm text-warm-500">
-                                    {description}
-                                </p>
-                            )}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            aria-label="Cerrar"
-                            className="rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
+                    <div className="px-6 pt-5">
+                        {title && (
+                            <h2 className="text-lg font-semibold text-warm-900">
+                                {title}
+                            </h2>
+                        )}
+                        {description && (
+                            <p className="mt-0.5 text-sm text-warm-500">
+                                {description}
+                            </p>
+                        )}
                     </div>
                 )}
 
                 <div className="flex-1 overflow-y-auto px-6 py-4">{children}</div>
 
                 {footer && (
-                    <div className="flex items-center justify-end gap-2 border-t border-edge px-6 py-4">
+                    <div className="flex items-center justify-end gap-2 px-6 pb-5">
                         {footer}
                     </div>
                 )}
