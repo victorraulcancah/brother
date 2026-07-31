@@ -30,14 +30,15 @@ class StockService
             $cantidadBase = $cantidadPresentacion * $factor;
 
             $stock = $this->getOrCreateStock($presentacion, $almacen);
-            $stock->stock_anterior = $stock->stock_actual;
-            $stock->stock_actual += $cantidadBase;
+            $anterior = (float) $stock->stock_actual;
+            $stock->stock_anterior = $anterior;
+            $stock->stock_actual = $anterior + $cantidadBase;
             $stock->stock_disponible = $stock->stock_actual - $stock->stock_reservado;
             $stock->save();
 
             return $this->registrarMovimiento(
                 $presentacion, $almacen, 'entrada', $origen,
-                $cantidadPresentacion, $cantidadBase, $costoUnitario, $stock->stock_actual,
+                $cantidadPresentacion, $cantidadBase, $costoUnitario, $anterior, $stock->stock_actual,
                 $documentoTipo, $documentoId, $usuarioId, $fecha
             );
         });
@@ -63,14 +64,22 @@ class StockService
             $cantidadBase = $cantidadPresentacion * $factor;
 
             $stock = $this->getOrCreateStock($presentacion, $almacen);
-            $stock->stock_anterior = $stock->stock_actual;
-            $stock->stock_actual -= $cantidadBase;
+            $anterior = (float) $stock->stock_actual;
+
+            if ($cantidadBase > $anterior) {
+                throw new \RuntimeException(
+                    "Stock insuficiente para \"{$presentacion->nombre}\" en \"{$almacen->nombre}\". Disponible: {$anterior}."
+                );
+            }
+
+            $stock->stock_anterior = $anterior;
+            $stock->stock_actual = $anterior - $cantidadBase;
             $stock->stock_disponible = $stock->stock_actual - $stock->stock_reservado;
             $stock->save();
 
             return $this->registrarMovimiento(
                 $presentacion, $almacen, 'salida', $origen,
-                -$cantidadPresentacion, -$cantidadBase, $costoUnitario, $stock->stock_actual,
+                -$cantidadPresentacion, -$cantidadBase, $costoUnitario, $anterior, $stock->stock_actual,
                 $documentoTipo, $documentoId, $usuarioId, $fecha
             );
         });
@@ -123,21 +132,26 @@ class StockService
         });
     }
 
+    /**
+     * Debe llamarse dentro de una transacción activa: bloquea la fila
+     * (o la crea si no existe) para evitar carreras entre movimientos concurrentes.
+     */
     private function getOrCreateStock(ProductoPresentacion $presentacion, Almacen $almacen): ProductoAlmacenStock
     {
-        return ProductoAlmacenStock::firstOrCreate(
-            [
-                'producto_presentacion_id' => $presentacion->id,
-                'almacen_id' => $almacen->id,
-            ],
-            [
-                'stock_actual' => 0,
-                'stock_reservado' => 0,
-                'stock_disponible' => 0,
-                'stock_minimo' => 0,
-                'stock_maximo' => 0,
-            ]
-        );
+        $stock = ProductoAlmacenStock::where('producto_id', $presentacion->producto_id)
+            ->where('almacen_id', $almacen->id)
+            ->lockForUpdate()
+            ->first();
+
+        return $stock ?? ProductoAlmacenStock::create([
+            'producto_id' => $presentacion->producto_id,
+            'almacen_id' => $almacen->id,
+            'stock_actual' => 0,
+            'stock_reservado' => 0,
+            'stock_disponible' => 0,
+            'stock_minimo' => 0,
+            'stock_maximo' => 0,
+        ]);
     }
 
     private function registrarMovimiento(
@@ -148,6 +162,7 @@ class StockService
         float $cantidadPresentacion,
         float $cantidadBase,
         float $costoUnitario,
+        float $stockAnterior,
         float $saldoStock,
         ?string $documentoTipo = null,
         ?int $documentoId = null,
@@ -155,13 +170,14 @@ class StockService
         ?string $fecha = null
     ): MovimientoInventario {
         return MovimientoInventario::create([
-            'producto_presentacion_id' => $presentacion->id,
+            'producto_id' => $presentacion->producto_id,
             'almacen_id' => $almacen->id,
             'tipo_movimiento' => $tipoMovimiento,
             'origen' => $origen,
             'documento_referencia_tipo' => $documentoTipo,
             'documento_referencia_id' => $documentoId,
             'cantidad' => $cantidadBase,
+            'stock_anterior' => $stockAnterior,
             'costo_unitario' => $costoUnitario,
             'saldo_stock' => $saldoStock,
             'fecha' => $fecha ?? now(),

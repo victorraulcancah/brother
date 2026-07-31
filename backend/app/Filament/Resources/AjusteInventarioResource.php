@@ -4,14 +4,17 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AjusteInventarioResource\Pages;
 use App\Models\AjusteInventario;
+use App\Services\StockService;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class AjusteInventarioResource extends Resource
 {
@@ -107,9 +110,10 @@ class AjusteInventarioResource extends Resource
                                     ->schema([
                                         SchemaComponents\Grid::make(3)
                                             ->schema([
-                                                Components\Select::make('producto_id')
-                                                    ->label('Producto')
-                                                    ->relationship('producto', 'nombre')
+                                                Components\Select::make('producto_presentacion_id')
+                                                    ->label('Producto / Presentación')
+                                                    ->relationship('presentacion', 'nombre')
+                                                    ->getOptionLabelFromRecordUsing(fn($record) => trim(($record->producto?->nombre ?? '') . ' — ' . $record->nombre, ' —'))
                                                     ->searchable()
                                                     ->preload()
                                                     ->required()
@@ -173,8 +177,79 @@ class AjusteInventarioResource extends Resource
                     ->options(['pendiente' => 'Pendiente', 'aprobado' => 'Aprobado', 'rechazado' => 'Rechazado']),
             ])
             ->actions([
-                Actions\EditAction::make()->modalWidth('3xl'),
-                Actions\DeleteAction::make(),
+                Actions\Action::make('aprobar')
+                    ->label('Aprobar')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn(AjusteInventario $record): bool => $record->estado === 'pendiente')
+                    ->requiresConfirmation()
+                    ->modalDescription('Se aplicará la diferencia de cada línea al stock del almacén. Esta acción no se puede deshacer.')
+                    ->action(function (AjusteInventario $record): void {
+                        try {
+                            DB::transaction(function () use ($record): void {
+                                $record->loadMissing(['detalles.presentacion', 'almacen']);
+
+                                foreach ($record->detalles as $detalle) {
+                                    $diferencia = (float) $detalle->diferencia;
+                                    if ($diferencia === 0.0 || ! $detalle->presentacion) {
+                                        continue;
+                                    }
+
+                                    $service = app(StockService::class);
+                                    $factor = (float) $detalle->presentacion->factor_conversion ?: 1;
+                                    $cantidadPresentacion = abs($diferencia) / $factor;
+
+                                    if ($diferencia > 0) {
+                                        $service->entrada(
+                                            presentacion: $detalle->presentacion,
+                                            almacen: $record->almacen,
+                                            cantidadPresentacion: $cantidadPresentacion,
+                                            costoUnitario: 0,
+                                            origen: 'ajuste_manual',
+                                            documentoTipo: 'ajuste_inventario',
+                                            documentoId: $record->id,
+                                            usuarioId: auth()->id(),
+                                        );
+                                    } else {
+                                        $service->salida(
+                                            presentacion: $detalle->presentacion,
+                                            almacen: $record->almacen,
+                                            cantidadPresentacion: $cantidadPresentacion,
+                                            costoUnitario: 0,
+                                            origen: 'ajuste_manual',
+                                            documentoTipo: 'ajuste_inventario',
+                                            documentoId: $record->id,
+                                            usuarioId: auth()->id(),
+                                        );
+                                    }
+                                }
+
+                                $record->update([
+                                    'estado' => 'aprobado',
+                                    'usuario_aprueba_id' => auth()->id(),
+                                ]);
+                            });
+
+                            Notification::make()->success()->title('Ajuste aprobado')->body('El stock se actualizó según las diferencias.')->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()->danger()->title('No se pudo aprobar')->body($e->getMessage())->send();
+                        }
+                    }),
+                Actions\Action::make('rechazar')
+                    ->label('Rechazar')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn(AjusteInventario $record): bool => $record->estado === 'pendiente')
+                    ->requiresConfirmation()
+                    ->action(fn(AjusteInventario $record) => $record->update([
+                        'estado' => 'rechazado',
+                        'usuario_aprueba_id' => auth()->id(),
+                    ])),
+                Actions\EditAction::make()
+                    ->modalWidth('3xl')
+                    ->visible(fn(AjusteInventario $record): bool => $record->estado === 'pendiente'),
+                Actions\DeleteAction::make()
+                    ->visible(fn(AjusteInventario $record): bool => $record->estado === 'pendiente'),
             ])
             ->defaultSort('id', 'desc');
     }

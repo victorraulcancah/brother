@@ -79,20 +79,13 @@ class SolicitudCompraResource extends Resource
                                     ->schema([
                                         SchemaComponents\Grid::make(3)
                                             ->schema([
-                                                Components\Select::make('producto_id')
-                                                    ->label('Producto')
-                                                    ->relationship('producto', 'nombre')
+                                                Components\Select::make('producto_presentacion_id')
+                                                    ->label('Producto / Presentación')
+                                                    ->relationship('presentacion', 'nombre')
+                                                    ->getOptionLabelFromRecordUsing(fn($record) => trim(($record->producto?->nombre ?? '') . ' — ' . $record->nombre, ' —'))
                                                     ->searchable()
                                                     ->preload()
-                                                    ->required()
-                                                    ->live()
-                                                    ->afterStateUpdated(fn($set) => $set('producto_variante_id', null)),
-                                                Components\Select::make('producto_variante_id')
-                                                    ->label('Variante')
-                                                    ->relationship('productoVariante', 'sku_variante')
-                                                    ->searchable()
-                                                    ->preload()
-                                                    ->nullable(),
+                                                    ->required(),
                                                 Components\TextInput::make('cantidad_solicitada')
                                                     ->label('Cant. Solicitada')
                                                     ->numeric()

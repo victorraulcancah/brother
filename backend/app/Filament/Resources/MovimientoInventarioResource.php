@@ -65,10 +65,6 @@ class MovimientoInventarioResource extends Resource
                     ->label('Producto')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('productoVariante.sku_variante')
-                    ->label('Variante')
-                    ->badge()
-                    ->color('gray'),
                 Tables\Columns\TextColumn::make('almacen.nombre')
                     ->label('Almacén'),
                 Tables\Columns\TextColumn::make('stock_anterior')

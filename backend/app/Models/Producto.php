@@ -42,6 +42,6 @@ class Producto extends Model
     public function unidadBase() { return $this->belongsTo(UnidadMedida::class, 'unidad_base_id'); }
 
     public function presentaciones() { return $this->hasMany(ProductoPresentacion::class); }
-    public function stocks() { return $this->hasManyThrough(ProductoAlmacenStock::class, ProductoPresentacion::class); }
-    public function movimientos() { return $this->hasManyThrough(MovimientoInventario::class, ProductoPresentacion::class); }
+    public function stocks() { return $this->hasMany(ProductoAlmacenStock::class); }
+    public function movimientos() { return $this->hasMany(MovimientoInventario::class); }
 }

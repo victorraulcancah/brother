@@ -5,7 +5,6 @@ use App\Http\Controllers\AlmacenController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteController;
-use App\Http\Controllers\CosteoController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\MovimientoInventarioController;
@@ -53,9 +52,6 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('transferencias', TransferenciaController::class);
     Route::apiResource('ajustes', AjusteInventarioController::class);
     Route::apiResource('tomas-inventario', TomaInventarioController::class);
-    Route::get('costeo', [CosteoController::class, 'index']);
-    Route::put('costeo', [CosteoController::class, 'update']);
-
     // Facturación
     Route::apiResource('clientes', ClienteController::class);
     Route::get('notas-venta', [NotaVentaController::class, 'index']);

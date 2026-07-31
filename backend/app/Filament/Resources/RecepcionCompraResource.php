@@ -3,15 +3,20 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\RecepcionCompraResource\Pages;
+use App\Models\OrdenCompra;
 use App\Models\RecepcionCompra;
+use App\Models\RecepcionCompraDetalle;
+use App\Services\StockService;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class RecepcionCompraResource extends Resource
 {
@@ -93,20 +98,13 @@ class RecepcionCompraResource extends Resource
                                 Components\Repeater::make('detalles')
                                     ->relationship('detalles')
                                     ->schema([
-                                        Components\Select::make('producto_id')
-                                            ->label('Producto')
-                                            ->relationship('producto', 'nombre')
+                                        Components\Select::make('producto_presentacion_id')
+                                            ->label('Producto / Presentación')
+                                            ->relationship('presentacion', 'nombre')
+                                            ->getOptionLabelFromRecordUsing(fn($record) => trim(($record->producto?->nombre ?? '') . ' — ' . $record->nombre, ' —'))
                                             ->searchable()
                                             ->preload()
-                                            ->required()
-                                            ->live()
-                                            ->afterStateUpdated(fn($set) => $set('producto_variante_id', null)),
-                                        Components\Select::make('producto_variante_id')
-                                            ->label('Variante')
-                                            ->relationship('productoVariante', 'sku_variante')
-                                            ->searchable()
-                                            ->preload()
-                                            ->nullable(),
+                                            ->required(),
                                         SchemaComponents\Grid::make(4)
                                             ->schema([
                                                 Components\TextInput::make('cantidad_ordenada')
@@ -180,6 +178,9 @@ class RecepcionCompraResource extends Resource
                         'anulada' => 'gray',
                         default => 'gray',
                     }),
+                Tables\Columns\IconColumn::make('stock_aplicado')
+                    ->label('Stock aplicado')
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('usuarioRecibe.name')
                     ->label('Recibido por'),
                 Tables\Columns\TextColumn::make('created_at')
@@ -202,14 +203,93 @@ class RecepcionCompraResource extends Resource
                     ->relationship('almacen', 'nombre'),
             ])
             ->actions([
-                Actions\EditAction::make()->modalWidth('3xl'),
-                Actions\DeleteAction::make(),
+                Actions\Action::make('recepcionar')
+                    ->label('Recepcionar')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn(RecepcionCompra $record): bool => ! $record->stock_aplicado && $record->estado !== 'anulada')
+                    ->requiresConfirmation()
+                    ->modalDescription('Se ingresará al almacén la cantidad conforme de cada línea. Esta acción no se puede deshacer.')
+                    ->action(function (RecepcionCompra $record): void {
+                        DB::transaction(function () use ($record) {
+                            $record->loadMissing(['detalles.presentacion', 'almacen']);
+
+                            foreach ($record->detalles as $detalle) {
+                                $cantidad = (float) $detalle->cantidad_conforme;
+                                if ($cantidad <= 0 || ! $detalle->presentacion) {
+                                    continue;
+                                }
+
+                                app(StockService::class)->entrada(
+                                    presentacion: $detalle->presentacion,
+                                    almacen: $record->almacen,
+                                    cantidadPresentacion: $cantidad,
+                                    costoUnitario: (float) $detalle->costo_unitario,
+                                    origen: 'compra',
+                                    documentoTipo: 'recepcion_compra',
+                                    documentoId: $record->id,
+                                    usuarioId: auth()->id(),
+                                );
+                            }
+
+                            $record->update(['stock_aplicado' => true]);
+
+                            if ($record->orden_compra_id) {
+                                static::actualizarEstadoOrden($record->ordenCompra);
+                            }
+                        });
+
+                        Notification::make()
+                            ->success()
+                            ->title('Stock actualizado')
+                            ->body('La recepción se aplicó al almacén correctamente.')
+                            ->send();
+                    }),
+                Actions\EditAction::make()
+                    ->modalWidth('3xl')
+                    ->visible(fn(RecepcionCompra $record): bool => ! $record->stock_aplicado),
+                Actions\DeleteAction::make()
+                    ->visible(fn(RecepcionCompra $record): bool => ! $record->stock_aplicado),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([
                     Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    protected static function actualizarEstadoOrden(OrdenCompra $orden): void
+    {
+        $orden->loadMissing('detalles');
+
+        $pedidoPorPresentacion = $orden->detalles
+            ->groupBy('producto_presentacion_id')
+            ->map(fn($rows) => $rows->sum('cantidad'));
+
+        $recibidoPorPresentacion = RecepcionCompraDetalle::query()
+            ->whereHas('recepcion', fn($q) => $q->where('orden_compra_id', $orden->id)->where('stock_aplicado', true))
+            ->get()
+            ->groupBy('producto_presentacion_id')
+            ->map(fn($rows) => $rows->sum('cantidad_conforme'));
+
+        $completo = true;
+        $algoRecibido = false;
+
+        foreach ($pedidoPorPresentacion as $presentacionId => $cantidadPedida) {
+            $recibida = (float) ($recibidoPorPresentacion[$presentacionId] ?? 0);
+            if ($recibida > 0) {
+                $algoRecibido = true;
+            }
+            if ($recibida < (float) $cantidadPedida) {
+                $completo = false;
+            }
+        }
+
+        if (! $algoRecibido) {
+            return;
+        }
+
+        $orden->update(['estado' => $completo ? 'completada' : 'parcial']);
     }
 
     public static function getRelations(): array

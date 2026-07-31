@@ -16,6 +16,7 @@ class RecepcionCompra extends Model
         'tipo_documento',
         'fecha_recepcion',
         'estado',
+        'stock_aplicado',
         'usuario_recibe_id',
         'observaciones',
     ];
@@ -24,6 +25,7 @@ class RecepcionCompra extends Model
     {
         return [
             'fecha_recepcion' => 'datetime',
+            'stock_aplicado' => 'boolean',
         ];
     }
 

@@ -4,14 +4,17 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\TransferenciaResource\Pages;
 use App\Models\Transferencia;
+use App\Services\StockService;
 use Filament\Actions;
 use Filament\Forms\Components;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components as SchemaComponents;
 use Filament\Panel;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class TransferenciaResource extends Resource
 {
@@ -102,20 +105,14 @@ class TransferenciaResource extends Resource
                                     ->schema([
                                         SchemaComponents\Grid::make(3)
                                             ->schema([
-                                                Components\Select::make('producto_id')
-                                                    ->label('Producto')
-                                                    ->relationship('producto', 'nombre')
+                                                Components\Select::make('producto_presentacion_id')
+                                                    ->label('Producto / Presentación')
+                                                    ->relationship('presentacion', 'nombre')
+                                                    ->getOptionLabelFromRecordUsing(fn($record) => trim(($record->producto?->nombre ?? '') . ' — ' . $record->nombre, ' —'))
                                                     ->searchable()
                                                     ->preload()
                                                     ->required()
-                                                    ->live()
-                                                    ->afterStateUpdated(fn($set) => $set('producto_variante_id', null)),
-                                                Components\Select::make('producto_variante_id')
-                                                    ->label('Variante')
-                                                    ->relationship('productoVariante', 'sku_variante')
-                                                    ->searchable()
-                                                    ->preload()
-                                                    ->nullable(),
+                                                    ->columnSpan(2),
                                                 Components\TextInput::make('cantidad_enviada')
                                                     ->label('Cantidad Enviada')
                                                     ->numeric()
@@ -180,8 +177,111 @@ class TransferenciaResource extends Resource
                     ]),
             ])
             ->actions([
-                Actions\EditAction::make()->modalWidth('3xl'),
-                Actions\DeleteAction::make(),
+                Actions\Action::make('enviar')
+                    ->label('Enviar')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('info')
+                    ->visible(fn(Transferencia $record): bool => $record->estado === 'pendiente')
+                    ->requiresConfirmation()
+                    ->modalDescription('Se descontará la cantidad enviada de cada línea del almacén de origen.')
+                    ->action(function (Transferencia $record): void {
+                        try {
+                            DB::transaction(function () use ($record): void {
+                                $record->loadMissing(['detalles.presentacion', 'almacenOrigen']);
+
+                                foreach ($record->detalles as $detalle) {
+                                    $cantidad = (float) $detalle->cantidad_enviada;
+                                    if ($cantidad <= 0 || ! $detalle->presentacion) {
+                                        continue;
+                                    }
+
+                                    app(StockService::class)->salida(
+                                        presentacion: $detalle->presentacion,
+                                        almacen: $record->almacenOrigen,
+                                        cantidadPresentacion: $cantidad,
+                                        costoUnitario: 0,
+                                        origen: 'transferencia',
+                                        documentoTipo: 'transferencia',
+                                        documentoId: $record->id,
+                                        usuarioId: auth()->id(),
+                                    );
+                                }
+
+                                $record->update([
+                                    'estado' => 'en_transito',
+                                    'fecha_envio' => now(),
+                                    'usuario_envio_id' => auth()->id(),
+                                ]);
+                            });
+
+                            Notification::make()->success()->title('Transferencia enviada')->body('Se descontó el stock del almacén de origen.')->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()->danger()->title('No se pudo enviar')->body($e->getMessage())->send();
+                        }
+                    }),
+                Actions\Action::make('recibir')
+                    ->label('Recibir')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->visible(fn(Transferencia $record): bool => $record->estado === 'en_transito')
+                    ->form(fn(Transferencia $record): array => $record->detalles
+                        ->map(fn($detalle) => Components\TextInput::make("cantidad_{$detalle->id}")
+                            ->label(trim(($detalle->presentacion?->producto?->nombre ?? 'Producto') . ' — ' . ($detalle->presentacion?->nombre ?? '')))
+                            ->numeric()
+                            ->minValue(0)
+                            ->default($detalle->cantidad_enviada)
+                            ->helperText("Enviado: {$detalle->cantidad_enviada}")
+                            ->required())
+                        ->all())
+                    ->action(function (Transferencia $record, array $data): void {
+                        try {
+                            DB::transaction(function () use ($record, $data): void {
+                                $record->loadMissing(['detalles.presentacion', 'almacenDestino']);
+
+                                foreach ($record->detalles as $detalle) {
+                                    $cantidad = (float) ($data["cantidad_{$detalle->id}"] ?? 0);
+                                    $detalle->update(['cantidad_recibida' => $cantidad]);
+
+                                    if ($cantidad <= 0 || ! $detalle->presentacion) {
+                                        continue;
+                                    }
+
+                                    app(StockService::class)->entrada(
+                                        presentacion: $detalle->presentacion,
+                                        almacen: $record->almacenDestino,
+                                        cantidadPresentacion: $cantidad,
+                                        costoUnitario: 0,
+                                        origen: 'transferencia',
+                                        documentoTipo: 'transferencia',
+                                        documentoId: $record->id,
+                                        usuarioId: auth()->id(),
+                                    );
+                                }
+
+                                $record->update([
+                                    'estado' => 'recibido',
+                                    'fecha_recepcion' => now(),
+                                    'usuario_recepcion_id' => auth()->id(),
+                                ]);
+                            });
+
+                            Notification::make()->success()->title('Transferencia recibida')->body('Se agregó el stock al almacén de destino.')->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()->danger()->title('No se pudo recibir')->body($e->getMessage())->send();
+                        }
+                    }),
+                Actions\Action::make('anular')
+                    ->label('Anular')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn(Transferencia $record): bool => $record->estado === 'pendiente')
+                    ->requiresConfirmation()
+                    ->action(fn(Transferencia $record) => $record->update(['estado' => 'anulado'])),
+                Actions\EditAction::make()
+                    ->modalWidth('3xl')
+                    ->visible(fn(Transferencia $record): bool => $record->estado === 'pendiente'),
+                Actions\DeleteAction::make()
+                    ->visible(fn(Transferencia $record): bool => $record->estado === 'pendiente'),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([

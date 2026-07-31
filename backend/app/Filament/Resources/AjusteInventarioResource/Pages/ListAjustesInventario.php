@@ -5,6 +5,7 @@ namespace App\Filament\Resources\AjusteInventarioResource\Pages;
 use App\Filament\Resources\AjusteInventarioResource;
 use App\Livewire\MotivosTable;
 use App\Models\ProductoAlmacenStock;
+use App\Models\ProductoPresentacion;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\EmbeddedTable;
@@ -27,7 +28,8 @@ class ListAjustesInventario extends ListRecords
                     $data['fecha'] = now();
 
                     foreach ($data['detalles'] ?? [] as $i => $detalle) {
-                        $stock = ProductoAlmacenStock::where('producto_id', $detalle['producto_id'])
+                        $productoId = ProductoPresentacion::find($detalle['producto_presentacion_id'])?->producto_id;
+                        $stock = ProductoAlmacenStock::where('producto_id', $productoId)
                             ->where('almacen_id', $data['almacen_id'])
                             ->value('stock_actual') ?? 0;
                         $data['detalles'][$i]['cantidad_sistema'] = $stock;
