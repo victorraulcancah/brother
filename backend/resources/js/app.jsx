@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './lib/auth';
+import { ToastProvider } from './lib/toast';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -12,8 +13,9 @@ import Empresa from './pages/Empresa';
 createRoot(document.getElementById('root')).render(
     <StrictMode>
         <BrowserRouter>
-            <AuthProvider>
-                <Routes>
+            <ToastProvider>
+                <AuthProvider>
+                    <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route
                         path="/dashboard"
@@ -47,9 +49,10 @@ createRoot(document.getElementById('root')).render(
                             </ProtectedRoute>
                         }
                     />
-                    <Route path="*" element={<Login />} />
-                </Routes>
-            </AuthProvider>
+                        <Route path="*" element={<Login />} />
+                    </Routes>
+                </AuthProvider>
+            </ToastProvider>
         </BrowserRouter>
     </StrictMode>,
 );

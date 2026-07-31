@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Edit, Shield, Trash2 } from 'lucide-react';
 import api from '../lib/api';
+import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
@@ -49,6 +50,7 @@ const roleColumns = [
 ];
 
 export default function Roles() {
+    const toast = useToast();
     const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -104,8 +106,10 @@ export default function Roles() {
         try {
             if (editing) {
                 await api.put(`/roles/${editing.id}`, form);
+                toast.success('Rol actualizado correctamente.');
             } else {
                 await api.post('/roles', form);
+                toast.success('Rol creado correctamente.');
             }
             setModalOpen(false);
             await load();
@@ -116,7 +120,9 @@ export default function Roles() {
                     Object.fromEntries(Object.entries(validation).map(([k, v]) => [k, v[0]])),
                 );
             } else {
-                setError('No se pudo guardar el rol.');
+                toast.error(
+                    err.response?.data?.message ?? 'No se pudo guardar el rol.',
+                );
             }
         } finally {
             setSaving(false);
@@ -131,8 +137,11 @@ export default function Roles() {
             await api.delete(`/roles/${deleteTarget.id}`);
             setDeleteTarget(null);
             await load();
-        } catch {
-            setError('No se pudo eliminar el rol.');
+            toast.success('Rol eliminado.');
+        } catch (err) {
+            toast.error(
+                err.response?.data?.message ?? 'No se pudo eliminar el rol.',
+            );
         } finally {
             setDeleting(false);
         }

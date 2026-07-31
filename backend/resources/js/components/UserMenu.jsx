@@ -23,7 +23,7 @@ function Avatar({ user, size = 'md' }) {
     );
 }
 
-export default function UserMenu() {
+export default function UserMenu({ compact = false }) {
     const { user, logout } = useAuth();
     const [open, setOpen] = useState(false);
     const menuRef = useRef(null);
@@ -44,24 +44,35 @@ export default function UserMenu() {
                 onClick={() => setOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={open}
-                className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-gray-100"
+                title={compact ? user?.name : undefined}
+                className={cn(
+                    'flex w-full items-center rounded-lg transition hover:bg-gray-100',
+                    compact ? 'justify-center p-1.5' : 'gap-3 px-2 py-2 text-left',
+                )}
             >
-                <Avatar user={user} />
-                <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-gray-900">
-                        {user?.name}
-                    </span>
-                    <span className="block truncate text-xs text-gray-500">
-                        {user?.email}
-                    </span>
-                </span>
-                <ChevronsUpDown className="h-4 w-4 shrink-0 text-gray-400" />
+                <Avatar user={user} size={compact ? 'sm' : 'md'} />
+                {!compact && (
+                    <>
+                        <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-gray-900">
+                                {user?.name}
+                            </span>
+                            <span className="block truncate text-xs text-gray-500">
+                                {user?.email}
+                            </span>
+                        </span>
+                        <ChevronsUpDown className="h-4 w-4 shrink-0 text-gray-400" />
+                    </>
+                )}
             </button>
 
             {open && (
                 <div
                     role="menu"
-                    className="absolute bottom-full left-0 right-0 z-50 mb-2 overflow-hidden rounded-lg border border-edge bg-white shadow-lg"
+                    className={cn(
+                        'absolute bottom-full z-50 mb-2 overflow-hidden rounded-lg border border-edge bg-white shadow-lg',
+                        compact ? 'left-0 w-56' : 'left-0 right-0',
+                    )}
                 >
                     <div className="border-b border-edge bg-gray-50 px-4 py-3">
                         <p className="truncate text-sm font-medium text-gray-900">{user?.name}</p>
