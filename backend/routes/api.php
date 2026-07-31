@@ -13,6 +13,7 @@ use App\Http\Controllers\OrdenCompraController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProductoPresentacionController;
 use App\Http\Controllers\ProveedorController;
+use App\Http\Controllers\PrestamoController;
 use App\Http\Controllers\RecepcionCompraController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SolicitudCompraController;
@@ -52,6 +53,8 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('transferencias', TransferenciaController::class);
     Route::apiResource('ajustes', AjusteInventarioController::class);
     Route::apiResource('tomas-inventario', TomaInventarioController::class);
+    Route::apiResource('prestamos', PrestamoController::class);
+    Route::post('prestamos/{prestamo}/devoluciones', [PrestamoController::class, 'devolucion']);
     // Facturación
     Route::apiResource('clientes', ClienteController::class);
     Route::get('notas-venta', [NotaVentaController::class, 'index']);

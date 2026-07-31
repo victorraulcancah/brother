@@ -325,10 +325,13 @@ export default function Ajustes() {
                                 onChange={(e) =>
                                     setForm((prev) => ({ ...prev, almacen_id: e.target.value }))
                                 }
-                                options={almacenes.map((a) => ({
-                                    value: String(a.id),
-                                    label: a.nombre,
-                                }))}
+                                options={[
+                                    { value: '', label: 'Seleccione un almacén' },
+                                    ...almacenes.map((a) => ({
+                                        value: String(a.id),
+                                        label: a.nombre,
+                                    })),
+                                ]}
                                 error={formErrors.almacen_id}
                             />
                             <Select

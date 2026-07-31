@@ -313,10 +313,13 @@ export default function Transferencias() {
                                 onChange={(e) =>
                                     setForm((prev) => ({ ...prev, almacen_origen_id: e.target.value }))
                                 }
-                                options={almacenes.map((a) => ({
-                                    value: String(a.id),
-                                    label: a.nombre,
-                                }))}
+                                options={[
+                                    { value: '', label: 'Seleccione un almacén' },
+                                    ...almacenes.map((a) => ({
+                                        value: String(a.id),
+                                        label: a.nombre,
+                                    })),
+                                ]}
                                 error={formErrors.almacen_origen_id}
                             />
                             <Select
@@ -326,10 +329,13 @@ export default function Transferencias() {
                                 onChange={(e) =>
                                     setForm((prev) => ({ ...prev, almacen_destino_id: e.target.value }))
                                 }
-                                options={almacenes.map((a) => ({
-                                    value: String(a.id),
-                                    label: a.nombre,
-                                }))}
+                                options={[
+                                    { value: '', label: 'Seleccione un almacén' },
+                                    ...almacenes.map((a) => ({
+                                        value: String(a.id),
+                                        label: a.nombre,
+                                    })),
+                                ]}
                                 error={formErrors.almacen_destino_id}
                             />
                         </>

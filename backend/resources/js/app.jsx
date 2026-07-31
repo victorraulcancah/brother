@@ -20,6 +20,7 @@ import Movimientos from './pages/Movimientos';
 import Transferencias from './pages/Transferencias';
 import Ajustes from './pages/Ajustes';
 import TomasInventario from './pages/TomasInventario';
+import Prestamos from './pages/Prestamos';
 
 const routes = [
     { path: '/dashboard', element: <Dashboard /> },
@@ -37,6 +38,7 @@ const routes = [
     { path: '/transferencias', element: <Transferencias /> },
     { path: '/ajustes', element: <Ajustes /> },
     { path: '/tomas-inventario', element: <TomasInventario /> },
+    { path: '/prestamos', element: <Prestamos /> },
 ];
 
 createRoot(document.getElementById('root')).render(
