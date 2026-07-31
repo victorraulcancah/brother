@@ -17,17 +17,29 @@ import {
     Warehouse,
     ArrowLeftRight,
     ClipboardCheck,
+    ShoppingBag,
+    Contact,
+    ReceiptText,
+    Store,
+    Repeat,
+    Scale,
+    Handshake,
+    Wallet,
+    CreditCard,
+    Coins,
+    ArrowRightLeft,
+    HandCoins,
+    Receipt,
 } from 'lucide-react';
 
 export const navigation = [
     { label: 'Inicio', icon: Home, to: '/dashboard' },
     {
-        label: 'Gestión',
-        icon: SlidersHorizontal,
+        label: 'Ventas',
+        icon: ShoppingBag,
         children: [
-            { label: 'Roles', icon: Shield, to: '/roles' },
-            { label: 'Usuarios', icon: Users, to: '/usuarios' },
-            { label: 'Empresa', icon: Building2, to: '/empresa' },
+            { label: 'Clientes', icon: Contact, to: '/clientes' },
+            { label: 'Notas de Venta', icon: ReceiptText, to: '/notas-venta' },
         ],
     },
     {
@@ -55,9 +67,33 @@ export const navigation = [
         label: 'Inventario',
         icon: Warehouse,
         children: [
+            { label: 'Almacenes', icon: Store, to: '/almacenes' },
             { label: 'Existencias', icon: Warehouse, to: '/existencias' },
             { label: 'Movimientos', icon: ArrowLeftRight, to: '/movimientos' },
+            { label: 'Traslados', icon: Repeat, to: '/transferencias' },
+            { label: 'Ajustes', icon: Scale, to: '/ajustes' },
             { label: 'Tomas de inventario', icon: ClipboardCheck, to: '/tomas-inventario' },
+            { label: 'Préstamos', icon: Handshake, to: '/prestamos' },
+        ],
+    },
+    {
+        label: 'Tesorería',
+        icon: Wallet,
+        children: [
+            { label: 'Cuentas y Medios de Pago', icon: CreditCard, to: '/metodos-de-pago' },
+            { label: 'Cajas', icon: Coins, to: '/cajas' },
+            { label: 'Movimientos de Caja', icon: ArrowRightLeft, to: '/movimientos-caja' },
+            { label: 'Cuentas por Cobrar', icon: HandCoins, to: '/cuentas-por-cobrar' },
+            { label: 'Cuentas por Pagar', icon: Receipt, to: '/cuentas-por-pagar' },
+        ],
+    },
+    {
+        label: 'Gestión',
+        icon: SlidersHorizontal,
+        children: [
+            { label: 'Roles', icon: Shield, to: '/roles' },
+            { label: 'Usuarios', icon: Users, to: '/usuarios' },
+            { label: 'Empresa', icon: Building2, to: '/empresa' },
         ],
     },
 ];
