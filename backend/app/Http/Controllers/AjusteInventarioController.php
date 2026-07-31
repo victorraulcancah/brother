@@ -25,6 +25,7 @@ class AjusteInventarioController extends Controller
             'observaciones' => 'nullable|string',
         ]);
         $data['usuario_solicita_id'] = auth()->id();
+        $data['fecha'] = now();
         return response()->json(AjusteInventario::create($data), 201);
     }
 

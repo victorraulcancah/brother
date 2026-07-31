@@ -14,6 +14,12 @@ import Categorias from './pages/Categorias';
 import Marcas from './pages/Marcas';
 import SubMarcas from './pages/SubMarcas';
 import UnidadesMedida from './pages/UnidadesMedida';
+import Almacenes from './pages/Almacenes';
+import Existencias from './pages/Existencias';
+import Movimientos from './pages/Movimientos';
+import Transferencias from './pages/Transferencias';
+import Ajustes from './pages/Ajustes';
+import TomasInventario from './pages/TomasInventario';
 
 const routes = [
     { path: '/dashboard', element: <Dashboard /> },
@@ -25,6 +31,12 @@ const routes = [
     { path: '/marcas', element: <Marcas /> },
     { path: '/sub-marcas', element: <SubMarcas /> },
     { path: '/unidades-medida', element: <UnidadesMedida /> },
+    { path: '/almacenes', element: <Almacenes /> },
+    { path: '/existencias', element: <Existencias /> },
+    { path: '/movimientos', element: <Movimientos /> },
+    { path: '/transferencias', element: <Transferencias /> },
+    { path: '/ajustes', element: <Ajustes /> },
+    { path: '/tomas-inventario', element: <TomasInventario /> },
 ];
 
 createRoot(document.getElementById('root')).render(
