@@ -30,10 +30,15 @@ class BilleteraDigitalResource extends Resource
         return $schema->schema([
             SchemaComponents\Section::make('Datos de la Billetera')
                 ->schema([
-                    Components\TextInput::make('nombre')->label('Nombre')->required()->maxLength(255),
-                    Components\TextInput::make('numero_asociado')->label('N° Asociado')->required()->maxLength(255),
-                    Components\Toggle::make('requiere_numero_operacion')->label('Requiere n° operación'),
-                    Components\Toggle::make('requiere_captura')->label('Requiere captura'),
+                    Components\Select::make('nombre')->label('Tipo')->required()
+                        ->options(['Yape' => 'Yape', 'Plin' => 'Plin', 'Tunki' => 'Tunki', 'Agora' => 'Agora', 'BIM' => 'BIM', 'Ligo' => 'Ligo', 'Otro' => 'Otro']),
+                    Components\Select::make('cuenta_bancaria_id')->label('Cuenta vinculada')
+                        ->relationship('cuentaBancaria', 'numero_cuenta')->searchable()->preload()->nullable(),
+                    Components\TextInput::make('numero_asociado')->label('Teléfono')->required()->maxLength(255),
+                    Components\TextInput::make('titular')->label('Titular')->maxLength(255),
+                    Components\FileUpload::make('qr')->label('QR de pago')
+                        ->image()->imageEditor()->disk('public')->directory('qrs')->visibility('public')
+                        ->maxSize(2048)->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp']),
                     Components\Toggle::make('activo')->label('Activo')->default(true),
                 ])->columns(2),
         ]);
@@ -43,11 +48,15 @@ class BilleteraDigitalResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nombre')->label('Nombre')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('numero_asociado')->label('N° Asociado')->searchable(),
-                Tables\Columns\IconColumn::make('requiere_numero_operacion')->label('N° Oper.')->boolean(),
-                Tables\Columns\IconColumn::make('requiere_captura')->label('Captura')->boolean(),
-                Tables\Columns\IconColumn::make('activo')->label('Activo')->boolean(),
+                Tables\Columns\TextColumn::make('nombre')->label('Tipo')->badge()->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('cuentaBancaria.numero_cuenta')->label('Cuenta vinculada')->placeholder('—'),
+                Tables\Columns\TextColumn::make('numero_asociado')->label('Teléfono')->searchable(),
+                Tables\Columns\TextColumn::make('titular')->label('Titular')->searchable()->placeholder('—'),
+                Tables\Columns\ImageColumn::make('qr')->label('QR')->disk('public')->size(48)
+                    ->extraImgAttributes(['style' => 'object-fit:cover;border-radius:6px']),
+                Tables\Columns\TextColumn::make('activo')->label('Estado')->badge()
+                    ->formatStateUsing(fn ($state) => $state ? 'Activo' : 'Inactivo')
+                    ->color(fn ($state) => $state ? 'success' : 'gray'),
             ])
             ->headerActions([
                 Actions\CreateAction::make(),

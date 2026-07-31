@@ -8,7 +8,12 @@ class Banco extends Model
 {
     protected $table = 'bancos';
 
-    protected $fillable = ['nombre'];
+    protected $fillable = ['nombre', 'activo'];
+
+    protected function casts(): array
+    {
+        return ['activo' => 'boolean'];
+    }
 
     public function cuentas()
     {

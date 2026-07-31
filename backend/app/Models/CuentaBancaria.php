@@ -10,8 +10,10 @@ class CuentaBancaria extends Model
 
     protected $fillable = [
         'banco_id',
+        'alias',
         'numero_cuenta',
         'cci',
+        'titular',
         'moneda',
         'tipo_cuenta',
         'activo',

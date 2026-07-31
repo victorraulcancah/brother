@@ -32,8 +32,10 @@ class CuentaBancariaResource extends Resource
                 ->schema([
                     Components\Select::make('banco_id')->label('Banco')
                         ->relationship('banco', 'nombre')->searchable()->preload()->required(),
+                    Components\TextInput::make('alias')->label('Alias / Nombre')->maxLength(255),
                     Components\TextInput::make('numero_cuenta')->label('N° Cuenta')->required()->maxLength(255),
                     Components\TextInput::make('cci')->label('CCI')->maxLength(255),
+                    Components\TextInput::make('titular')->label('Titular')->maxLength(255),
                     Components\Select::make('moneda')->label('Moneda')
                         ->options(['PEN' => 'Soles (PEN)', 'USD' => 'Dólares (USD)'])->required(),
                     Components\Select::make('tipo_cuenta')->label('Tipo')
@@ -48,8 +50,10 @@ class CuentaBancariaResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('banco.nombre')->label('Banco')->sortable(),
+                Tables\Columns\TextColumn::make('alias')->label('Alias')->searchable()->placeholder('—'),
                 Tables\Columns\TextColumn::make('numero_cuenta')->label('N° Cuenta')->searchable(),
-                Tables\Columns\TextColumn::make('cci')->label('CCI')->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('cci')->label('CCI')->searchable()->placeholder('—')->toggleable(),
+                Tables\Columns\TextColumn::make('titular')->label('Titular')->searchable()->placeholder('—'),
                 Tables\Columns\TextColumn::make('moneda')->label('Moneda')->badge(),
                 Tables\Columns\TextColumn::make('tipo_cuenta')->label('Tipo')->badge()
                     ->formatStateUsing(fn ($state) => $state === 'corriente' ? 'Corriente' : 'Ahorros'),

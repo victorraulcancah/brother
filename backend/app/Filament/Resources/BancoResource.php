@@ -31,6 +31,7 @@ class BancoResource extends Resource
             SchemaComponents\Section::make('Datos del Banco')
                 ->schema([
                     Components\TextInput::make('nombre')->label('Nombre')->required()->maxLength(255),
+                    Components\Toggle::make('activo')->label('Activo')->default(true),
                 ]),
         ]);
     }
@@ -40,6 +41,7 @@ class BancoResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('nombre')->label('Nombre')->searchable()->sortable(),
+                Tables\Columns\IconColumn::make('activo')->label('Activo')->boolean(),
                 Tables\Columns\TextColumn::make('cuentas_count')->label('Cuentas')->counts('cuentas'),
             ])
             ->headerActions([

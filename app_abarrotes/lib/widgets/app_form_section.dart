@@ -6,14 +6,16 @@ import '../theme/app_colors.dart';
 class AppFormSection extends StatelessWidget {
   final String title;
   final String? description;
+  final Widget? trailing;
   final List<Widget> children;
   final double gap;
 
   const AppFormSection({
     super.key,
     required this.title,
-    required this.children,
     this.description,
+    this.trailing,
+    required this.children,
     this.gap = 16,
   });
 
@@ -30,12 +32,19 @@ class AppFormSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppColors.textStrong,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textStrong,
+                  ),
+                ),
+              ),
+              ?trailing,
+            ],
           ),
           if (description != null) ...[
             const SizedBox(height: 4),

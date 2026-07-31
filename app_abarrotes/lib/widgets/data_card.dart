@@ -36,6 +36,7 @@ class DataCardAction {
 /// Se usa dentro de un `ListView` para reemplazar tablas anchas en móvil.
 class DataCard extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final List<DataCardRow> rows;
   final List<DataCardAction> actions;
   final VoidCallback? onTap;
@@ -43,6 +44,7 @@ class DataCard extends StatelessWidget {
   const DataCard({
     super.key,
     required this.title,
+    this.subtitle,
     required this.rows,
     this.actions = const [],
     this.onTap,
@@ -67,6 +69,13 @@ class DataCard extends StatelessWidget {
                   color: AppColors.textStrong,
                 ),
               ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  subtitle!,
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+              ],
               const SizedBox(height: 12),
               for (final row in rows)
                 Padding(

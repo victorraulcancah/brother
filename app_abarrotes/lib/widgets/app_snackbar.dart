@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
-enum AppSnackbarType { success, error, info }
+enum AppSnackbarType { success, error, info, warning }
 
 /// Aviso tipo toast, con color e icono según el tipo.
 /// Uso: `showAppSnackbar(context, 'Guardado', type: AppSnackbarType.success);`
@@ -14,11 +14,13 @@ void showAppSnackbar(
     AppSnackbarType.success => AppColors.success,
     AppSnackbarType.error => AppColors.danger,
     AppSnackbarType.info => AppColors.info,
+    AppSnackbarType.warning => AppColors.warning,
   };
   final icon = switch (type) {
     AppSnackbarType.success => Icons.check_circle_outline,
     AppSnackbarType.error => Icons.error_outline,
     AppSnackbarType.info => Icons.info_outline,
+    AppSnackbarType.warning => Icons.warning_amber_rounded,
   };
 
   ScaffoldMessenger.of(context)

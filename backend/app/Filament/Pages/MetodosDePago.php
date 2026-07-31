@@ -9,12 +9,14 @@ use App\Models\TarjetaBancaria;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -59,6 +61,7 @@ class MetodosDePago extends Page implements HasTable
     {
         return [
             TextInput::make('nombre')->label('Nombre')->required()->maxLength(255),
+            Toggle::make('activo')->label('Activo')->default(true),
         ];
     }
 
@@ -68,6 +71,7 @@ class MetodosDePago extends Page implements HasTable
             ->query(Banco::query())
             ->columns([
                 TextColumn::make('nombre')->label('Nombre')->searchable()->sortable(),
+                IconColumn::make('activo')->label('Activo')->boolean(),
                 TextColumn::make('cuentas_count')->label('Cuentas')->counts('cuentas'),
             ])
             ->actions([
@@ -75,7 +79,10 @@ class MetodosDePago extends Page implements HasTable
                     ->icon('heroicon-o-pencil')->color('primary')
                     ->modalWidth('lg')
                     ->form($this->bancoForm())
-                    ->fillForm(fn (Banco $record): array => ['nombre' => $record->nombre])
+                    ->fillForm(fn (Banco $record): array => [
+                        'nombre' => $record->nombre,
+                        'activo' => (bool) $record->activo,
+                    ])
                     ->action(function (Banco $record, array $data): void {
                         $record->update($data);
                         Notification::make()->success()->title('Banco actualizado')->send();
@@ -92,12 +99,15 @@ class MetodosDePago extends Page implements HasTable
             Select::make('banco_id')->label('Banco')->required()
                 ->options(fn () => Banco::orderBy('nombre')->pluck('nombre', 'id'))
                 ->searchable(),
+            TextInput::make('alias')->label('Alias / Nombre')->maxLength(255)
+                ->placeholder('Ej. Cuenta principal soles'),
             Select::make('tipo_cuenta')->label('Tipo')->required()
                 ->options(['corriente' => 'Corriente', 'ahorros' => 'Ahorros']),
             Select::make('moneda')->label('Moneda')->required()
                 ->options(['PEN' => 'Soles (PEN)', 'USD' => 'Dólares (USD)']),
             TextInput::make('numero_cuenta')->label('N° Cuenta')->required()->maxLength(255),
             TextInput::make('cci')->label('CCI')->maxLength(255),
+            TextInput::make('titular')->label('Titular')->maxLength(255),
             Toggle::make('activo')->label('Activo')->default(true),
         ];
     }
@@ -108,8 +118,10 @@ class MetodosDePago extends Page implements HasTable
             ->query(CuentaBancaria::query()->with('banco'))
             ->columns([
                 TextColumn::make('banco.nombre')->label('Banco')->sortable(),
+                TextColumn::make('alias')->label('Alias')->searchable()->placeholder('—'),
                 TextColumn::make('numero_cuenta')->label('N° Cuenta')->searchable(),
-                TextColumn::make('cci')->label('CCI')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('cci')->label('CCI')->searchable()->placeholder('—')->toggleable(),
+                TextColumn::make('titular')->label('Titular')->searchable()->placeholder('—'),
                 TextColumn::make('moneda')->label('Moneda')->badge(),
                 TextColumn::make('tipo_cuenta')->label('Tipo')->badge()
                     ->formatStateUsing(fn ($state) => $state === 'corriente' ? 'Corriente' : 'Ahorros'),
@@ -127,10 +139,12 @@ class MetodosDePago extends Page implements HasTable
                     ->form($this->cuentaForm())
                     ->fillForm(fn (CuentaBancaria $record): array => [
                         'banco_id' => $record->banco_id,
+                        'alias' => $record->alias,
                         'tipo_cuenta' => $record->tipo_cuenta,
                         'moneda' => $record->moneda,
                         'numero_cuenta' => $record->numero_cuenta,
                         'cci' => $record->cci,
+                        'titular' => $record->titular,
                         'activo' => (bool) $record->activo,
                     ])
                     ->action(function (CuentaBancaria $record, array $data): void {
@@ -214,10 +228,31 @@ class MetodosDePago extends Page implements HasTable
     protected function billeteraForm(): array
     {
         return [
-            TextInput::make('nombre')->label('Nombre')->required()->maxLength(255),
-            TextInput::make('numero_asociado')->label('N° Asociado')->required()->maxLength(255),
-            Toggle::make('requiere_numero_operacion')->label('Requiere n° operación'),
-            Toggle::make('requiere_captura')->label('Requiere captura'),
+            Select::make('nombre')->label('Tipo')->required()
+                ->options([
+                    'Yape' => 'Yape',
+                    'Plin' => 'Plin',
+                    'Tunki' => 'Tunki',
+                    'Agora' => 'Agora',
+                    'BIM' => 'BIM',
+                    'Ligo' => 'Ligo',
+                    'Otro' => 'Otro',
+                ]),
+            Select::make('cuenta_bancaria_id')->label('Cuenta vinculada')
+                ->options(fn () => CuentaBancaria::with('banco')->get()
+                    ->mapWithKeys(fn ($c) => [$c->id => (($c->banco?->nombre) . ' - ' . $c->numero_cuenta)]))
+                ->searchable()->nullable(),
+            TextInput::make('numero_asociado')->label('Teléfono')->required()->maxLength(255),
+            TextInput::make('titular')->label('Titular')->maxLength(255),
+            FileUpload::make('qr')->label('QR de pago')
+                ->image()
+                ->imageEditor()
+                ->disk('public')
+                ->directory('qrs')
+                ->visibility('public')
+                ->maxSize(2048)
+                ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp'])
+                ->helperText('Imagen del QR (ej. el de Yape) para mostrar al cobrar.'),
             Toggle::make('activo')->label('Activo')->default(true),
         ];
     }
@@ -225,13 +260,21 @@ class MetodosDePago extends Page implements HasTable
     protected function billeterasTable(Table $table): Table
     {
         return $table
-            ->query(BilleteraDigital::query())
+            ->query(BilleteraDigital::query()->with('cuentaBancaria.banco'))
             ->columns([
-                TextColumn::make('nombre')->label('Nombre')->searchable()->sortable(),
-                TextColumn::make('numero_asociado')->label('N° Asociado')->searchable(),
-                IconColumn::make('requiere_numero_operacion')->label('N° Oper.')->boolean(),
-                IconColumn::make('requiere_captura')->label('Captura')->boolean(),
-                IconColumn::make('activo')->label('Activo')->boolean(),
+                TextColumn::make('nombre')->label('Tipo')->badge()->searchable()->sortable(),
+                TextColumn::make('cuentaBancaria.numero_cuenta')->label('Cuenta vinculada')
+                    ->formatStateUsing(fn ($state, BilleteraDigital $record) => $record->cuentaBancaria
+                        ? ($record->cuentaBancaria->banco?->nombre . ' - ' . $record->cuentaBancaria->numero_cuenta)
+                        : null)
+                    ->placeholder('—'),
+                TextColumn::make('numero_asociado')->label('Teléfono')->searchable(),
+                TextColumn::make('titular')->label('Titular')->searchable()->placeholder('—'),
+                ImageColumn::make('qr')->label('QR')->disk('public')->size(48)
+                    ->extraImgAttributes(['style' => 'object-fit:cover;border-radius:6px']),
+                TextColumn::make('activo')->label('Estado')->badge()
+                    ->formatStateUsing(fn ($state) => $state ? 'Activo' : 'Inactivo')
+                    ->color(fn ($state) => $state ? 'success' : 'gray'),
             ])
             ->actions([
                 EditAction::make('editar')
@@ -240,9 +283,10 @@ class MetodosDePago extends Page implements HasTable
                     ->form($this->billeteraForm())
                     ->fillForm(fn (BilleteraDigital $record): array => [
                         'nombre' => $record->nombre,
+                        'cuenta_bancaria_id' => $record->cuenta_bancaria_id,
                         'numero_asociado' => $record->numero_asociado,
-                        'requiere_numero_operacion' => (bool) $record->requiere_numero_operacion,
-                        'requiere_captura' => (bool) $record->requiere_captura,
+                        'titular' => $record->titular,
+                        'qr' => $record->qr,
                         'activo' => (bool) $record->activo,
                     ])
                     ->action(function (BilleteraDigital $record, array $data): void {

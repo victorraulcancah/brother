@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 class AppTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final IconData icon;
+  final IconData? icon;
   final bool obscureText;
   final Widget? suffixIcon;
   final TextInputType? keyboardType;
@@ -16,7 +16,7 @@ class AppTextField extends StatelessWidget {
     super.key,
     required this.controller,
     required this.label,
-    required this.icon,
+    this.icon,
     this.obscureText = false,
     this.suffixIcon,
     this.keyboardType,
@@ -32,7 +32,7 @@ class AppTextField extends StatelessWidget {
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
+        prefixIcon: icon == null ? null : Icon(icon),
         suffixIcon: suffixIcon,
       ),
     );

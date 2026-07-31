@@ -157,7 +157,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 final presCount = _presentacionesCount(item);
                 return DataCard(
                   title: item['nombre']?.toString() ?? '',
-                  subtitle: '${item['codigo']}  ·  ${presCount} presentac.  ·  ${_nested(item, 'categoria')}',
+                  subtitle: '${item['codigo']}  ·  $presCount presentac.  ·  ${_nested(item, 'categoria')}',
                   rows: [
                     DataCardRow.text('Precio base', 'S/ ${item['precio_base'] ?? ''}'),
                     DataCardRow(

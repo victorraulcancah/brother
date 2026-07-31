@@ -11,6 +11,9 @@ class BilleteraDigital extends Model
     protected $fillable = [
         'nombre',
         'numero_asociado',
+        'cuenta_bancaria_id',
+        'titular',
+        'qr',
         'requiere_captura',
         'requiere_numero_operacion',
         'activo',
@@ -23,5 +26,10 @@ class BilleteraDigital extends Model
             'requiere_numero_operacion' => 'boolean',
             'activo' => 'boolean',
         ];
+    }
+
+    public function cuentaBancaria()
+    {
+        return $this->belongsTo(CuentaBancaria::class, 'cuenta_bancaria_id');
     }
 }

@@ -183,7 +183,8 @@ class _AlmacenesScreenState extends State<AlmacenesScreen> {
         ? (prod['unidad_base'] as Map)['abreviatura']?.toString() ?? ''
         : '';
     final presUnidad = pres['unidad_base'] is Map
-        ? (pres['unidad_base'] as Map)['abreviatura']?.toString() ?? '';
+        ? (pres['unidad_base'] as Map)['abreviatura']?.toString() ?? ''
+        : '';
     final unidad = presUnidad.isNotEmpty ? presUnidad : prodUnidad;
 
     final stockStr = stock == stock.roundToDouble()
