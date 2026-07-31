@@ -46,13 +46,13 @@ const productColumns = [
             <>
                 <button
                     aria-label="Editar"
-                    className="rounded-md p-1.5 text-gray-500 transition hover:bg-primary-50 hover:text-primary-700"
+                    className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 hover:text-primary-700"
                 >
                     <Edit className="h-4 w-4" />
                 </button>
                 <button
                     aria-label="Eliminar"
-                    className="rounded-md p-1.5 text-gray-500 transition hover:bg-red-50 hover:text-red-600"
+                    className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700"
                 >
                     <Trash2 className="h-4 w-4" />
                 </button>
