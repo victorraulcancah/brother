@@ -10,6 +10,7 @@ class AjusteDetalle extends Model
     protected $fillable = [
         'ajuste_id',
         'producto_presentacion_id',
+        'cantidad',
         'cantidad_sistema',
         'cantidad_fisica',
         'diferencia',

@@ -5,6 +5,7 @@ import {
     BadgeCheck,
     Edit,
     Lock,
+    Plus,
     Scale,
     Trash2,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import { Alert, Badge, Button, DataTable, Input, Modal, Select, Tabs } from '../
 
 const emptyForm = { almacen_id: '', tipo: 'entrada', motivo: '', observaciones: '' };
 const emptyMotivoForm = { nombre: '', tipo: 'entrada', activo: true };
+const emptyDetalle = { producto_presentacion_id: '', cantidad: '' };
 
 const estadoInfo = {
     pendiente: { label: 'Pendiente', variant: 'amber' },
@@ -32,12 +34,14 @@ export default function Ajustes() {
     const toast = useToast();
     const [ajustes, setAjustes] = useState([]);
     const [almacenes, setAlmacenes] = useState([]);
+    const [productos, setProductos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState(emptyForm);
+    const [detalles, setDetalles] = useState([{ ...emptyDetalle }]);
     const [formErrors, setFormErrors] = useState({});
     const [saving, setSaving] = useState(false);
 
@@ -68,12 +72,14 @@ export default function Ajustes() {
         setLoading(true);
         setError(null);
         try {
-            const [ajustesRes, almRes] = await Promise.all([
+            const [ajustesRes, almRes, prodRes] = await Promise.all([
                 api.get('/ajustes'),
                 api.get('/almacenes'),
+                api.get('/productos'),
             ]);
             setAjustes(asList(ajustesRes));
             setAlmacenes(asList(almRes));
+            setProductos(asList(prodRes));
         } catch {
             setError('No se pudieron cargar los ajustes.');
         } finally {
@@ -103,9 +109,24 @@ export default function Ajustes() {
         }
     }, [activeTab, loadMotivos]);
 
+    const presentacionesOptions = productos.flatMap((p) =>
+        (Array.isArray(p.presentaciones) ? p.presentaciones : []).map((pres) => ({
+            value: String(pres.id),
+            label: `${p.nombre} — ${pres.nombre}`,
+        })),
+    );
+
+    const setDetalle = (index, patch) => {
+        setDetalles((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
+    };
+    const addDetalle = () => setDetalles((prev) => [...prev, { ...emptyDetalle }]);
+    const removeDetalle = (index) =>
+        setDetalles((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
+
     const openCreate = () => {
         setEditing(null);
         setForm(emptyForm);
+        setDetalles([{ ...emptyDetalle }]);
         setFormErrors({});
         setModalOpen(true);
     };
@@ -136,13 +157,23 @@ export default function Ajustes() {
                 });
                 toast.success('Ajuste actualizado correctamente.');
             } else {
+                const lineas = detalles.filter((d) => d.producto_presentacion_id && Number(d.cantidad) > 0);
+                if (lineas.length === 0) {
+                    setFormErrors((prev) => ({ ...prev, detalles: 'Agrega al menos un producto con cantidad.' }));
+                    setSaving(false);
+                    return;
+                }
                 await api.post('/ajustes', {
                     almacen_id: form.almacen_id,
                     tipo: form.tipo,
                     motivo: form.motivo,
                     observaciones: form.observaciones,
+                    detalles: lineas.map((d) => ({
+                        producto_presentacion_id: d.producto_presentacion_id,
+                        cantidad: d.cantidad,
+                    })),
                 });
-                toast.success('Ajuste creado correctamente.');
+                toast.success('Ajuste creado y stock actualizado.');
             }
             setModalOpen(false);
             await load();
@@ -651,6 +682,59 @@ export default function Ajustes() {
                                 }}
                                 error={formErrors.motivo}
                             />
+
+                            <div>
+                                <div className="mb-1 flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Productos ({form.tipo === 'salida' ? 'a restar' : 'a sumar'})
+                                    </span>
+                                    <Button type="button" variant="ghost" size="sm" onClick={addDetalle}>
+                                        <Plus className="h-4 w-4" />
+                                        Agregar
+                                    </Button>
+                                </div>
+                                <div className="space-y-2">
+                                    {detalles.map((d, index) => (
+                                        <div key={index} className="flex items-start gap-2">
+                                            <Select
+                                                value={d.producto_presentacion_id}
+                                                onChange={(e) => {
+                                                    setDetalle(index, { producto_presentacion_id: e.target.value });
+                                                    if (formErrors.detalles) {
+                                                        setFormErrors((prev) => ({ ...prev, detalles: undefined }));
+                                                    }
+                                                }}
+                                                options={[
+                                                    { value: '', label: 'Producto — presentación' },
+                                                    ...presentacionesOptions,
+                                                ]}
+                                                className="flex-1"
+                                            />
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                placeholder="Cant."
+                                                value={d.cantidad}
+                                                onChange={(e) => setDetalle(index, { cantidad: e.target.value })}
+                                                className="w-24"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeDetalle(index)}
+                                                disabled={detalles.length === 1}
+                                                aria-label="Quitar"
+                                                className="mt-1 rounded-md p-2 text-red-600 transition hover:bg-red-50 disabled:opacity-40"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                {formErrors.detalles && (
+                                    <p className="mt-1 text-xs text-red-600">{formErrors.detalles}</p>
+                                )}
+                            </div>
                         </>
                     )}
                     <Input

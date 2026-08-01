@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Almacen;
 use App\Models\Prestamo;
 use App\Models\PrestamoDevolucion;
+use App\Models\ProductoPresentacion;
+use App\Services\StockService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PrestamoController extends Controller
 {
@@ -33,13 +37,30 @@ class PrestamoController extends Controller
         $data['estado'] = 'prestado';
         $data['usuario_id'] = auth()->id();
 
-        $prestamo = Prestamo::create($data);
+        try {
+            $prestamo = DB::transaction(function () use ($data) {
+                $prestamo = Prestamo::create($data);
+                $almacen = Almacen::findOrFail($data['almacen_id']);
+                $stock = app(StockService::class);
 
-        foreach ($data['detalles'] as $detalle) {
-            $prestamo->detalles()->create([
-                'producto_presentacion_id' => $detalle['producto_presentacion_id'],
-                'cantidad_prestada' => $detalle['cantidad_prestada'],
-            ]);
+                foreach ($data['detalles'] as $detalle) {
+                    $presentacion = ProductoPresentacion::findOrFail($detalle['producto_presentacion_id']);
+                    $cantidad = (float) $detalle['cantidad_prestada'];
+
+                    $prestamo->detalles()->create([
+                        'producto_presentacion_id' => $presentacion->id,
+                        'cantidad_prestada' => $cantidad,
+                    ]);
+
+                    // "prestado" (yo presto) → sale stock; "recibido" (me prestan) → entra stock.
+                    $args = [$presentacion, $almacen, $cantidad, 0, 'prestamo', 'prestamo', $prestamo->id, auth()->id()];
+                    $data['tipo'] === 'prestado' ? $stock->salida(...$args) : $stock->entrada(...$args);
+                }
+
+                return $prestamo;
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
         return response()->json(
@@ -98,16 +119,32 @@ class PrestamoController extends Controller
             return response()->json(['message' => 'La cantidad devuelta supera lo prestado.'], 422);
         }
 
-        PrestamoDevolucion::create([
-            'prestamo_id' => $prestamo->id,
-            'producto_presentacion_id' => $data['producto_presentacion_id'],
-            'cantidad' => $data['cantidad'],
-            'fecha' => now(),
-            'usuario_id' => auth()->id(),
-        ]);
+        try {
+            DB::transaction(function () use ($prestamo, $data) {
+                $presentacion = ProductoPresentacion::findOrFail($data['producto_presentacion_id']);
+                $almacen = $prestamo->almacen()->firstOrFail();
+                $cantidad = (float) $data['cantidad'];
 
-        $prestamo->estado = $this->calcularEstado($prestamo);
-        $prestamo->save();
+                PrestamoDevolucion::create([
+                    'prestamo_id' => $prestamo->id,
+                    'producto_presentacion_id' => $presentacion->id,
+                    'cantidad' => $cantidad,
+                    'fecha' => now(),
+                    'usuario_id' => auth()->id(),
+                ]);
+
+                // Devolución de un "prestado" (me devuelven) → entra stock;
+                // de un "recibido" (yo devuelvo) → sale stock.
+                $stock = app(StockService::class);
+                $args = [$presentacion, $almacen, $cantidad, 0, 'prestamo', 'prestamo', $prestamo->id, auth()->id()];
+                $prestamo->tipo === 'prestado' ? $stock->entrada(...$args) : $stock->salida(...$args);
+
+                $prestamo->estado = $this->calcularEstado($prestamo);
+                $prestamo->save();
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json(
             $prestamo->load(['almacen', 'detalles.presentacion.producto', 'devoluciones.presentacion.producto'])

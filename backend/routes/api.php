@@ -60,6 +60,9 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('almacenes', AlmacenController::class);
     Route::get('movimientos', [MovimientoInventarioController::class, 'index']);
     Route::apiResource('transferencias', TransferenciaController::class);
+    Route::post('transferencias/{transferencia}/enviar', [TransferenciaController::class, 'enviar']);
+    Route::post('transferencias/{transferencia}/recibir', [TransferenciaController::class, 'recibir']);
+    Route::post('transferencias/{transferencia}/anular', [TransferenciaController::class, 'anular']);
     Route::apiResource('ajustes', AjusteInventarioController::class);
     Route::apiResource('tomas-inventario', TomaInventarioController::class);
     Route::apiResource('motivos-movimiento', MotivoMovimientoController::class);

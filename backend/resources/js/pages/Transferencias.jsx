@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, Edit, Repeat, Trash2 } from 'lucide-react';
+import { ArrowRight, Ban, Edit, PackageCheck, Plus, Repeat, Send, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
@@ -7,6 +7,7 @@ import PageHeader, { CreateButton } from '../components/PageHeader';
 import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
 
 const emptyForm = { almacen_origen_id: '', almacen_destino_id: '', observaciones: '' };
+const emptyDetalle = { producto_presentacion_id: '', cantidad_enviada: '' };
 
 const estadoInfo = {
     pendiente: { label: 'Pendiente', variant: 'amber' },
@@ -19,14 +20,17 @@ export default function Transferencias() {
     const toast = useToast();
     const [transferencias, setTransferencias] = useState([]);
     const [almacenes, setAlmacenes] = useState([]);
+    const [productos, setProductos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState(emptyForm);
+    const [detalles, setDetalles] = useState([{ ...emptyDetalle }]);
     const [formErrors, setFormErrors] = useState({});
     const [saving, setSaving] = useState(false);
+    const [actionId, setActionId] = useState(null);
 
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
@@ -39,12 +43,14 @@ export default function Transferencias() {
         setLoading(true);
         setError(null);
         try {
-            const [transRes, almRes] = await Promise.all([
+            const [transRes, almRes, prodRes] = await Promise.all([
                 api.get('/transferencias'),
                 api.get('/almacenes'),
+                api.get('/productos'),
             ]);
             setTransferencias(asList(transRes));
             setAlmacenes(asList(almRes));
+            setProductos(asList(prodRes));
         } catch {
             setError('No se pudieron cargar las transferencias.');
         } finally {
@@ -56,9 +62,36 @@ export default function Transferencias() {
         load();
     }, [load]);
 
+    const presentacionesOptions = productos.flatMap((p) =>
+        (Array.isArray(p.presentaciones) ? p.presentaciones : []).map((pres) => ({
+            value: String(pres.id),
+            label: `${p.nombre} — ${pres.nombre}`,
+        })),
+    );
+
+    const setDetalle = (index, patch) =>
+        setDetalles((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
+    const addDetalle = () => setDetalles((prev) => [...prev, { ...emptyDetalle }]);
+    const removeDetalle = (index) =>
+        setDetalles((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
+
+    const runAccion = async (row, accion, exito) => {
+        setActionId(row.id);
+        try {
+            await api.post(`/transferencias/${row.id}/${accion}`);
+            toast.success(exito);
+            await load();
+        } catch (err) {
+            toast.error(err.response?.data?.message ?? 'No se pudo completar la acción.');
+        } finally {
+            setActionId(null);
+        }
+    };
+
     const openCreate = () => {
         setEditing(null);
         setForm(emptyForm);
+        setDetalles([{ ...emptyDetalle }]);
         setFormErrors({});
         setModalOpen(true);
     };
@@ -88,12 +121,22 @@ export default function Transferencias() {
                 });
                 toast.success('Transferencia actualizada correctamente.');
             } else {
+                const lineas = detalles.filter((d) => d.producto_presentacion_id && Number(d.cantidad_enviada) > 0);
+                if (lineas.length === 0) {
+                    setFormErrors((prev) => ({ ...prev, detalles: 'Agrega al menos un producto con cantidad.' }));
+                    setSaving(false);
+                    return;
+                }
                 await api.post('/transferencias', {
                     almacen_origen_id: form.almacen_origen_id,
                     almacen_destino_id: form.almacen_destino_id,
                     observaciones: form.observaciones,
+                    detalles: lineas.map((d) => ({
+                        producto_presentacion_id: d.producto_presentacion_id,
+                        cantidad_enviada: d.cantidad_enviada,
+                    })),
                 });
-                toast.success('Transferencia creada correctamente.');
+                toast.success('Traslado creado. Ahora puedes enviarlo.');
             }
             setModalOpen(false);
             await load();
@@ -233,24 +276,64 @@ export default function Transferencias() {
             type: 'actions',
             key: 'actions',
             label: 'Acciones',
-            actions: (row) => (
-                <>
-                    <button
-                        aria-label="Editar"
-                        onClick={() => openEdit(row)}
-                        className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 hover:text-primary-700"
-                    >
-                        <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                        aria-label="Eliminar"
-                        onClick={() => setDeleteTarget(row)}
-                        className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700"
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </button>
-                </>
-            ),
+            actions: (row) => {
+                const busy = actionId === row.id;
+                return (
+                    <>
+                        {row.estado === 'pendiente' && (
+                            <>
+                                <button
+                                    aria-label="Enviar"
+                                    title="Enviar (descuenta de origen)"
+                                    disabled={busy}
+                                    onClick={() => runAccion(row, 'enviar', 'Traslado enviado. Stock descontado del origen.')}
+                                    className="rounded-md p-1.5 text-blue-600 transition hover:bg-blue-50 disabled:opacity-40"
+                                >
+                                    <Send className="h-4 w-4" />
+                                </button>
+                                <button
+                                    aria-label="Editar"
+                                    onClick={() => openEdit(row)}
+                                    className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 hover:text-primary-700"
+                                >
+                                    <Edit className="h-4 w-4" />
+                                </button>
+                                <button
+                                    aria-label="Anular"
+                                    title="Anular"
+                                    disabled={busy}
+                                    onClick={() => runAccion(row, 'anular', 'Traslado anulado.')}
+                                    className="rounded-md p-1.5 text-gray-500 transition hover:bg-gray-100 disabled:opacity-40"
+                                >
+                                    <Ban className="h-4 w-4" />
+                                </button>
+                                <button
+                                    aria-label="Eliminar"
+                                    onClick={() => setDeleteTarget(row)}
+                                    className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </>
+                        )}
+                        {row.estado === 'en_transito' && (
+                            <button
+                                aria-label="Recibir"
+                                title="Recibir (ingresa al destino)"
+                                disabled={busy}
+                                onClick={() => runAccion(row, 'recibir', 'Traslado recibido. Stock ingresado al destino.')}
+                                className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-green-600 transition hover:bg-green-50 disabled:opacity-40"
+                            >
+                                <PackageCheck className="h-4 w-4" />
+                                Recibir
+                            </button>
+                        )}
+                        {(row.estado === 'recibida' || row.estado === 'cancelada') && (
+                            <span className="text-xs text-gray-400">—</span>
+                        )}
+                    </>
+                );
+            },
         },
     ];
 
