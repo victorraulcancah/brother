@@ -228,22 +228,26 @@ class CatalogSeeder extends Seeder
             $producto = Producto::create($data);
 
             foreach ($presentaciones as $presData) {
-                $presentacion = ProductoPresentacion::create(array_merge(
+                ProductoPresentacion::create(array_merge(
                     $presData,
                     ['producto_id' => $producto->id]
                 ));
-
-                ProductoAlmacenStock::create([
-                    'producto_presentacion_id' => $presentacion->id,
-                    'almacen_id' => $almacenPrincipal->id,
-                    'stock_actual' => 100,
-                    'stock_anterior' => 0,
-                    'stock_reservado' => 0,
-                    'stock_disponible' => 100,
-                    'stock_minimo' => 10,
-                    'stock_maximo' => 500,
-                ]);
             }
+
+            // Stock inicial: una fila por producto (en unidad base) con costo promedio
+            // aproximado (~60% del precio base), para poblar Existencias y el Kardex valorizado.
+            $stock = rand(20, 200);
+            ProductoAlmacenStock::create([
+                'producto_id' => $producto->id,
+                'almacen_id' => $almacenPrincipal->id,
+                'stock_actual' => $stock,
+                'stock_anterior' => 0,
+                'stock_reservado' => 0,
+                'stock_disponible' => $stock,
+                'costo_promedio' => round((float) ($producto->precio_base ?? 0) * 0.6, 2),
+                'stock_minimo' => 10,
+                'stock_maximo' => 500,
+            ]);
         }
     }
 }

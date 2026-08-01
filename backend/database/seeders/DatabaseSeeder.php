@@ -45,6 +45,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             MotivosMovimientoSeeder::class,
             CatalogSeeder::class,
+            DemoSeeder::class,
         ]);
     }
 }
