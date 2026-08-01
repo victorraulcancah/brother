@@ -3,6 +3,14 @@
 use App\Http\Controllers\AjusteInventarioController;
 use App\Http\Controllers\AlmacenController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BancoController;
+use App\Http\Controllers\BilleteraDigitalController;
+use App\Http\Controllers\CajaController;
+use App\Http\Controllers\CuentaBancariaController;
+use App\Http\Controllers\CuentaPorCobrarController;
+use App\Http\Controllers\CuentaPorPagarController;
+use App\Http\Controllers\MovimientoCajaController;
+use App\Http\Controllers\TarjetaBancariaController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\EmpresaController;
@@ -64,6 +72,16 @@ Route::middleware('auth:api')->group(function () {
     Route::get('notas-venta/{notaVenta}', [NotaVentaController::class, 'show']);
     Route::post('notas-venta/{notaVenta}/anular', [NotaVentaController::class, 'anular']);
     Route::delete('notas-venta/{notaVenta}', [NotaVentaController::class, 'destroy']);
+
+    // Tesorería
+    Route::apiResource('bancos', BancoController::class);
+    Route::apiResource('cuentas-bancarias', CuentaBancariaController::class);
+    Route::apiResource('tarjetas-bancarias', TarjetaBancariaController::class);
+    Route::apiResource('billeteras-digitales', BilleteraDigitalController::class);
+    Route::apiResource('cajas', CajaController::class);
+    Route::get('movimientos-caja', [MovimientoCajaController::class, 'index']);
+    Route::get('cuentas-por-cobrar', [CuentaPorCobrarController::class, 'index']);
+    Route::get('cuentas-por-pagar', [CuentaPorPagarController::class, 'index']);
 
     // Gestión
     Route::apiResource('empresas', EmpresaController::class);

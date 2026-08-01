@@ -21,6 +21,12 @@ import Transferencias from './pages/Transferencias';
 import Ajustes from './pages/Ajustes';
 import TomasInventario from './pages/TomasInventario';
 import Prestamos from './pages/Prestamos';
+import MetodosDePago from './pages/MetodosDePago';
+import Cajas from './pages/Cajas';
+import MovimientosCaja from './pages/MovimientosCaja';
+import CuentasPorCobrar from './pages/CuentasPorCobrar';
+import CuentasPorPagar from './pages/CuentasPorPagar';
+import EnConstruccion from './pages/EnConstruccion';
 
 const routes = [
     { path: '/dashboard', element: <Dashboard /> },
@@ -39,6 +45,11 @@ const routes = [
     { path: '/ajustes', element: <Ajustes /> },
     { path: '/tomas-inventario', element: <TomasInventario /> },
     { path: '/prestamos', element: <Prestamos /> },
+    { path: '/metodos-de-pago', element: <MetodosDePago /> },
+    { path: '/cajas', element: <Cajas /> },
+    { path: '/movimientos-caja', element: <MovimientosCaja /> },
+    { path: '/cuentas-por-cobrar', element: <CuentasPorCobrar /> },
+    { path: '/cuentas-por-pagar', element: <CuentasPorPagar /> },
 ];
 
 createRoot(document.getElementById('root')).render(
@@ -55,7 +66,17 @@ createRoot(document.getElementById('root')).render(
                             element={<ProtectedRoute>{element}</ProtectedRoute>}
                         />
                     ))}
-                        <Route path="*" element={<Login />} />
+                        {/* Rutas del menú aún sin página: muestran "En construcción"
+                            (con sidebar) en vez de botar al login. Si el usuario no
+                            está autenticado, ProtectedRoute lo manda a /login. */}
+                        <Route
+                            path="*"
+                            element={
+                                <ProtectedRoute>
+                                    <EnConstruccion />
+                                </ProtectedRoute>
+                            }
+                        />
                     </Routes>
                 </AuthProvider>
             </ToastProvider>
