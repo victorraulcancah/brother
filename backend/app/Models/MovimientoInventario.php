@@ -17,6 +17,8 @@ class MovimientoInventario extends Model
         'cantidad',
         'stock_anterior',
         'costo_unitario',
+        'costo_anterior',
+        'costo_actual',
         'saldo_stock',
         'fecha',
         'usuario_id',

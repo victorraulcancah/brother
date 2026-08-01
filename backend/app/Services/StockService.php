@@ -31,15 +31,27 @@ class StockService
 
             $stock = $this->getOrCreateStock($presentacion, $almacen);
             $anterior = (float) $stock->stock_actual;
+            $costoAnterior = (float) $stock->costo_promedio;
+
+            // Si no se informa costo (ajustes/traslados/préstamos), se valora al costo promedio
+            // actual para no distorsionar el promedio. Solo las compras traen costo real.
+            $costoEntrada = $costoUnitario > 0 ? $costoUnitario : $costoAnterior;
+
+            $nuevoStock = $anterior + $cantidadBase;
+            $costoActual = $nuevoStock > 0
+                ? (($anterior * $costoAnterior) + ($cantidadBase * $costoEntrada)) / $nuevoStock
+                : $costoEntrada;
+
             $stock->stock_anterior = $anterior;
-            $stock->stock_actual = $anterior + $cantidadBase;
-            $stock->stock_disponible = $stock->stock_actual - $stock->stock_reservado;
+            $stock->stock_actual = $nuevoStock;
+            $stock->stock_disponible = $nuevoStock - (float) $stock->stock_reservado;
+            $stock->costo_promedio = $costoActual;
             $stock->save();
 
             return $this->registrarMovimiento(
                 $presentacion, $almacen, 'entrada', $origen,
-                $cantidadPresentacion, $cantidadBase, $costoUnitario, $anterior, $stock->stock_actual,
-                $documentoTipo, $documentoId, $usuarioId, $fecha
+                $cantidadPresentacion, $cantidadBase, $costoEntrada, $costoAnterior, $costoActual,
+                $anterior, $nuevoStock, $documentoTipo, $documentoId, $usuarioId, $fecha
             );
         });
     }
@@ -72,6 +84,9 @@ class StockService
                 );
             }
 
+            // En una salida el costo promedio no cambia; se valora al promedio vigente.
+            $costoPromedio = (float) $stock->costo_promedio;
+
             $stock->stock_anterior = $anterior;
             $stock->stock_actual = $anterior - $cantidadBase;
             $stock->stock_disponible = $stock->stock_actual - $stock->stock_reservado;
@@ -79,8 +94,8 @@ class StockService
 
             return $this->registrarMovimiento(
                 $presentacion, $almacen, 'salida', $origen,
-                -$cantidadPresentacion, -$cantidadBase, $costoUnitario, $anterior, $stock->stock_actual,
-                $documentoTipo, $documentoId, $usuarioId, $fecha
+                -$cantidadPresentacion, -$cantidadBase, $costoPromedio, $costoPromedio, $costoPromedio,
+                $anterior, $stock->stock_actual, $documentoTipo, $documentoId, $usuarioId, $fecha
             );
         });
     }
@@ -149,6 +164,7 @@ class StockService
             'stock_actual' => 0,
             'stock_reservado' => 0,
             'stock_disponible' => 0,
+            'costo_promedio' => 0,
             'stock_minimo' => 0,
             'stock_maximo' => 0,
         ]);
@@ -162,6 +178,8 @@ class StockService
         float $cantidadPresentacion,
         float $cantidadBase,
         float $costoUnitario,
+        float $costoAnterior,
+        float $costoActual,
         float $stockAnterior,
         float $saldoStock,
         ?string $documentoTipo = null,
@@ -179,6 +197,8 @@ class StockService
             'cantidad' => $cantidadBase,
             'stock_anterior' => $stockAnterior,
             'costo_unitario' => $costoUnitario,
+            'costo_anterior' => $costoAnterior,
+            'costo_actual' => $costoActual,
             'saldo_stock' => $saldoStock,
             'fecha' => $fecha ?? now(),
             'usuario_id' => $usuarioId,

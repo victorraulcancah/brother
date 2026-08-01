@@ -14,6 +14,7 @@ class ProductoAlmacenStock extends Model
         'stock_actual',
         'stock_reservado',
         'stock_disponible',
+        'costo_promedio',
         'stock_minimo',
         'stock_maximo',
         'ubicacion',

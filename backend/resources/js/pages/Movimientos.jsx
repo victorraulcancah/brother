@@ -22,6 +22,31 @@ const tipoInfo = (tipo) => {
     return { label: tipo ?? '—', variant: 'gray', icon: ArrowRightLeft };
 };
 
+const money = (n) =>
+    new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
+
+const num = (n) => Number(n ?? 0).toLocaleString('es-PE', { maximumFractionDigits: 2 });
+
+const ORIGEN_LABEL = {
+    compra: 'Compra',
+    venta: 'Venta',
+    devolucion: 'Devolución',
+    merma: 'Merma',
+    transferencia: 'Traslado',
+    ajuste_manual: 'Ajuste',
+    prestamo: 'Préstamo',
+    toma_inventario: 'Toma inventario',
+};
+
+const DOC_LABEL = {
+    recepcion_compra: 'Recepción',
+    ajuste_inventario: 'Ajuste',
+    transferencia: 'Traslado',
+    prestamo: 'Préstamo',
+    toma_inventario: 'Toma',
+    nota_venta: 'Venta',
+};
+
 export default function Movimientos() {
     const [movimientos, setMovimientos] = useState([]);
     const [almacenes, setAlmacenes] = useState([]);
@@ -111,11 +136,38 @@ export default function Movimientos() {
         </div>
     );
 
+    const esEntrada = (row) => row.tipo_movimiento === 'entrada';
+    const cantAbs = (row) => Math.abs(Number(row.cantidad ?? 0));
+
     const columns = [
+        { key: 'id', label: '#', render: (row) => <span className="text-gray-500">{row.id}</span> },
         {
             key: 'fecha',
             label: 'Fecha',
             render: (row) => <span className="whitespace-nowrap text-gray-700">{fmtFecha(row.fecha)}</span>,
+        },
+        {
+            key: 'codigo',
+            label: 'Código',
+            getSearchValue: (row) => row.producto?.codigo,
+            render: (row) => row.producto?.codigo ?? <span className="text-gray-400">—</span>,
+        },
+        {
+            key: 'producto',
+            label: 'Producto',
+            getSearchValue: (row) => row.producto?.nombre,
+            render: (row) => (
+                <span className="inline-flex items-center gap-2 font-medium text-warm-900">
+                    <Package className="h-4 w-4 text-primary-600" />
+                    {row.producto?.nombre ?? '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'proveedor',
+            label: 'Proveedor',
+            getSearchValue: (row) => row.proveedor_nombre,
+            render: (row) => row.proveedor_nombre ?? <span className="text-gray-400">—</span>,
         },
         {
             key: 'tipo_movimiento',
@@ -131,43 +183,89 @@ export default function Movimientos() {
             },
         },
         {
-            key: 'producto',
-            label: 'Producto',
-            render: (row) => (
-                <span className="inline-flex items-center gap-2 font-medium text-warm-900">
-                    <Package className="h-4 w-4 text-primary-600" />
-                    {row.producto?.nombre ?? '—'}
-                </span>
-            ),
+            key: 'origen',
+            label: 'Mov.',
+            render: (row) => <Badge variant="gray">{ORIGEN_LABEL[row.origen] ?? row.origen ?? '—'}</Badge>,
         },
         {
-            key: 'almacen',
-            label: 'Almacén',
-            render: (row) => <Badge variant="blue">{row.almacen?.nombre ?? '—'}</Badge>,
+            key: 'documento',
+            label: 'Documento',
+            searchable: false,
+            render: (row) =>
+                row.documento_referencia_tipo ? (
+                    <span className="whitespace-nowrap text-gray-600">
+                        {DOC_LABEL[row.documento_referencia_tipo] ?? row.documento_referencia_tipo}
+                        {row.documento_referencia_id ? ` #${row.documento_referencia_id}` : ''}
+                    </span>
+                ) : (
+                    <span className="text-gray-400">—</span>
+                ),
+        },
+        {
+            key: 'unidad',
+            label: 'Unidad',
+            searchable: false,
+            render: (row) =>
+                row.producto?.unidad_base?.abreviatura ??
+                row.producto?.unidad_base?.nombre ?? <span className="text-gray-400">—</span>,
         },
         {
             key: 'cantidad',
             label: 'Cantidad',
             align: 'right',
-            render: (row) => {
-                const cantidad = Number(row.cantidad ?? 0);
-                return (
-                    <span className={`font-semibold ${row.tipo_movimiento === 'salida' ? 'text-red-600' : 'text-green-600'}`}>
-                        {row.tipo_movimiento === 'salida' ? '−' : '+'}{cantidad}
-                    </span>
-                );
-            },
+            render: (row) => <span className="text-gray-700">{num(cantAbs(row))}</span>,
+        },
+        {
+            key: 'costo_anterior',
+            label: 'Costo Anterior',
+            align: 'right',
+            searchable: false,
+            render: (row) => <span className="text-gray-600">{money(row.costo_anterior)}</span>,
+        },
+        {
+            key: 'costo_actual',
+            label: 'Costo Actual',
+            align: 'right',
+            searchable: false,
+            render: (row) => <span className="text-gray-700">{money(row.costo_actual)}</span>,
+        },
+        {
+            key: 'stock_anterior',
+            label: 'Stock Anterior',
+            align: 'right',
+            searchable: false,
+            render: (row) => <span className="text-gray-600">{num(row.stock_anterior)}</span>,
+        },
+        {
+            key: 'ingreso',
+            label: 'Cant. Ingreso',
+            align: 'right',
+            searchable: false,
+            render: (row) =>
+                esEntrada(row) ? (
+                    <span className="font-semibold text-green-600">+{num(cantAbs(row))}</span>
+                ) : (
+                    <span className="text-gray-300">—</span>
+                ),
+        },
+        {
+            key: 'salida',
+            label: 'Cant. Salida',
+            align: 'right',
+            searchable: false,
+            render: (row) =>
+                !esEntrada(row) ? (
+                    <span className="font-semibold text-red-600">−{num(cantAbs(row))}</span>
+                ) : (
+                    <span className="text-gray-300">—</span>
+                ),
         },
         {
             key: 'saldo_stock',
-            label: 'Saldo stock',
+            label: 'Stock Actual',
             align: 'right',
-            render: (row) => <span className="text-gray-700">{Number(row.saldo_stock ?? 0)}</span>,
-        },
-        {
-            key: 'origen',
-            label: 'Origen',
-            render: (row) => <Badge variant="gray">{row.origen ?? '—'}</Badge>,
+            searchable: false,
+            render: (row) => <span className="font-medium text-gray-900">{num(row.saldo_stock)}</span>,
         },
     ];
 
