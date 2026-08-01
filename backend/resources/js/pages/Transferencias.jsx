@@ -376,17 +376,10 @@ export default function Transferencias() {
             >
                 <form id="transferencia-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
                     {editing ? (
-                        <Select
-                            label="Estado"
-                            name="estado"
-                            value={form.estado}
-                            onChange={(e) => setForm((prev) => ({ ...prev, estado: e.target.value }))}
-                            options={Object.entries(estadoInfo).map(([value, info]) => ({
-                                value,
-                                label: info.label,
-                            }))}
-                            error={formErrors.estado}
-                        />
+                        <Alert variant="info">
+                            El estado se maneja con los botones Enviar / Recibir de la tabla. Aquí solo
+                            puedes editar las observaciones.
+                        </Alert>
                     ) : (
                         <>
                             <Select
@@ -421,6 +414,57 @@ export default function Transferencias() {
                                 ]}
                                 error={formErrors.almacen_destino_id}
                             />
+
+                            <div>
+                                <div className="mb-1 flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-700">Productos</span>
+                                    <Button type="button" variant="ghost" size="sm" onClick={addDetalle}>
+                                        <Plus className="h-4 w-4" />
+                                        Agregar
+                                    </Button>
+                                </div>
+                                <div className="space-y-2">
+                                    {detalles.map((d, index) => (
+                                        <div key={index} className="flex items-start gap-2">
+                                            <Select
+                                                value={d.producto_presentacion_id}
+                                                onChange={(e) => {
+                                                    setDetalle(index, { producto_presentacion_id: e.target.value });
+                                                    if (formErrors.detalles) {
+                                                        setFormErrors((prev) => ({ ...prev, detalles: undefined }));
+                                                    }
+                                                }}
+                                                options={[
+                                                    { value: '', label: 'Producto — presentación' },
+                                                    ...presentacionesOptions,
+                                                ]}
+                                                className="flex-1"
+                                            />
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                placeholder="Cant."
+                                                value={d.cantidad_enviada}
+                                                onChange={(e) => setDetalle(index, { cantidad_enviada: e.target.value })}
+                                                className="w-24"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeDetalle(index)}
+                                                disabled={detalles.length === 1}
+                                                aria-label="Quitar"
+                                                className="mt-1 rounded-md p-2 text-red-600 transition hover:bg-red-50 disabled:opacity-40"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                {formErrors.detalles && (
+                                    <p className="mt-1 text-xs text-red-600">{formErrors.detalles}</p>
+                                )}
+                            </div>
                         </>
                     )}
                     <Input
