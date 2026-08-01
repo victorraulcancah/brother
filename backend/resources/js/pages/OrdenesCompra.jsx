@@ -144,7 +144,6 @@ export default function OrdenesCompra() {
         },
         { key: 'fecha_emision', label: 'Emisión', render: (row) => (row.fecha_emision ? new Date(row.fecha_emision).toLocaleDateString('es-PE') : '—') },
         { key: 'detalles_count', label: 'Ítems', render: (row) => <Badge variant="blue">{row.detalles_count ?? 0}</Badge> },
-        { key: 'moneda', label: 'Moneda', render: (row) => <Badge variant="gray">{row.moneda ?? 'PEN'}</Badge> },
         {
             key: 'estado',
             label: 'Estado',
@@ -205,12 +204,6 @@ export default function OrdenesCompra() {
                         />
                         <Input label="Fecha emisión" type="date" value={form.fecha_emision} onChange={(e) => setForm((p) => ({ ...p, fecha_emision: e.target.value }))} error={formErrors.fecha_emision} />
                         <Input label="Entrega estimada" type="date" value={form.fecha_entrega_estimada} onChange={(e) => setForm((p) => ({ ...p, fecha_entrega_estimada: e.target.value }))} />
-                        <Select
-                            label="Moneda"
-                            value={form.moneda}
-                            onChange={(e) => setForm((p) => ({ ...p, moneda: e.target.value }))}
-                            options={[{ value: 'PEN', label: 'Soles (PEN)' }, { value: 'USD', label: 'Dólares (USD)' }]}
-                        />
                     </div>
 
                     <div>

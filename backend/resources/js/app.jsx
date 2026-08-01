@@ -22,8 +22,9 @@ import Ajustes from './pages/Ajustes';
 import TomasInventario from './pages/TomasInventario';
 import Prestamos from './pages/Prestamos';
 import Proveedores from './pages/Proveedores';
-import SolicitudesCompra from './pages/SolicitudesCompra';
 import OrdenesCompra from './pages/OrdenesCompra';
+import Compras from './pages/Compras';
+import CrearCompra from './pages/CrearCompra';
 import RecepcionesCompra from './pages/RecepcionesCompra';
 import MetodosDePago from './pages/MetodosDePago';
 import Cajas from './pages/Cajas';
@@ -50,8 +51,9 @@ const routes = [
     { path: '/tomas-inventario', element: <TomasInventario /> },
     { path: '/prestamos', element: <Prestamos /> },
     { path: '/proveedores', element: <Proveedores /> },
-    { path: '/solicitudes-compra', element: <SolicitudesCompra /> },
     { path: '/ordenes-compra', element: <OrdenesCompra /> },
+    { path: '/compras', element: <Compras /> },
+    { path: '/compras/nueva', element: <CrearCompra /> },
     { path: '/recepciones-compra', element: <RecepcionesCompra /> },
     { path: '/metodos-de-pago', element: <MetodosDePago /> },
     { path: '/cajas', element: <Cajas /> },

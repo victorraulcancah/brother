@@ -59,7 +59,7 @@ export const navigation = [
         children: [
             { label: 'Proveedores', icon: Truck, to: '/proveedores' },
             { label: 'Órdenes de compra', icon: FileText, to: '/ordenes-compra' },
-            { label: 'Solicitudes de compra', icon: FilePlus2, to: '/solicitudes-compra' },
+            { label: 'Compras', icon: ShoppingBag, to: '/compras' },
             { label: 'Recepciones de compra', icon: PackageCheck, to: '/recepciones-compra' },
         ],
     },

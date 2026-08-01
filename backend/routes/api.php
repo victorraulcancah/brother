@@ -12,6 +12,7 @@ use App\Http\Controllers\CuentaPorPagarController;
 use App\Http\Controllers\MovimientoCajaController;
 use App\Http\Controllers\TarjetaBancariaController;
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\CompraController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\MarcaController;
@@ -25,7 +26,6 @@ use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\PrestamoController;
 use App\Http\Controllers\RecepcionCompraController;
 use App\Http\Controllers\RoleController;
-use App\Http\Controllers\SolicitudCompraController;
 use App\Http\Controllers\SubMarcaController;
 use App\Http\Controllers\TomaInventarioController;
 use App\Http\Controllers\TransferenciaController;
@@ -51,8 +51,9 @@ Route::middleware('auth:api')->group(function () {
 
     // Compras
     Route::apiResource('proveedores', ProveedorController::class);
-    Route::apiResource('solicitudes-compra', SolicitudCompraController::class);
     Route::apiResource('ordenes-compra', OrdenCompraController::class);
+    Route::apiResource('compras', CompraController::class);
+    Route::post('compras/{compra}/anular', [CompraController::class, 'anular']);
     Route::apiResource('recepciones-compra', RecepcionCompraController::class);
 
     // Inventario
