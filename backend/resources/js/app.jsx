@@ -23,9 +23,13 @@ import TomasInventario from './pages/TomasInventario';
 import Prestamos from './pages/Prestamos';
 import Proveedores from './pages/Proveedores';
 import OrdenesCompra from './pages/OrdenesCompra';
+import CrearOrdenCompra from './pages/CrearOrdenCompra';
 import Compras from './pages/Compras';
 import CrearCompra from './pages/CrearCompra';
 import RecepcionesCompra from './pages/RecepcionesCompra';
+import Clientes from './pages/Clientes';
+import NotasVenta from './pages/NotasVenta';
+import CrearVenta from './pages/CrearVenta';
 import MetodosDePago from './pages/MetodosDePago';
 import Cajas from './pages/Cajas';
 import MovimientosCaja from './pages/MovimientosCaja';
@@ -52,9 +56,13 @@ const routes = [
     { path: '/prestamos', element: <Prestamos /> },
     { path: '/proveedores', element: <Proveedores /> },
     { path: '/ordenes-compra', element: <OrdenesCompra /> },
+    { path: '/ordenes-compra/nueva', element: <CrearOrdenCompra /> },
     { path: '/compras', element: <Compras /> },
     { path: '/compras/nueva', element: <CrearCompra /> },
     { path: '/recepciones-compra', element: <RecepcionesCompra /> },
+    { path: '/clientes', element: <Clientes /> },
+    { path: '/notas-venta', element: <NotasVenta /> },
+    { path: '/notas-venta/nueva', element: <CrearVenta /> },
     { path: '/metodos-de-pago', element: <MetodosDePago /> },
     { path: '/cajas', element: <Cajas /> },
     { path: '/movimientos-caja', element: <MovimientosCaja /> },
