@@ -51,7 +51,7 @@ class RecepcionCompra extends Model
 
     public function detalles()
     {
-        return $this->hasMany(RecepcionCompraDetalle::class);
+        return $this->hasMany(RecepcionCompraDetalle::class, 'recepcion_id');
     }
 
     public function devoluciones()
