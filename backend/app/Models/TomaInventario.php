@@ -35,6 +35,6 @@ class TomaInventario extends Model
 
     public function detalles()
     {
-        return $this->hasMany(TomaInventarioDetalle::class);
+        return $this->hasMany(TomaInventarioDetalle::class, 'toma_id');
     }
 }

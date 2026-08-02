@@ -12,16 +12,14 @@ import '../widgets/app_text_field.dart';
 import '../widgets/data_card.dart';
 import '../widgets/product_lines_editor.dart';
 
-String _money(dynamic v) => 'S/ ${(double.tryParse('${v ?? 0}') ?? 0).toStringAsFixed(2)}';
-
-class RecepcionesCompraScreen extends StatefulWidget {
-  const RecepcionesCompraScreen({super.key});
+class AjustesScreen extends StatefulWidget {
+  const AjustesScreen({super.key});
 
   @override
-  State<RecepcionesCompraScreen> createState() => _RecepcionesCompraScreenState();
+  State<AjustesScreen> createState() => _AjustesScreenState();
 }
 
-class _RecepcionesCompraScreenState extends State<RecepcionesCompraScreen> {
+class _AjustesScreenState extends State<AjustesScreen> {
   final ApiService _api = ApiService();
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
@@ -30,7 +28,7 @@ class _RecepcionesCompraScreenState extends State<RecepcionesCompraScreen> {
   @override
   void initState() {
     super.initState();
-    _crud = CrudService(_api, ApiEndpoints.recepciones);
+    _crud = CrudService(_api, ApiEndpoints.ajustes);
     _load();
   }
 
@@ -42,40 +40,39 @@ class _RecepcionesCompraScreenState extends State<RecepcionesCompraScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _nueva() async {
-    final ok = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const _CrearRecepcionScreen()));
+  Future<void> _nuevo() async {
+    final ok = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const _CrearAjusteScreen()));
     if (ok == true) _load();
   }
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Recepciones de Compra',
-      floatingActionButton: FloatingActionButton(onPressed: _nueva, child: const Icon(Icons.add)),
+      title: 'Ajustes',
+      floatingActionButton: FloatingActionButton(onPressed: _nuevo, child: const Icon(Icons.add)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
-          ? const Center(child: Text('No hay recepciones'))
+          ? const Center(child: Text('No hay ajustes'))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _items.length,
               itemBuilder: (context, index) {
                 final item = _items[index];
-                final prov = item['proveedor'] as Map<String, dynamic>?;
                 final almacen = item['almacen'] as Map<String, dynamic>?;
-                final aplicado = item['stock_aplicado'] as bool? ?? false;
+                final entrada = item['tipo'] == 'entrada';
                 return DataCard(
-                  title: '#${item['id']}  ${prov?['nombre'] ?? 'Sin proveedor'}',
+                  title: 'Ajuste #${item['id']}',
                   rows: [
                     DataCardRow.text('Almacén', almacen?['nombre'] as String? ?? '—'),
-                    DataCardRow.text('Documento', '${item['numero_documento'] ?? '—'}'),
-                    DataCardRow.text('Fecha', '${item['fecha_recepcion'] ?? '—'}'),
-                    DataCardRow.text('Productos', '${item['detalles_count'] ?? 0}'),
                     DataCardRow(
-                      label: 'Stock',
-                      value: AppBadge(aplicado ? 'Ingresado' : 'Pendiente',
-                          type: aplicado ? AppBadgeType.success : AppBadgeType.warning),
+                      label: 'Tipo',
+                      value: AppBadge(entrada ? 'Entrada' : 'Salida',
+                          type: entrada ? AppBadgeType.success : AppBadgeType.danger),
                     ),
+                    DataCardRow.text('Motivo', item['motivo'] as String? ?? '—'),
+                    DataCardRow.text('Productos', '${item['detalles_count'] ?? 0}'),
+                    DataCardRow.text('Fecha', '${item['fecha'] ?? '—'}'),
                   ],
                 );
               },
@@ -84,26 +81,24 @@ class _RecepcionesCompraScreenState extends State<RecepcionesCompraScreen> {
   }
 }
 
-class _CrearRecepcionScreen extends StatefulWidget {
-  const _CrearRecepcionScreen();
+class _CrearAjusteScreen extends StatefulWidget {
+  const _CrearAjusteScreen();
 
   @override
-  State<_CrearRecepcionScreen> createState() => _CrearRecepcionScreenState();
+  State<_CrearAjusteScreen> createState() => _CrearAjusteScreenState();
 }
 
-class _CrearRecepcionScreenState extends State<_CrearRecepcionScreen> {
+class _CrearAjusteScreenState extends State<_CrearAjusteScreen> {
   final ApiService _api = ApiService();
   bool _loading = true;
   bool _saving = false;
 
-  List<Map<String, dynamic>> _proveedores = [];
   List<Map<String, dynamic>> _almacenes = [];
   final List<AppSelectOption<int>> _presOptions = [];
 
-  int? _proveedorId;
   int? _almacenId;
-  String _tipoDoc = 'factura';
-  final _numeroDoc = TextEditingController();
+  String _tipo = 'entrada';
+  final _motivo = TextEditingController();
   final List<ProductLine> _lineas = [ProductLine(precio: '0')];
 
   @override
@@ -114,7 +109,7 @@ class _CrearRecepcionScreenState extends State<_CrearRecepcionScreen> {
 
   @override
   void dispose() {
-    _numeroDoc.dispose();
+    _motivo.dispose();
     for (final l in _lineas) {
       l.dispose();
     }
@@ -124,13 +119,11 @@ class _CrearRecepcionScreenState extends State<_CrearRecepcionScreen> {
   Future<void> _load() async {
     try {
       final results = await Future.wait([
-        CrudService(_api, ApiEndpoints.proveedores).getAll(),
         CrudService(_api, ApiEndpoints.almacenes).getAll(),
         CrudService(_api, ApiEndpoints.productos).getAll(),
       ]);
-      _proveedores = results[0];
-      _almacenes = results[1];
-      for (final p in results[2]) {
+      _almacenes = results[0];
+      for (final p in results[1]) {
         for (final pres in (p['presentaciones'] as List? ?? [])) {
           _presOptions.add(AppSelectOption(pres['id'] as int, '${p['nombre']} — ${pres['nombre']}'));
         }
@@ -138,8 +131,6 @@ class _CrearRecepcionScreenState extends State<_CrearRecepcionScreen> {
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
-
-  double get _total => _lineas.fold(0, (a, l) => a + l.subtotal);
 
   Future<void> _guardar() async {
     final lineas = _lineas.where((l) => l.presentacionId != null && l.cant > 0).toList();
@@ -151,21 +142,20 @@ class _CrearRecepcionScreenState extends State<_CrearRecepcionScreen> {
       showAppSnackbar(context, 'Agrega al menos un producto', type: AppSnackbarType.error);
       return;
     }
-    final fecha = DateTime.now().toIso8601String().substring(0, 10);
+    if (_motivo.text.trim().isEmpty) {
+      showAppSnackbar(context, 'Ingresa el motivo', type: AppSnackbarType.error);
+      return;
+    }
     setState(() => _saving = true);
     try {
-      await _api.post(ApiEndpoints.recepciones, body: {
-        'proveedor_id': _proveedorId,
+      await _api.post(ApiEndpoints.ajustes, body: {
         'almacen_id': _almacenId,
-        'tipo_documento': _tipoDoc,
-        'numero_documento': _numeroDoc.text.trim(),
-        'fecha_recepcion': fecha,
-        'detalles': lineas
-            .map((l) => {'producto_presentacion_id': l.presentacionId, 'cantidad_recibida': l.cant, 'costo_unitario': l.precioVal})
-            .toList(),
+        'tipo': _tipo,
+        'motivo': _motivo.text.trim(),
+        'detalles': lineas.map((l) => {'producto_presentacion_id': l.presentacionId, 'cantidad': l.cant}).toList(),
       });
       if (mounted) {
-        showAppSnackbar(context, 'Recepción registrada. Stock ingresado.', type: AppSnackbarType.success);
+        showAppSnackbar(context, 'Ajuste aplicado. Stock actualizado.', type: AppSnackbarType.success);
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -178,7 +168,7 @@ class _CrearRecepcionScreenState extends State<_CrearRecepcionScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Nueva Recepción',
+      title: 'Nuevo Ajuste',
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -187,15 +177,8 @@ class _CrearRecepcionScreenState extends State<_CrearRecepcionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   AppFormSection(
-                    title: 'Datos de la recepción',
+                    title: 'Datos del ajuste',
                     children: [
-                      AppSelect<int>(
-                        label: 'Proveedor',
-                        icon: Icons.local_shipping_outlined,
-                        value: _proveedorId,
-                        options: [for (final p in _proveedores) AppSelectOption(p['id'] as int, p['nombre'] as String? ?? '')],
-                        onChanged: (v) => setState(() => _proveedorId = v),
-                      ),
                       AppSelect<int>(
                         label: 'Almacén',
                         icon: Icons.warehouse_outlined,
@@ -204,38 +187,31 @@ class _CrearRecepcionScreenState extends State<_CrearRecepcionScreen> {
                         onChanged: (v) => setState(() => _almacenId = v),
                       ),
                       AppSelect<String>(
-                        label: 'Tipo documento',
-                        icon: Icons.description_outlined,
-                        value: _tipoDoc,
-                        options: const [
-                          AppSelectOption('factura', 'Factura'),
-                          AppSelectOption('boleta', 'Boleta'),
-                          AppSelectOption('guia_remision', 'Guía de remisión'),
-                        ],
-                        onChanged: (v) => setState(() => _tipoDoc = v ?? 'factura'),
+                        label: 'Tipo',
+                        icon: Icons.swap_vert,
+                        value: _tipo,
+                        options: const [AppSelectOption('entrada', 'Entrada (suma)'), AppSelectOption('salida', 'Salida (resta)')],
+                        onChanged: (v) => setState(() => _tipo = v ?? 'entrada'),
                       ),
-                      AppTextField(controller: _numeroDoc, label: 'N° Documento', icon: Icons.numbers),
+                      AppTextField(controller: _motivo, label: 'Motivo', icon: Icons.edit_note),
                     ],
                   ),
                   const SizedBox(height: 16),
                   AppFormSection(
-                    title: 'Productos recibidos',
+                    title: 'Productos',
                     children: [
                       ProductLinesEditor(
                         lines: _lineas,
                         options: _presOptions,
-                        priceLabel: 'Costo',
-                        onAdd: () => setState(() => _lineas.add(ProductLine(precio: '0'))),
+                        showPrice: false,
+                        onAdd: () => setState(() => _lineas.add(ProductLine())),
                         onRemove: (i) => setState(() => _lineas.removeAt(i).dispose()),
                         onChanged: () => setState(() {}),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Text('Total: ${_money(_total)}',
-                      textAlign: TextAlign.right, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 12),
-                  PrimaryButton(label: 'Registrar e ingresar stock', loading: _saving, onPressed: _guardar),
+                  const SizedBox(height: 16),
+                  PrimaryButton(label: 'Aplicar ajuste', loading: _saving, onPressed: _guardar),
                 ],
               ),
             ),

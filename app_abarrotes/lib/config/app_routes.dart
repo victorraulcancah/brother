@@ -29,4 +29,22 @@ class AppRoutes {
   static const String almacenes = '/almacenes';
   static const String movimientos = '/movimientos';
   static const String tomasInventario = '/tomas-inventario';
+
+  static const String traslados = '/transferencias';
+  static const String ajustes = '/ajustes';
+  static const String prestamos = '/prestamos';
+
+  // Compras
+  static const String compras = '/compras';
+
+  // Ventas
+  static const String clientes = '/clientes';
+  static const String notasVenta = '/notas-venta';
+
+  // Tesorería
+  static const String cuentasMedios = '/cuentas-medios';
+  static const String cajas = '/cajas';
+  static const String movimientosCaja = '/movimientos-caja';
+  static const String cuentasPorCobrar = '/cuentas-por-cobrar';
+  static const String cuentasPorPagar = '/cuentas-por-pagar';
 }

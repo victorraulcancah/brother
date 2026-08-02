@@ -66,6 +66,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('transferencias/{transferencia}/anular', [TransferenciaController::class, 'anular']);
     Route::apiResource('ajustes', AjusteInventarioController::class);
     Route::apiResource('tomas-inventario', TomaInventarioController::class);
+    Route::post('tomas-inventario/{toma}/cerrar', [TomaInventarioController::class, 'cerrar']);
     Route::apiResource('motivos-movimiento', MotivoMovimientoController::class);
     Route::apiResource('prestamos', PrestamoController::class);
     Route::post('prestamos/{prestamo}/devoluciones', [PrestamoController::class, 'devolucion']);

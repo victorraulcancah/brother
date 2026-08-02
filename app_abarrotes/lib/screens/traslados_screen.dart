@@ -12,14 +12,22 @@ import '../widgets/app_snackbar.dart';
 import '../widgets/data_card.dart';
 import '../widgets/product_lines_editor.dart';
 
-class TomasInventarioScreen extends StatefulWidget {
-  const TomasInventarioScreen({super.key});
+AppBadgeType _estadoBadge(String? e) => switch (e) {
+      'pendiente' => AppBadgeType.warning,
+      'en_transito' => AppBadgeType.info,
+      'recibida' => AppBadgeType.success,
+      'cancelada' => AppBadgeType.danger,
+      _ => AppBadgeType.neutral,
+    };
+
+class TrasladosScreen extends StatefulWidget {
+  const TrasladosScreen({super.key});
 
   @override
-  State<TomasInventarioScreen> createState() => _TomasInventarioScreenState();
+  State<TrasladosScreen> createState() => _TrasladosScreenState();
 }
 
-class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
+class _TrasladosScreenState extends State<TrasladosScreen> {
   final ApiService _api = ApiService();
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
@@ -28,7 +36,7 @@ class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
   @override
   void initState() {
     super.initState();
-    _crud = CrudService(_api, ApiEndpoints.tomas);
+    _crud = CrudService(_api, ApiEndpoints.transferencias);
     _load();
   }
 
@@ -40,16 +48,16 @@ class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _nueva() async {
-    final ok = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const _CrearTomaScreen()));
+  Future<void> _nuevo() async {
+    final ok = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const _CrearTrasladoScreen()));
     if (ok == true) _load();
   }
 
-  Future<void> _cerrar(Map<String, dynamic> item) async {
+  Future<void> _accion(Map<String, dynamic> item, String accion, String msg) async {
     try {
-      await _api.post('${ApiEndpoints.tomas}/${item['id']}/cerrar', body: {});
+      await _api.post('${ApiEndpoints.transferencias}/${item['id']}/$accion', body: {});
       await _load();
-      if (mounted) showAppSnackbar(context, 'Toma cerrada. Stock ajustado.', type: AppSnackbarType.success);
+      if (mounted) showAppSnackbar(context, msg, type: AppSnackbarType.success);
     } catch (e) {
       if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
     }
@@ -58,41 +66,42 @@ class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Tomas de Inventario',
-      floatingActionButton: FloatingActionButton(onPressed: _nueva, child: const Icon(Icons.add)),
+      title: 'Traslados',
+      floatingActionButton: FloatingActionButton(onPressed: _nuevo, child: const Icon(Icons.add)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
-          ? const Center(child: Text('No hay tomas de inventario'))
+          ? const Center(child: Text('No hay traslados'))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _items.length,
               itemBuilder: (context, index) {
                 final item = _items[index];
-                final almacen = item['almacen'] as Map<String, dynamic>?;
-                final cerrado = item['estado'] == 'cerrado';
+                final origen = item['almacen_origen'] as Map<String, dynamic>?;
+                final destino = item['almacen_destino'] as Map<String, dynamic>?;
+                final estado = item['estado'] as String?;
                 return DataCard(
-                  title: 'Toma #${item['id']}',
+                  title: '#${item['id']}  ${origen?['nombre'] ?? '—'} → ${destino?['nombre'] ?? '—'}',
                   rows: [
-                    DataCardRow.text('Almacén', almacen?['nombre'] as String? ?? '—'),
                     DataCardRow.text('Productos', '${item['detalles_count'] ?? 0}'),
-                    DataCardRow.text('Fecha', '${item['fecha'] ?? '—'}'),
-                    DataCardRow(
-                      label: 'Estado',
-                      value: AppBadge(cerrado ? 'Cerrado' : 'En proceso',
-                          type: cerrado ? AppBadgeType.success : AppBadgeType.warning),
-                    ),
+                    DataCardRow(label: 'Estado', value: AppBadge(estado ?? '—', type: _estadoBadge(estado))),
                   ],
-                  actions: cerrado
-                      ? []
-                      : [
-                          DataCardAction(
-                            icon: Icons.lock_outline,
-                            color: AppColors.primary,
-                            tooltip: 'Cerrar y ajustar stock',
-                            onTap: () => _cerrar(item),
-                          ),
-                        ],
+                  actions: [
+                    if (estado == 'pendiente')
+                      DataCardAction(
+                        icon: Icons.send_outlined,
+                        color: AppColors.info,
+                        tooltip: 'Enviar',
+                        onTap: () => _accion(item, 'enviar', 'Traslado enviado. Stock descontado del origen.'),
+                      ),
+                    if (estado == 'en_transito')
+                      DataCardAction(
+                        icon: Icons.inventory_outlined,
+                        color: AppColors.success,
+                        tooltip: 'Recibir',
+                        onTap: () => _accion(item, 'recibir', 'Traslado recibido. Stock ingresado al destino.'),
+                      ),
+                  ],
                 );
               },
             ),
@@ -100,14 +109,14 @@ class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
   }
 }
 
-class _CrearTomaScreen extends StatefulWidget {
-  const _CrearTomaScreen();
+class _CrearTrasladoScreen extends StatefulWidget {
+  const _CrearTrasladoScreen();
 
   @override
-  State<_CrearTomaScreen> createState() => _CrearTomaScreenState();
+  State<_CrearTrasladoScreen> createState() => _CrearTrasladoScreenState();
 }
 
-class _CrearTomaScreenState extends State<_CrearTomaScreen> {
+class _CrearTrasladoScreenState extends State<_CrearTrasladoScreen> {
   final ApiService _api = ApiService();
   bool _loading = true;
   bool _saving = false;
@@ -115,8 +124,9 @@ class _CrearTomaScreenState extends State<_CrearTomaScreen> {
   List<Map<String, dynamic>> _almacenes = [];
   final List<AppSelectOption<int>> _presOptions = [];
 
-  int? _almacenId;
-  final List<ProductLine> _lineas = [ProductLine(cantidad: '0', precio: '0')];
+  int? _origenId;
+  int? _destinoId;
+  final List<ProductLine> _lineas = [ProductLine(precio: '0')];
 
   @override
   void initState() {
@@ -149,9 +159,13 @@ class _CrearTomaScreenState extends State<_CrearTomaScreen> {
   }
 
   Future<void> _guardar() async {
-    final lineas = _lineas.where((l) => l.presentacionId != null).toList();
-    if (_almacenId == null) {
-      showAppSnackbar(context, 'Selecciona el almacén', type: AppSnackbarType.error);
+    final lineas = _lineas.where((l) => l.presentacionId != null && l.cant > 0).toList();
+    if (_origenId == null || _destinoId == null) {
+      showAppSnackbar(context, 'Selecciona origen y destino', type: AppSnackbarType.error);
+      return;
+    }
+    if (_origenId == _destinoId) {
+      showAppSnackbar(context, 'El origen y destino deben ser distintos', type: AppSnackbarType.error);
       return;
     }
     if (lineas.isEmpty) {
@@ -160,12 +174,13 @@ class _CrearTomaScreenState extends State<_CrearTomaScreen> {
     }
     setState(() => _saving = true);
     try {
-      await _api.post(ApiEndpoints.tomas, body: {
-        'almacen_id': _almacenId,
-        'detalles': lineas.map((l) => {'producto_presentacion_id': l.presentacionId, 'stock_contado': l.cant}).toList(),
+      await _api.post(ApiEndpoints.transferencias, body: {
+        'almacen_origen_id': _origenId,
+        'almacen_destino_id': _destinoId,
+        'detalles': lineas.map((l) => {'producto_presentacion_id': l.presentacionId, 'cantidad_enviada': l.cant}).toList(),
       });
       if (mounted) {
-        showAppSnackbar(context, 'Toma creada. Ciérrala para ajustar el stock.', type: AppSnackbarType.success);
+        showAppSnackbar(context, 'Traslado creado. Envíalo para descontar stock.', type: AppSnackbarType.success);
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -178,7 +193,7 @@ class _CrearTomaScreenState extends State<_CrearTomaScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Nueva Toma de Inventario',
+      title: 'Nuevo Traslado',
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -187,34 +202,40 @@ class _CrearTomaScreenState extends State<_CrearTomaScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   AppFormSection(
-                    title: 'Datos de la toma',
+                    title: 'Almacenes',
                     children: [
                       AppSelect<int>(
-                        label: 'Almacén',
-                        icon: Icons.warehouse_outlined,
-                        value: _almacenId,
+                        label: 'Almacén origen',
+                        icon: Icons.output,
+                        value: _origenId,
                         options: [for (final a in _almacenes) AppSelectOption(a['id'] as int, a['nombre'] as String? ?? '')],
-                        onChanged: (v) => setState(() => _almacenId = v),
+                        onChanged: (v) => setState(() => _origenId = v),
+                      ),
+                      AppSelect<int>(
+                        label: 'Almacén destino',
+                        icon: Icons.input,
+                        value: _destinoId,
+                        options: [for (final a in _almacenes) AppSelectOption(a['id'] as int, a['nombre'] as String? ?? '')],
+                        onChanged: (v) => setState(() => _destinoId = v),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   AppFormSection(
-                    title: 'Conteo físico',
+                    title: 'Productos',
                     children: [
                       ProductLinesEditor(
                         lines: _lineas,
                         options: _presOptions,
                         showPrice: false,
-                        qtyLabel: 'Contado',
-                        onAdd: () => setState(() => _lineas.add(ProductLine(cantidad: '0'))),
+                        onAdd: () => setState(() => _lineas.add(ProductLine())),
                         onRemove: (i) => setState(() => _lineas.removeAt(i).dispose()),
                         onChanged: () => setState(() {}),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  PrimaryButton(label: 'Guardar toma', loading: _saving, onPressed: _guardar),
+                  PrimaryButton(label: 'Crear traslado', loading: _saving, onPressed: _guardar),
                 ],
               ),
             ),
