@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AjusteInventarioController;
+use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\AlmacenController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BancoController;
@@ -45,6 +46,7 @@ Route::middleware('auth:api')->group(function () {
 
     // Dashboard / escritorio
     Route::get('dashboard', [DashboardController::class, 'index']);
+    Route::get('alertas', [AlertaController::class, 'index']);
 
     // Catálogo
     Route::apiResource('categorias', CategoriaController::class);
