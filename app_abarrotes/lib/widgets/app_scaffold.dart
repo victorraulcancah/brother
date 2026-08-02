@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../utils/responsive.dart';
+import 'alerts_bell_button.dart';
 import 'app_sidebar.dart';
 
 /// Scaffold base de la app: barra superior (navbar) + menú lateral.
@@ -28,7 +29,10 @@ class AppScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentRoute = ModalRoute.of(context)?.settings.name ?? '';
 
-    final appBar = AppBar(title: Text(title), actions: actions);
+    final appBar = AppBar(
+      title: Text(title),
+      actions: [...?actions, const AlertsBellButton()],
+    );
 
     // Tablet: sidebar fijo + contenido.
     if (context.isTablet) {

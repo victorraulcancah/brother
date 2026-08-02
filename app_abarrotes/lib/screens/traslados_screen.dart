@@ -63,6 +63,21 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     }
   }
 
+  Future<void> _anular(Map<String, dynamic> item) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Anular traslado'),
+        content: Text('¿Anular el traslado #${item['id']}? Si ya se envió, el stock regresa al origen.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Anular')),
+        ],
+      ),
+    );
+    if (ok == true) _accion(item, 'anular', 'Traslado anulado.');
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -100,6 +115,13 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                         color: AppColors.success,
                         tooltip: 'Recibir',
                         onTap: () => _accion(item, 'recibir', 'Traslado recibido. Stock ingresado al destino.'),
+                      ),
+                    if (estado == 'pendiente' || estado == 'en_transito')
+                      DataCardAction(
+                        icon: Icons.block,
+                        color: AppColors.danger,
+                        tooltip: 'Anular',
+                        onTap: () => _anular(item),
                       ),
                   ],
                 );

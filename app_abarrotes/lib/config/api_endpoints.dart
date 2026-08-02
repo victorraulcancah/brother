@@ -6,6 +6,9 @@ class ApiEndpoints {
   static const String me = '/me';
   static const String logout = '/logout';
 
+  static const String dashboard = '/dashboard';
+  static const String alertas = '/alertas';
+
   static const String empresas = '/empresas';
   static String empresa(int id) => '/empresas/$id';
 
