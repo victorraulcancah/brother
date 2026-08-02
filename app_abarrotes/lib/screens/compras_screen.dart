@@ -71,8 +71,10 @@ class _ComprasScreenState extends State<ComprasScreen> {
                 final prov = item['proveedor'] as Map<String, dynamic>?;
                 final anulada = item['estado'] == 'anulada';
                 final contado = item['forma_pago'] == 'contado';
+                final nroCompra = item['numero_compra'] as String?;
                 return DataCard(
-                  title: prov?['nombre'] as String? ?? 'Proveedor',
+                  title:
+                      '${nroCompra != null ? 'N° $nroCompra · ' : ''}${prov?['nombre'] as String? ?? 'Proveedor'}',
                   rows: [
                     DataCardRow.text('Documento',
                         '${item['tipo_documento'] ?? ''} ${item['serie'] ?? ''}-${item['numero'] ?? ''}'),

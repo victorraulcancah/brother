@@ -9,6 +9,7 @@ class Compra extends Model
     protected $table = 'compras';
 
     protected $fillable = [
+        'correlativo',
         'proveedor_id',
         'orden_compra_id',
         'tipo_documento',
@@ -27,15 +28,24 @@ class Compra extends Model
         'usuario_id',
     ];
 
+    protected $appends = ['numero_compra'];
+
     protected function casts(): array
     {
         return [
+            'correlativo' => 'integer',
             'fecha' => 'date',
             'fecha_vencimiento' => 'date',
             'flete' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'total' => 'decimal:2',
         ];
+    }
+
+    /** Número interno propio de la compra, ej. "000001". */
+    public function getNumeroCompraAttribute(): ?string
+    {
+        return $this->correlativo ? str_pad((string) $this->correlativo, 6, '0', STR_PAD_LEFT) : null;
     }
 
     public function proveedor()

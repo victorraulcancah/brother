@@ -14,6 +14,7 @@ return new class extends Migration
     {
         Schema::create('compras', function (Blueprint $table) {
             $table->id();
+            $table->unsignedInteger('correlativo')->nullable();   // número interno propio de la compra (auto, desde 1)
             $table->foreignId('proveedor_id')->nullable()->constrained('proveedores')->nullOnDelete();
             $table->foreignId('orden_compra_id')->nullable()->constrained('ordenes_compra')->nullOnDelete();
             $table->string('tipo_documento', 30)->default('factura'); // factura | boleta | guia

@@ -67,7 +67,11 @@ export default function Compras() {
     };
 
     const columns = [
-        { key: 'id', label: '#', render: (row) => <Badge variant="blue">#{String(row.id).padStart(4, '0')}</Badge> },
+        {
+            key: 'numero_compra',
+            label: 'N° Compra',
+            render: (row) => <span className="font-semibold text-warm-900">{row.numero_compra ?? `#${String(row.id).padStart(4, '0')}`}</span>,
+        },
         { key: 'fecha', label: 'Fecha', render: (row) => (row.fecha ? new Date(row.fecha).toLocaleDateString('es-PE') : '—') },
         {
             key: 'proveedor',

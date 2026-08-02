@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Compra;
+use App\Models\SerieDocumento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -46,7 +47,19 @@ class CompraController extends Controller
             }
             $flete = (float) ($data['flete'] ?? 0);
 
+            // Correlativo interno propio de la compra (automático, desde 1). El usuario no lo ingresa.
+            $serieDoc = SerieDocumento::where('tipo_documento', 'compra')
+                ->where('serie', 'C001')
+                ->lockForUpdate()
+                ->firstOrCreate(
+                    ['tipo_documento' => 'compra', 'serie' => 'C001'],
+                    ['numero_actual' => 0, 'activo' => true]
+                );
+            $serieDoc->increment('numero_actual');
+            $correlativo = $serieDoc->numero_actual;
+
             $compra = Compra::create([
+                'correlativo' => $correlativo,
                 'proveedor_id' => $data['proveedor_id'] ?? null,
                 'orden_compra_id' => $data['orden_compra_id'] ?? null,
                 'tipo_documento' => $data['tipo_documento'],
