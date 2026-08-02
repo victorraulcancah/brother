@@ -7,9 +7,18 @@ use Illuminate\Http\Request;
 
 class MotivoMovimientoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(MotivoMovimiento::orderBy('id')->get());
+        $query = MotivoMovimiento::query();
+
+        if ($request->filled('ambito')) {
+            $query->where('ambito', $request->string('ambito'));
+        }
+        if ($request->filled('tipo')) {
+            $query->where('tipo', $request->string('tipo'));
+        }
+
+        return response()->json($query->orderBy('tipo')->orderBy('id')->get());
     }
 
     public function store(Request $request)
@@ -19,6 +28,7 @@ class MotivoMovimientoController extends Controller
             'tipo' => 'required|string|in:entrada,salida',
             'activo' => 'boolean',
         ]);
+        $data['ambito'] = $request->input('ambito', 'caja');
         return response()->json(MotivoMovimiento::create($data), 201);
     }
 

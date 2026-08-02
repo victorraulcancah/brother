@@ -87,6 +87,7 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('billeteras-digitales', BilleteraDigitalController::class);
     Route::apiResource('cajas', CajaController::class);
     Route::get('movimientos-caja', [MovimientoCajaController::class, 'index']);
+Route::post('movimientos-caja', [MovimientoCajaController::class, 'store']);
     Route::get('cuentas-por-cobrar', [CuentaPorCobrarController::class, 'index']);
     Route::get('cuentas-por-cobrar/{cuenta}', [CuentaPorCobrarController::class, 'show']);
     Route::post('cuentas-por-cobrar/{cuenta}/pagos', [CuentaPorCobrarController::class, 'registrarPago']);

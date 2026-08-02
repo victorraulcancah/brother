@@ -33,6 +33,7 @@ import CrearVenta from './pages/CrearVenta';
 import MetodosDePago from './pages/MetodosDePago';
 import Cajas from './pages/Cajas';
 import MovimientosCaja from './pages/MovimientosCaja';
+import MotivosMovimiento from './pages/MotivosMovimiento';
 import CuentasPorCobrar from './pages/CuentasPorCobrar';
 import CuentasPorPagar from './pages/CuentasPorPagar';
 import EnConstruccion from './pages/EnConstruccion';
@@ -66,6 +67,7 @@ const routes = [
     { path: '/metodos-de-pago', element: <MetodosDePago /> },
     { path: '/cajas', element: <Cajas /> },
     { path: '/movimientos-caja', element: <MovimientosCaja /> },
+    { path: '/motivos-movimiento', element: <MotivosMovimiento /> },
     { path: '/cuentas-por-cobrar', element: <CuentasPorCobrar /> },
     { path: '/cuentas-por-pagar', element: <CuentasPorPagar /> },
 ];

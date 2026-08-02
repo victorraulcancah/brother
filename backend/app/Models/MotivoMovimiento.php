@@ -11,6 +11,7 @@ class MotivoMovimiento extends Model
     protected $fillable = [
         'nombre',
         'tipo',
+        'ambito',
         'es_sistema',
         'activo',
     ];

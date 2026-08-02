@@ -30,6 +30,7 @@ import {
     ArrowRightLeft,
     HandCoins,
     Receipt,
+    ListChecks,
 } from 'lucide-react';
 
 export const navigation = [
@@ -83,6 +84,7 @@ export const navigation = [
             { label: 'Cuentas y Medios de Pago', icon: CreditCard, to: '/metodos-de-pago' },
             { label: 'Cajas', icon: Coins, to: '/cajas' },
             { label: 'Movimientos de Caja', icon: ArrowRightLeft, to: '/movimientos-caja' },
+            { label: 'Motivos de Movimiento', icon: ListChecks, to: '/motivos-movimiento' },
             { label: 'Cuentas por Cobrar', icon: HandCoins, to: '/cuentas-por-cobrar' },
             { label: 'Cuentas por Pagar', icon: Receipt, to: '/cuentas-por-pagar' },
         ],

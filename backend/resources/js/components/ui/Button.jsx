@@ -8,6 +8,8 @@ const variants = {
         'bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:ring-primary-500',
     danger:
         'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 disabled:hover:bg-red-600',
+    success:
+        'bg-green-600 text-white hover:bg-green-700 focus-visible:ring-green-500 disabled:hover:bg-green-600',
     ghost: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
 };
 

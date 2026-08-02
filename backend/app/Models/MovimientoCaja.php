@@ -11,6 +11,7 @@ class MovimientoCaja extends Model
     protected $fillable = [
         'apertura_caja_id',
         'tipo',
+        'motivo_movimiento_id',
         'metodo_pago_id',
         'cuenta_bancaria_id',
         'tarjeta_id',
@@ -18,6 +19,7 @@ class MovimientoCaja extends Model
         'numero_operacion',
         'captura_url',
         'monto',
+        'descripcion',
         'documento_referencia_tipo',
         'documento_referencia_id',
         'fecha',
@@ -34,6 +36,11 @@ class MovimientoCaja extends Model
     public function apertura()
     {
         return $this->belongsTo(AperturaCaja::class, 'apertura_caja_id');
+    }
+
+    public function motivo()
+    {
+        return $this->belongsTo(MotivoMovimiento::class, 'motivo_movimiento_id');
     }
 
     public function metodoPago()
