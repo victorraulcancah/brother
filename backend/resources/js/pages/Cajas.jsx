@@ -6,12 +6,18 @@ import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
 
-const emptyForm = { nombre: '', almacen_id: '', activo: true };
+const emptyForm = { nombre: '', almacen_id: '', activo: true, metodos_pago: [] };
+
+const tipoMetodo = (tipo) => {
+    const map = { efectivo: 'green', banco: 'blue', billetera: 'amber', tarjeta: 'gray' };
+    return map[tipo] ?? 'gray';
+};
 
 export default function Cajas() {
     const toast = useToast();
     const [cajas, setCajas] = useState([]);
     const [almacenes, setAlmacenes] = useState([]);
+    const [metodos, setMetodos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -28,12 +34,14 @@ export default function Cajas() {
         setLoading(true);
         setError(null);
         try {
-            const [cajasRes, almacenesRes] = await Promise.all([
+            const [cajasRes, almacenesRes, metodosRes] = await Promise.all([
                 api.get('/cajas'),
                 api.get('/almacenes'),
+                api.get('/metodos-pago'),
             ]);
             setCajas(asList(cajasRes));
             setAlmacenes(asList(almacenesRes));
+            setMetodos(asList(metodosRes));
         } catch {
             setError('No se pudieron cargar las cajas.');
         } finally {
@@ -58,16 +66,31 @@ export default function Cajas() {
             nombre: caja.nombre,
             almacen_id: caja.almacen_id ?? '',
             activo: Boolean(caja.activo),
+            metodos_pago: (caja.metodos_pago ?? []).map((m) => m.id),
         });
         setFormErrors({});
         setModalOpen(true);
+    };
+
+    const toggleMetodo = (id) => {
+        setForm((prev) => ({
+            ...prev,
+            metodos_pago: prev.metodos_pago.includes(id)
+                ? prev.metodos_pago.filter((m) => m !== id)
+                : [...prev.metodos_pago, id],
+        }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
         setFormErrors({});
-        const payload = { ...form, almacen_id: form.almacen_id || null };
+        const payload = {
+            nombre: form.nombre,
+            almacen_id: form.almacen_id || null,
+            activo: form.activo,
+            metodos_pago: form.metodos_pago,
+        };
         try {
             if (editing) {
                 await api.put(`/cajas/${editing.id}`, payload);
@@ -121,6 +144,23 @@ export default function Cajas() {
             key: 'almacen',
             label: 'Almacén',
             render: (row) => row.almacen?.nombre ?? <span className="text-gray-400">—</span>,
+        },
+        {
+            key: 'metodos_pago',
+            label: 'Métodos de pago',
+            render: (row) => {
+                const items = row.metodos_pago ?? [];
+                if (!items.length) return <span className="text-gray-400">—</span>;
+                return (
+                    <div className="flex flex-wrap gap-1">
+                        {items.map((m) => (
+                            <Badge key={m.id} variant={tipoMetodo(m.tipo)}>
+                                {m.nombre}
+                            </Badge>
+                        ))}
+                    </div>
+                );
+            },
         },
         {
             key: 'activo',
@@ -210,6 +250,35 @@ export default function Cajas() {
                         ]}
                         error={formErrors.almacen_id}
                     />
+                    <div>
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                            Métodos de pago aceptados
+                        </label>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {metodos.map((m) => (
+                                <label
+                                    key={m.id}
+                                    className="flex cursor-pointer items-center gap-2 rounded-md border border-edge px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={form.metodos_pago.includes(m.id)}
+                                        onChange={() => toggleMetodo(m.id)}
+                                        className="h-4 w-4 rounded border-gray-300 accent-primary-600"
+                                    />
+                                    <span className="flex-1">{m.nombre}</span>
+                                    {m.es_sistema ? (
+                                        <Badge variant="gray">Sistema</Badge>
+                                    ) : (
+                                        <Badge variant={tipoMetodo(m.tipo)}>{m.tipo}</Badge>
+                                    )}
+                                </label>
+                            ))}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-400">
+                            Selecciona qué métodos de pago podrá usar esta caja.
+                        </p>
+                    </div>
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                         <input
                             type="checkbox"

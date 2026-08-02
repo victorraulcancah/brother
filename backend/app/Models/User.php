@@ -11,7 +11,7 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
-#[Fillable(['name', 'email', 'password', 'empresa_id'])]
+#[Fillable(['name', 'email', 'password', 'empresa_id', 'caja_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements JWTSubject
 {
@@ -41,5 +41,10 @@ class User extends Authenticatable implements JWTSubject
     public function empresa()
     {
         return $this->belongsTo(Empresa::class);
+    }
+
+    public function caja()
+    {
+        return $this->belongsTo(Caja::class);
     }
 }

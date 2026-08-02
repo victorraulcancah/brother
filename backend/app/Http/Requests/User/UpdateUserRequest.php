@@ -18,6 +18,7 @@ class UpdateUserRequest extends FormRequest
             'email' => 'sometimes|email|max:255|unique:users,email,' . $this->route('user'),
             'password' => 'sometimes|string|min:6|confirmed',
             'empresa_id' => 'nullable|exists:empresas,id',
+            'caja_id' => 'nullable|exists:cajas,id',
             'role' => 'sometimes|string|exists:roles,name',
         ];
     }

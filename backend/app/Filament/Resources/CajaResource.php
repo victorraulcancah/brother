@@ -32,6 +32,10 @@ class CajaResource extends Resource
                     Components\TextInput::make('nombre')->label('Nombre')->required()->maxLength(255),
                     Components\Select::make('almacen_id')->label('Almacén')
                         ->relationship('almacen', 'nombre')->searchable()->preload()->nullable(),
+                    Components\CheckboxList::make('metodosPago')
+                        ->label('Métodos de pago aceptados')
+                        ->relationship('metodosPago', 'nombre')
+                        ->columns(2),
                     Components\Toggle::make('activo')->label('Activo')->default(true),
                 ])->columns(2),
         ]);

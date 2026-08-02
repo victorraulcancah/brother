@@ -16,6 +16,7 @@ use App\Http\Controllers\CompraController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\MarcaController;
+use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\MotivoMovimientoController;
 use App\Http\Controllers\MovimientoInventarioController;
 use App\Http\Controllers\NotaVentaController;
@@ -80,6 +81,7 @@ Route::middleware('auth:api')->group(function () {
 
     // Tesorería
     Route::apiResource('bancos', BancoController::class);
+    Route::get('metodos-pago', [MetodoPagoController::class, 'index']);
     Route::apiResource('cuentas-bancarias', CuentaBancariaController::class);
     Route::apiResource('tarjetas-bancarias', TarjetaBancariaController::class);
     Route::apiResource('billeteras-digitales', BilleteraDigitalController::class);

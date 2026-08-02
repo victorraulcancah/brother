@@ -24,6 +24,13 @@ class Caja extends Model
         return $this->belongsTo(Almacen::class);
     }
 
+    public function metodosPago()
+    {
+        return $this->belongsToMany(MetodoPago::class, 'caja_metodo_pago')
+            ->withTimestamps()
+            ->orderBy('metodos_pago.nombre');
+    }
+
     public function aperturas()
     {
         return $this->hasMany(AperturaCaja::class);

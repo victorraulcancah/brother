@@ -18,7 +18,7 @@ class UserController extends Controller
 
     public function index(): JsonResponse
     {
-        return response()->json(User::with('empresa', 'roles')->get());
+        return response()->json(User::with('empresa', 'caja', 'roles')->get());
     }
 
     public function store(StoreUserRequest $request): JsonResponse
@@ -37,12 +37,12 @@ class UserController extends Controller
             return $user;
         });
 
-        return response()->json($user->load('empresa', 'roles'), 201);
+        return response()->json($user->load('empresa', 'caja', 'roles'), 201);
     }
 
     public function show(int $id): JsonResponse
     {
-        return response()->json(User::with('empresa', 'roles')->findOrFail($id));
+        return response()->json(User::with('empresa', 'caja', 'roles')->findOrFail($id));
     }
 
     public function update(UpdateUserRequest $request, int $id): JsonResponse
@@ -62,7 +62,7 @@ class UserController extends Controller
             }
         });
 
-        return response()->json($user->load('empresa', 'roles'));
+        return response()->json($user->load('empresa', 'caja', 'roles'));
     }
 
     public function destroy(int $id): JsonResponse

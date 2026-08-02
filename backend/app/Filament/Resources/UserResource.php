@@ -85,6 +85,11 @@ class UserResource extends Resource
                             ->relationship('empresa', 'nombre_comercial')
                             ->searchable()
                             ->preload(),
+                        Components\Select::make('caja_id')
+                            ->label('Caja')
+                            ->relationship('caja', 'nombre')
+                            ->searchable()
+                            ->preload(),
                         Components\Select::make('role')
                             ->label('Rol')
                             ->relationship('roles', 'name')
@@ -108,6 +113,9 @@ class UserResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('empresa.nombre_comercial')
                     ->label('Empresa')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('caja.nombre')
+                    ->label('Caja')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('roles.name')
                     ->label('Roles')
