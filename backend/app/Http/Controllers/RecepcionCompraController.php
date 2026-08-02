@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Almacen;
 use App\Models\ProductoPresentacion;
 use App\Models\RecepcionCompra;
+use App\Models\SerieDocumento;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,10 +40,24 @@ class RecepcionCompraController extends Controller
 
         try {
             $recepcion = DB::transaction(function () use ($data) {
+                // Correlativo formal del documento de recepción (ej. RA0001-00000019).
+                $serie = 'RA0001';
+                $serieDoc = SerieDocumento::where('tipo_documento', 'recepcion_almacen')
+                    ->where('serie', $serie)
+                    ->lockForUpdate()
+                    ->firstOrCreate(
+                        ['tipo_documento' => 'recepcion_almacen', 'serie' => $serie],
+                        ['numero_actual' => 0, 'activo' => true]
+                    );
+                $serieDoc->increment('numero_actual');
+                $numero = str_pad($serieDoc->numero_actual, 8, '0', STR_PAD_LEFT);
+
                 $recepcion = RecepcionCompra::create([
                     'orden_compra_id' => $data['orden_compra_id'] ?? null,
                     'proveedor_id' => $data['proveedor_id'] ?? null,
                     'almacen_id' => $data['almacen_id'],
+                    'serie' => $serie,
+                    'numero' => $numero,
                     'numero_documento' => $data['numero_documento'] ?? null,
                     'tipo_documento' => $data['tipo_documento'] ?? null,
                     'fecha_recepcion' => $data['fecha_recepcion'],

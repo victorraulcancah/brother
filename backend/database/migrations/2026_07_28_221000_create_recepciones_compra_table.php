@@ -13,7 +13,9 @@ return new class extends Migration
             $table->unsignedBigInteger('orden_compra_id')->nullable();
             $table->unsignedBigInteger('proveedor_id')->nullable();
             $table->foreignId('almacen_id')->constrained('almacenes');
-            $table->string('numero_documento')->nullable();
+            $table->string('serie', 10)->nullable();          // serie interna del documento de recepción (ej. RA0001)
+            $table->string('numero', 20)->nullable();         // correlativo interno (ej. 00000019)
+            $table->string('numero_documento')->nullable();   // documento del proveedor (factura/guía)
             $table->string('tipo_documento')->nullable();
             $table->timestamp('fecha_recepcion');
             $table->string('estado')->default('parcial');

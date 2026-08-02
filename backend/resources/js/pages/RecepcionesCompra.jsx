@@ -111,7 +111,16 @@ export default function RecepcionesCompra() {
     };
 
     const columns = [
-        { key: 'id', label: '#', render: (row) => <Badge variant="blue">#{String(row.id).padStart(3, '0')}</Badge> },
+        {
+            key: 'documento',
+            label: 'Recepción',
+            render: (row) =>
+                row.documento ? (
+                    <span className="font-semibold text-warm-900">{row.documento}</span>
+                ) : (
+                    <Badge variant="blue">#{String(row.id).padStart(3, '0')}</Badge>
+                ),
+        },
         {
             key: 'proveedor',
             label: 'Proveedor',

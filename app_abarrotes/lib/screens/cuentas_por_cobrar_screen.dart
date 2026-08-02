@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../config/api_endpoints.dart';
 import '../services/api_service.dart';
 import '../services/crud_service.dart';
+import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/data_card.dart';
+import 'pagos_cuenta_screen.dart';
 
 String _money(dynamic v) {
   final n = double.tryParse('${v ?? 0}') ?? 0;
@@ -52,6 +54,20 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
+  Future<void> _abrirPagos(Map<String, dynamic> item) async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PagosCuentaScreen(
+          cuenta: Map<String, dynamic>.from(item),
+          apiPath: ApiEndpoints.cuentasPorCobrar,
+          esCobrar: true,
+        ),
+      ),
+    );
+    if (changed == true) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -79,6 +95,14 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                         '${item['estado'] ?? '—'}',
                         type: _estadoBadge(item['estado'] as String?),
                       ),
+                    ),
+                  ],
+                  actions: [
+                    DataCardAction(
+                      icon: Icons.account_balance_wallet_outlined,
+                      color: AppColors.primary,
+                      tooltip: 'Pagos',
+                      onTap: () => _abrirPagos(item),
                     ),
                   ],
                 );

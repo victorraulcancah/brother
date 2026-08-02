@@ -67,17 +67,25 @@ class CuentaPorCobrarResource extends Resource
                     ->icon('heroicon-o-banknotes')
                     ->color('success')
                     ->form([
-                        Components\Select::make('metodo_pago_id')->label('Método de Pago')
-                            ->relationship('metodoPago', 'nombre', fn ($q) => $q->where('activo', true))
-                            ->searchable()->preload()->required(),
+                        Components\Select::make('forma_pago')->label('Forma de Pago')
+                            ->options([
+                                'efectivo' => 'Efectivo',
+                                'transferencia' => 'Transferencia',
+                                'tarjeta' => 'Tarjeta',
+                                'yape' => 'Yape',
+                                'plin' => 'Plin',
+                                'otro' => 'Otro',
+                            ])->required(),
                         Components\TextInput::make('monto')->label('Monto')->numeric()->required()
                             ->minValue(0.01)->prefix('S/'),
+                        Components\TextInput::make('referencia')->label('Referencia')->maxLength(100),
                         Components\DatePicker::make('fecha')->label('Fecha')->required()->default(now()),
                     ])
                     ->action(function (array $data, CuentaPorCobrar $record): void {
                         $record->pagos()->create([
-                            'metodo_pago_id' => $data['metodo_pago_id'],
+                            'forma_pago' => $data['forma_pago'],
                             'monto' => $data['monto'],
+                            'referencia' => $data['referencia'] ?? null,
                             'fecha' => $data['fecha'],
                         ]);
                         $nuevoPagado = $record->monto_pagado + $data['monto'];

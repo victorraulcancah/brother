@@ -86,7 +86,16 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('cajas', CajaController::class);
     Route::get('movimientos-caja', [MovimientoCajaController::class, 'index']);
     Route::get('cuentas-por-cobrar', [CuentaPorCobrarController::class, 'index']);
+    Route::get('cuentas-por-cobrar/{cuenta}', [CuentaPorCobrarController::class, 'show']);
+    Route::post('cuentas-por-cobrar/{cuenta}/pagos', [CuentaPorCobrarController::class, 'registrarPago']);
+    Route::put('cuentas-por-cobrar/pagos/{pago}', [CuentaPorCobrarController::class, 'actualizarPago']);
+    Route::delete('cuentas-por-cobrar/pagos/{pago}', [CuentaPorCobrarController::class, 'anularPago']);
+
     Route::get('cuentas-por-pagar', [CuentaPorPagarController::class, 'index']);
+    Route::get('cuentas-por-pagar/{cuenta}', [CuentaPorPagarController::class, 'show']);
+    Route::post('cuentas-por-pagar/{cuenta}/pagos', [CuentaPorPagarController::class, 'registrarPago']);
+    Route::put('cuentas-por-pagar/pagos/{pago}', [CuentaPorPagarController::class, 'actualizarPago']);
+    Route::delete('cuentas-por-pagar/pagos/{pago}', [CuentaPorPagarController::class, 'anularPago']);
 
     // Gestión
     Route::apiResource('empresas', EmpresaController::class);

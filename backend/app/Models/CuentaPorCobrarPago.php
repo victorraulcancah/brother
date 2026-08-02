@@ -10,9 +10,10 @@ class CuentaPorCobrarPago extends Model
 
     protected $fillable = [
         'cuenta_por_cobrar_id',
-        'metodo_pago_id',
+        'forma_pago',
         'monto',
         'movimiento_caja_id',
+        'referencia',
         'fecha',
     ];
 
@@ -27,11 +28,6 @@ class CuentaPorCobrarPago extends Model
     public function cuentaPorCobrar()
     {
         return $this->belongsTo(CuentaPorCobrar::class, 'cuenta_por_cobrar_id');
-    }
-
-    public function metodoPago()
-    {
-        return $this->belongsTo(MetodoPago::class, 'metodo_pago_id');
     }
 
     public function movimientoCaja()

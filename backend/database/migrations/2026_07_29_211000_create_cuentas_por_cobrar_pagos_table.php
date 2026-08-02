@@ -11,9 +11,10 @@ return new class extends Migration
         Schema::create('cuentas_por_cobrar_pagos', function (Blueprint $table) {
             $table->id();
             $table->foreignId('cuenta_por_cobrar_id')->constrained('cuentas_por_cobrar')->cascadeOnDelete();
-            $table->foreignId('metodo_pago_id')->constrained('metodos_pago');
+            $table->string('forma_pago', 30);
             $table->decimal('monto', 12, 2);
             $table->foreignId('movimiento_caja_id')->nullable()->constrained('movimientos_caja')->nullOnDelete();
+            $table->string('referencia', 100)->nullable();
             $table->date('fecha');
             $table->timestamps();
         });

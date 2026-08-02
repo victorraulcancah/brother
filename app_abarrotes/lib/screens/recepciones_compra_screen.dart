@@ -64,8 +64,9 @@ class _RecepcionesCompraScreenState extends State<RecepcionesCompraScreen> {
                 final prov = item['proveedor'] as Map<String, dynamic>?;
                 final almacen = item['almacen'] as Map<String, dynamic>?;
                 final aplicado = item['stock_aplicado'] as bool? ?? false;
+                final doc = item['documento'] as String? ?? '#${item['id']}';
                 return DataCard(
-                  title: '#${item['id']}  ${prov?['nombre'] ?? 'Sin proveedor'}',
+                  title: '$doc  ·  ${prov?['nombre'] ?? 'Sin proveedor'}',
                   rows: [
                     DataCardRow.text('Almacén', almacen?['nombre'] as String? ?? '—'),
                     DataCardRow.text('Documento', '${item['numero_documento'] ?? '—'}'),

@@ -12,6 +12,8 @@ class RecepcionCompra extends Model
         'orden_compra_id',
         'proveedor_id',
         'almacen_id',
+        'serie',
+        'numero',
         'numero_documento',
         'tipo_documento',
         'fecha_recepcion',
@@ -21,12 +23,24 @@ class RecepcionCompra extends Model
         'observaciones',
     ];
 
+    protected $appends = ['documento'];
+
     protected function casts(): array
     {
         return [
             'fecha_recepcion' => 'datetime',
             'stock_aplicado' => 'boolean',
         ];
+    }
+
+    /** Número formal del documento de recepción, ej. "RA0001-00000019". */
+    public function getDocumentoAttribute(): ?string
+    {
+        if (! $this->serie || ! $this->numero) {
+            return null;
+        }
+
+        return "{$this->serie}-{$this->numero}";
     }
 
     public function ordenCompra()

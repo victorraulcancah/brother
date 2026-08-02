@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Wallet } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
-import { Alert, Badge, DataTable } from '../components/ui';
+import PagosCuentaModal from '../components/PagosCuentaModal';
+import { Alert, Badge, Button, DataTable } from '../components/ui';
 
 const money = (n) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
@@ -18,6 +20,7 @@ export default function CuentasPorCobrar() {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [pagoCuenta, setPagoCuenta] = useState(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -57,6 +60,17 @@ export default function CuentasPorCobrar() {
             render: (row) => <span className="font-medium text-red-600">{money(row.saldo)}</span>,
         },
         { key: 'estado', label: 'Estado', render: (row) => estadoBadge(row.estado) },
+        {
+            key: 'acciones',
+            label: 'Acciones',
+            type: 'actions',
+            align: 'right',
+            actions: (row) => (
+                <Button size="sm" variant="secondary" onClick={() => setPagoCuenta(row)}>
+                    <Wallet className="h-4 w-4" /> Pagos
+                </Button>
+            ),
+        },
     ];
 
     return (
@@ -74,6 +88,17 @@ export default function CuentasPorCobrar() {
                 loading={loading}
                 searchPlaceholder="Buscar por cliente..."
                 emptyMessage="No hay cuentas por cobrar registradas."
+            />
+
+            <PagosCuentaModal
+                open={!!pagoCuenta}
+                cuenta={pagoCuenta}
+                tipo="cobrar"
+                onClose={() => setPagoCuenta(null)}
+                onSaved={(updated) => {
+                    setPagoCuenta(updated);
+                    load();
+                }}
             />
         </Layout>
     );

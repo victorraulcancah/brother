@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call([
+            MetodosPagoSeeder::class,
             MotivosMovimientoSeeder::class,
             CatalogSeeder::class,
             DemoSeeder::class,
