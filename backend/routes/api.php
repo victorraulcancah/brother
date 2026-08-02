@@ -28,6 +28,7 @@ use App\Http\Controllers\ProductoPresentacionController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\PrestamoController;
 use App\Http\Controllers\RecepcionCompraController;
+use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SubMarcaController;
 use App\Http\Controllers\TomaInventarioController;
@@ -47,6 +48,9 @@ Route::middleware('auth:api')->group(function () {
     // Dashboard / escritorio
     Route::get('dashboard', [DashboardController::class, 'index']);
     Route::get('alertas', [AlertaController::class, 'index']);
+
+    // Reportes
+    Route::get('reportes/utilidades', [ReporteController::class, 'utilidades']);
 
     // Catálogo
     Route::apiResource('categorias', CategoriaController::class);

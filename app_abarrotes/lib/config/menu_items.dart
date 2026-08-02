@@ -85,6 +85,13 @@ class AppMenu {
       ],
     ),
     MenuGroup(
+      icon: Icons.bar_chart_outlined,
+      label: 'Reportes',
+      children: [
+        MenuLink(icon: Icons.show_chart, label: 'Utilidades', route: AppRoutes.reportesUtilidades),
+      ],
+    ),
+    MenuGroup(
       icon: Icons.account_balance_wallet_outlined,
       label: 'Tesorería',
       children: [

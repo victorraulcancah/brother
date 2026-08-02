@@ -4,7 +4,15 @@ import api, { asList } from '../lib/api';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
 import PagosCuentaModal from '../components/PagosCuentaModal';
-import { Alert, Badge, Button, DataTable } from '../components/ui';
+import { Alert, Badge, Button, DataTable, Select } from '../components/ui';
+
+const ESTADOS = [
+    { value: '', label: 'Todos los estados' },
+    { value: 'pendiente', label: 'Pendiente' },
+    { value: 'parcial', label: 'Parcial' },
+    { value: 'pagado', label: 'Pagado' },
+    { value: 'anulado', label: 'Anulado' },
+];
 
 const money = (n) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
@@ -21,6 +29,7 @@ export default function CuentasPorCobrar() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [pagoCuenta, setPagoCuenta] = useState(null);
+    const [fEstado, setFEstado] = useState('');
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -84,10 +93,22 @@ export default function CuentasPorCobrar() {
 
             <DataTable
                 columns={columns}
-                rows={rows}
+                rows={fEstado ? rows.filter((r) => r.estado === fEstado) : rows}
                 loading={loading}
                 searchPlaceholder="Buscar por cliente..."
                 emptyMessage="No hay cuentas por cobrar registradas."
+                filterable
+                filterCount={fEstado ? 1 : 0}
+                filters={
+                    <div className="space-y-2">
+                        <Select label="Estado" value={fEstado} onChange={(e) => setFEstado(e.target.value)} options={ESTADOS} />
+                        {fEstado && (
+                            <button onClick={() => setFEstado('')} className="text-xs font-medium text-red-600 hover:text-red-700">
+                                Limpiar filtros
+                            </button>
+                        )}
+                    </div>
+                }
             />
 
             <PagosCuentaModal

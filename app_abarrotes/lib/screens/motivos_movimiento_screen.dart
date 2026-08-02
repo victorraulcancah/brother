@@ -138,6 +138,7 @@ class _MotivoDialog extends StatefulWidget {
 class _MotivoDialogState extends State<_MotivoDialog> {
   late final TextEditingController _nombre;
   String _tipo = 'entrada';
+  String _categoria = 'operativo';
   bool _activo = true;
   bool _saving = false;
 
@@ -148,6 +149,7 @@ class _MotivoDialogState extends State<_MotivoDialog> {
     super.initState();
     _nombre = TextEditingController(text: widget.motivo?['nombre'] as String? ?? '');
     _tipo = widget.motivo?['tipo'] as String? ?? 'entrada';
+    _categoria = widget.motivo?['categoria_gasto'] as String? ?? 'operativo';
     _activo = widget.motivo?['activo'] as bool? ?? true;
   }
 
@@ -169,6 +171,7 @@ class _MotivoDialogState extends State<_MotivoDialog> {
         'tipo': _tipo,
         'activo': _activo,
         'ambito': 'caja',
+        'categoria_gasto': _tipo == 'salida' ? _categoria : null,
       };
       if (_esNuevo) {
         await widget.crud.create(body);
@@ -201,6 +204,19 @@ class _MotivoDialogState extends State<_MotivoDialog> {
             ],
             onChanged: (v) => setState(() => _tipo = v ?? 'entrada'),
           ),
+          if (_tipo == 'salida') ...[
+            const SizedBox(height: 8),
+            AppSelect<String>(
+              label: 'Clasificación (reporte de utilidades)',
+              value: _categoria,
+              options: const [
+                AppSelectOption('operativo', 'Operativo (resta en utilidad)'),
+                AppSelectOption('compra', 'Compra a proveedor (no resta)'),
+                AppSelectOption('no_operativo', 'No operativo'),
+              ],
+              onChanged: (v) => setState(() => _categoria = v ?? 'operativo'),
+            ),
+          ],
           const SizedBox(height: 8),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,

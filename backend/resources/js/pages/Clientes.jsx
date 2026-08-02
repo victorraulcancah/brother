@@ -21,6 +21,8 @@ export default function Clientes() {
     const [clientes, setClientes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [fTipoDoc, setFTipoDoc] = useState('');
+    const [fEstado, setFEstado] = useState('');
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -198,7 +200,55 @@ export default function Clientes() {
 
             {error && <Alert variant="error" className="mb-4">{error}</Alert>}
 
-            <DataTable columns={columns} rows={clientes} loading={loading} searchPlaceholder="Buscar clientes..." />
+            <DataTable
+                columns={columns}
+                rows={clientes.filter(
+                    (c) =>
+                        (!fTipoDoc || c.tipo_documento === fTipoDoc) &&
+                        (!fEstado || (fEstado === 'activo' ? c.activo : !c.activo)),
+                )}
+                loading={loading}
+                searchPlaceholder="Buscar clientes..."
+                filterable
+                filterCount={(fTipoDoc ? 1 : 0) + (fEstado ? 1 : 0)}
+                filters={
+                    <div className="space-y-2">
+                        <Select
+                            label="Tipo de documento"
+                            value={fTipoDoc}
+                            onChange={(e) => setFTipoDoc(e.target.value)}
+                            options={[
+                                { value: '', label: 'Todos' },
+                                { value: 'DNI', label: 'DNI' },
+                                { value: 'RUC', label: 'RUC' },
+                                { value: 'CE', label: 'Carné de extranjería' },
+                                { value: 'SIN', label: 'Sin documento' },
+                            ]}
+                        />
+                        <Select
+                            label="Estado"
+                            value={fEstado}
+                            onChange={(e) => setFEstado(e.target.value)}
+                            options={[
+                                { value: '', label: 'Todos' },
+                                { value: 'activo', label: 'Activos' },
+                                { value: 'inactivo', label: 'Inactivos' },
+                            ]}
+                        />
+                        {(fTipoDoc || fEstado) && (
+                            <button
+                                onClick={() => {
+                                    setFTipoDoc('');
+                                    setFEstado('');
+                                }}
+                                className="text-xs font-medium text-red-600 hover:text-red-700"
+                            >
+                                Limpiar filtros
+                            </button>
+                        )}
+                    </div>
+                }
+            />
 
             <Modal
                 open={modalOpen}

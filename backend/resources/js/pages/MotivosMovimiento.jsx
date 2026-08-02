@@ -6,7 +6,13 @@ import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import { Alert, Badge, Button, DataTable, Input, Modal, Select, Tabs } from '../components/ui';
 
-const emptyForm = { nombre: '', tipo: 'salida', activo: true };
+const emptyForm = { nombre: '', tipo: 'salida', categoria_gasto: 'operativo', activo: true };
+
+const CAT_GASTO = {
+    operativo: { label: 'Operativo', variant: 'amber' },
+    compra: { label: 'Compra (proveedor)', variant: 'blue' },
+    no_operativo: { label: 'No operativo', variant: 'gray' },
+};
 
 export default function MotivosMovimiento() {
     const toast = useToast();
@@ -15,6 +21,7 @@ export default function MotivosMovimiento() {
     const [motivos, setMotivos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [fEstado, setFEstado] = useState('');
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -53,6 +60,7 @@ export default function MotivosMovimiento() {
         setForm({
             nombre: motivo.nombre,
             tipo: motivo.tipo,
+            categoria_gasto: motivo.categoria_gasto ?? 'operativo',
             activo: Boolean(motivo.activo),
         });
         setFormErrors({});
@@ -63,7 +71,12 @@ export default function MotivosMovimiento() {
         e.preventDefault();
         setSaving(true);
         setFormErrors({});
-        const payload = { nombre: form.nombre, tipo: form.tipo, activo: form.activo };
+        const payload = {
+            nombre: form.nombre,
+            tipo: form.tipo,
+            activo: form.activo,
+            categoria_gasto: form.tipo === 'salida' ? form.categoria_gasto : null,
+        };
         try {
             if (editing) {
                 await api.put(`/motivos-movimiento/${editing.id}`, payload);
@@ -102,7 +115,9 @@ export default function MotivosMovimiento() {
         }
     };
 
-    const rows = motivos.filter((m) => m.tipo === tab);
+    const rows = motivos.filter(
+        (m) => m.tipo === tab && (!fEstado || (fEstado === 'activo' ? m.activo : !m.activo)),
+    );
 
     const columns = [
         {
@@ -128,6 +143,15 @@ export default function MotivosMovimiento() {
                 ) : (
                     <Badge variant="red">Salida (egreso)</Badge>
                 ),
+        },
+        {
+            key: 'categoria_gasto',
+            label: 'Clasificación',
+            render: (row) => {
+                if (row.tipo !== 'salida') return <span className="text-gray-300">—</span>;
+                const c = CAT_GASTO[row.categoria_gasto];
+                return c ? <Badge variant={c.variant}>{c.label}</Badge> : <span className="text-gray-400">Sin clasificar</span>;
+            },
         },
         {
             key: 'es_sistema',
@@ -198,6 +222,27 @@ export default function MotivosMovimiento() {
                 loading={loading}
                 searchPlaceholder="Buscar motivos..."
                 emptyMessage="No hay motivos de este tipo."
+                filterable
+                filterCount={fEstado ? 1 : 0}
+                filters={
+                    <div className="space-y-2">
+                        <Select
+                            label="Estado"
+                            value={fEstado}
+                            onChange={(e) => setFEstado(e.target.value)}
+                            options={[
+                                { value: '', label: 'Todos' },
+                                { value: 'activo', label: 'Activos' },
+                                { value: 'inactivo', label: 'Inactivos' },
+                            ]}
+                        />
+                        {fEstado && (
+                            <button onClick={() => setFEstado('')} className="text-xs font-medium text-red-600 hover:text-red-700">
+                                Limpiar filtros
+                            </button>
+                        )}
+                    </div>
+                }
             />
 
             <Modal
@@ -266,6 +311,18 @@ export default function MotivosMovimiento() {
                             Ej: un motivo "Luz" de tipo salida se usa en egresos (gastos).
                         </p>
                     </div>
+                    {form.tipo === 'salida' && (
+                        <Select
+                            label="Clasificación (para el reporte de Utilidades)"
+                            value={form.categoria_gasto}
+                            onChange={(e) => setForm((prev) => ({ ...prev, categoria_gasto: e.target.value }))}
+                            options={[
+                                { value: 'operativo', label: 'Operativo — gasto del negocio (resta en utilidad)' },
+                                { value: 'compra', label: 'Compra — pago a proveedor (NO resta, ya está en el costo)' },
+                                { value: 'no_operativo', label: 'No operativo — otros (no afecta la utilidad)' },
+                            ]}
+                        />
+                    )}
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                         <input
                             type="checkbox"

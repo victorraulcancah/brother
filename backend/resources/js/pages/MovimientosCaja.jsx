@@ -40,6 +40,7 @@ export default function MovimientosCaja() {
     const [esSuperAdmin, setEsSuperAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [fTipo, setFTipo] = useState('');
 
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState(emptyForm('ingreso'));
@@ -202,10 +203,31 @@ export default function MovimientosCaja() {
 
             <DataTable
                 columns={columns}
-                rows={rows}
+                rows={fTipo ? rows.filter((r) => r.tipo === fTipo) : rows}
                 loading={loading}
                 searchPlaceholder="Buscar movimientos..."
                 emptyMessage="Aún no hay movimientos de caja registrados."
+                filterable
+                filterCount={fTipo ? 1 : 0}
+                filters={
+                    <div className="space-y-2">
+                        <Select
+                            label="Tipo"
+                            value={fTipo}
+                            onChange={(e) => setFTipo(e.target.value)}
+                            options={[
+                                { value: '', label: 'Todos' },
+                                { value: 'ingreso', label: 'Ingresos' },
+                                { value: 'egreso', label: 'Egresos' },
+                            ]}
+                        />
+                        {fTipo && (
+                            <button onClick={() => setFTipo('')} className="text-xs font-medium text-red-600 hover:text-red-700">
+                                Limpiar filtros
+                            </button>
+                        )}
+                    </div>
+                }
             />
 
             <Modal

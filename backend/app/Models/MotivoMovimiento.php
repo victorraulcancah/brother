@@ -12,6 +12,7 @@ class MotivoMovimiento extends Model
         'nombre',
         'tipo',
         'ambito',
+        'categoria_gasto',
         'es_sistema',
         'activo',
     ];

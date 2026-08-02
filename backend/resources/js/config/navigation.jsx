@@ -31,6 +31,8 @@ import {
     HandCoins,
     Receipt,
     ListChecks,
+    BarChart3,
+    LineChart,
 } from 'lucide-react';
 
 export const navigation = [
@@ -87,6 +89,13 @@ export const navigation = [
             { label: 'Motivos de Movimiento', icon: ListChecks, to: '/motivos-movimiento' },
             { label: 'Cuentas por Cobrar', icon: HandCoins, to: '/cuentas-por-cobrar' },
             { label: 'Cuentas por Pagar', icon: Receipt, to: '/cuentas-por-pagar' },
+        ],
+    },
+    {
+        label: 'Reportes',
+        icon: BarChart3,
+        children: [
+            { label: 'Utilidades', icon: LineChart, to: '/reportes/utilidades' },
         ],
     },
     {

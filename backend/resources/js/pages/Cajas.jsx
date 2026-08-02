@@ -21,6 +21,7 @@ export default function Cajas() {
     const [usuarios, setUsuarios] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [fEstado, setFEstado] = useState('');
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -227,9 +228,30 @@ export default function Cajas() {
 
             <DataTable
                 columns={columns}
-                rows={cajas}
+                rows={fEstado ? cajas.filter((c) => (fEstado === 'activas' ? c.activo : !c.activo)) : cajas}
                 loading={loading}
                 searchPlaceholder="Buscar cajas..."
+                filterable
+                filterCount={fEstado ? 1 : 0}
+                filters={
+                    <div className="space-y-2">
+                        <Select
+                            label="Estado"
+                            value={fEstado}
+                            onChange={(e) => setFEstado(e.target.value)}
+                            options={[
+                                { value: '', label: 'Todas' },
+                                { value: 'activas', label: 'Activas' },
+                                { value: 'inactivas', label: 'Inactivas' },
+                            ]}
+                        />
+                        {fEstado && (
+                            <button onClick={() => setFEstado('')} className="text-xs font-medium text-red-600 hover:text-red-700">
+                                Limpiar filtros
+                            </button>
+                        )}
+                    </div>
+                }
             />
 
             <Modal

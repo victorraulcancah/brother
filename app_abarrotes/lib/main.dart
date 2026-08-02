@@ -33,6 +33,7 @@ import 'screens/submarcas_screen.dart';
 import 'screens/tomas_inventario_screen.dart';
 import 'screens/unidades_screen.dart';
 import 'screens/usuarios_screen.dart';
+import 'screens/utilidades_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -81,6 +82,7 @@ class MyApp extends StatelessWidget {
           AppRoutes.cajas: (_) => const CajasScreen(),
           AppRoutes.movimientosCaja: (_) => const MovimientosCajaScreen(),
           AppRoutes.motivosMovimiento: (_) => const MotivosMovimientoScreen(),
+          AppRoutes.reportesUtilidades: (_) => const UtilidadesScreen(),
           AppRoutes.cuentasPorCobrar: (_) => const CuentasPorCobrarScreen(),
           AppRoutes.cuentasPorPagar: (_) => const CuentasPorPagarScreen(),
         },

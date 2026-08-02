@@ -26,6 +26,7 @@ class MotivoMovimientoController extends Controller
         $data = $request->validate([
             'nombre' => 'required|string|max:255',
             'tipo' => 'required|string|in:entrada,salida',
+            'categoria_gasto' => 'nullable|in:operativo,compra,no_operativo',
             'activo' => 'boolean',
         ]);
         $data['ambito'] = $request->input('ambito', 'caja');
@@ -46,6 +47,7 @@ class MotivoMovimientoController extends Controller
         $data = $request->validate([
             'nombre' => 'required|string|max:255',
             'tipo' => 'required|string|in:entrada,salida',
+            'categoria_gasto' => 'nullable|in:operativo,compra,no_operativo',
             'activo' => 'boolean',
         ]);
         $motivosMovimiento->update($data);

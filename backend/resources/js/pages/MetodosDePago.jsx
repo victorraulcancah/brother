@@ -75,6 +75,7 @@ export default function MetodosDePago() {
     const [data, setData] = useState({ bancos: [], cuentas: [], tarjetas: [], billeteras: [] });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [fEstado, setFEstado] = useState('');
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -244,9 +245,34 @@ export default function MetodosDePago() {
 
             <DataTable
                 columns={columns}
-                rows={data[tab]}
+                rows={(() => {
+                    const esActivo = (r) => (tab === 'tarjetas' ? r.estado === 'activa' : Boolean(r.activo));
+                    const base = data[tab] ?? [];
+                    return fEstado ? base.filter((r) => (fEstado === 'activo' ? esActivo(r) : !esActivo(r))) : base;
+                })()}
                 loading={loading}
                 searchPlaceholder={`Buscar en ${TABS.find((t) => t.key === tab)?.label.toLowerCase()}...`}
+                filterable
+                filterCount={fEstado ? 1 : 0}
+                filters={
+                    <div className="space-y-2">
+                        <Select
+                            label="Estado"
+                            value={fEstado}
+                            onChange={(e) => setFEstado(e.target.value)}
+                            options={[
+                                { value: '', label: 'Todos' },
+                                { value: 'activo', label: 'Activos' },
+                                { value: 'inactivo', label: 'Inactivos' },
+                            ]}
+                        />
+                        {fEstado && (
+                            <button onClick={() => setFEstado('')} className="text-xs font-medium text-red-600 hover:text-red-700">
+                                Limpiar filtros
+                            </button>
+                        )}
+                    </div>
+                }
             />
 
             {/* Modal crear/editar */}

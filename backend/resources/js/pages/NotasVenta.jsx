@@ -5,7 +5,7 @@ import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
-import { Alert, Badge, Button, DataTable, Input, Modal } from '../components/ui';
+import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
 
 const money = (n) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
@@ -16,6 +16,8 @@ export default function NotasVenta() {
     const [notas, setNotas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [fEstado, setFEstado] = useState('');
+    const [fPago, setFPago] = useState('');
 
     const [anularTarget, setAnularTarget] = useState(null);
     const [motivo, setMotivo] = useState('');
@@ -121,7 +123,53 @@ export default function NotasVenta() {
 
             {error && <Alert variant="error" className="mb-4">{error}</Alert>}
 
-            <DataTable columns={columns} rows={notas} loading={loading} searchPlaceholder="Buscar ventas..." />
+            <DataTable
+                columns={columns}
+                rows={notas.filter(
+                    (n) =>
+                        (!fEstado || n.estado === fEstado) &&
+                        (!fPago || n.tipo_pago === fPago),
+                )}
+                loading={loading}
+                searchPlaceholder="Buscar ventas..."
+                filterable
+                filterCount={(fEstado ? 1 : 0) + (fPago ? 1 : 0)}
+                filters={
+                    <div className="space-y-2">
+                        <Select
+                            label="Estado"
+                            value={fEstado}
+                            onChange={(e) => setFEstado(e.target.value)}
+                            options={[
+                                { value: '', label: 'Todos' },
+                                { value: 'emitida', label: 'Emitida' },
+                                { value: 'anulada', label: 'Anulada' },
+                            ]}
+                        />
+                        <Select
+                            label="Forma de pago"
+                            value={fPago}
+                            onChange={(e) => setFPago(e.target.value)}
+                            options={[
+                                { value: '', label: 'Todas' },
+                                { value: 'contado', label: 'Contado' },
+                                { value: 'credito', label: 'Crédito' },
+                            ]}
+                        />
+                        {(fEstado || fPago) && (
+                            <button
+                                onClick={() => {
+                                    setFEstado('');
+                                    setFPago('');
+                                }}
+                                className="text-xs font-medium text-red-600 hover:text-red-700"
+                            >
+                                Limpiar filtros
+                            </button>
+                        )}
+                    </div>
+                }
+            />
 
             <Modal
                 open={Boolean(anularTarget)}

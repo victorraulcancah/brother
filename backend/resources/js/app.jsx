@@ -36,6 +36,7 @@ import MovimientosCaja from './pages/MovimientosCaja';
 import MotivosMovimiento from './pages/MotivosMovimiento';
 import CuentasPorCobrar from './pages/CuentasPorCobrar';
 import CuentasPorPagar from './pages/CuentasPorPagar';
+import Utilidades from './pages/Utilidades';
 import EnConstruccion from './pages/EnConstruccion';
 
 const routes = [
@@ -70,6 +71,7 @@ const routes = [
     { path: '/motivos-movimiento', element: <MotivosMovimiento /> },
     { path: '/cuentas-por-cobrar', element: <CuentasPorCobrar /> },
     { path: '/cuentas-por-pagar', element: <CuentasPorPagar /> },
+    { path: '/reportes/utilidades', element: <Utilidades /> },
 ];
 
 createRoot(document.getElementById('root')).render(

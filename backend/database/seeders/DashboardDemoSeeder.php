@@ -148,16 +148,17 @@ class DashboardDemoSeeder extends Seeder
                 'fecha_apertura' => now()->subDays(30),
                 'estado' => 'abierta',
             ]);
-            $motIngreso = MotivoMovimiento::where('tipo', 'entrada')->first();
-            $motEgreso = MotivoMovimiento::where('tipo', 'salida')->first();
+            // Motivos de CAJA (no de inventario): ingreso = entrada; egreso = gasto operativo.
+            $motIngreso = MotivoMovimiento::where('ambito', 'caja')->where('tipo', 'entrada')->first();
+            $motGasto = MotivoMovimiento::where('ambito', 'caja')->where('categoria_gasto', 'operativo')->get();
             $metodo = MetodoPago::where('nombre', 'Efectivo')->first() ?? MetodoPago::first();
 
             for ($m = 0; $m < 50; $m++) {
-                $ingreso = rand(1, 100) <= 65;
+                $ingreso = rand(1, 100) <= 60;
                 MovimientoCaja::create([
                     'apertura_caja_id' => $apertura->id,
                     'tipo' => $ingreso ? 'ingreso' : 'egreso',
-                    'motivo_movimiento_id' => $ingreso ? $motIngreso?->id : $motEgreso?->id,
+                    'motivo_movimiento_id' => $ingreso ? $motIngreso?->id : ($motGasto->isNotEmpty() ? $motGasto->random()->id : null),
                     'metodo_pago_id' => $metodo?->id,
                     'monto' => $ingreso ? rand(50, 600) : rand(20, 300),
                     'fecha' => now()->subDays(rand(0, 29))->toDateString(),
