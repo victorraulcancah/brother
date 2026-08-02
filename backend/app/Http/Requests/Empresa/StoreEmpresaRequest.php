@@ -18,6 +18,10 @@ class StoreEmpresaRequest extends FormRequest
             'razon_social' => 'required|string|max:255',
             'nombre_comercial' => 'required|string|max:255',
             'direccion' => 'nullable|string|max:500',
+            'departamento' => 'nullable|string|max:100',
+            'provincia' => 'nullable|string|max:100',
+            'distrito' => 'nullable|string|max:100',
+            'ciudad' => 'nullable|string|max:100',
             'telefono' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
         ];

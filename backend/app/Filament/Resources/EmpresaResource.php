@@ -83,11 +83,23 @@ class EmpresaResource extends Resource
                             ->columnSpanFull(),
                     ])->columns(3),
 
-                SchemaComponents\Section::make('Contacto')
+                SchemaComponents\Section::make('Contacto y Ubicación')
                     ->schema([
                         Components\TextInput::make('direccion')
                             ->label('Dirección')
                             ->maxLength(500),
+                        Components\TextInput::make('departamento')
+                            ->label('Departamento')
+                            ->maxLength(100),
+                        Components\TextInput::make('provincia')
+                            ->label('Provincia')
+                            ->maxLength(100),
+                        Components\TextInput::make('distrito')
+                            ->label('Distrito')
+                            ->maxLength(100),
+                        Components\TextInput::make('ciudad')
+                            ->label('Ciudad')
+                            ->maxLength(100),
                         Components\TextInput::make('telefono')
                             ->label('Teléfono')
                             ->maxLength(20),

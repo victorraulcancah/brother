@@ -7,6 +7,7 @@ use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -26,11 +27,15 @@ class UserController extends Controller
         $role = $data['role'] ?? null;
         unset($data['role']);
 
-        $user = User::create($data);
+        $user = DB::transaction(function () use ($data, $role) {
+            $user = User::create($data);
 
-        if ($role) {
-            $user->syncRoles([$role]);
-        }
+            if ($role) {
+                $user->syncRoles([$role]);
+            }
+
+            return $user;
+        });
 
         return response()->json($user->load('empresa', 'roles'), 201);
     }
@@ -47,13 +52,15 @@ class UserController extends Controller
         $role = $data['role'] ?? null;
         unset($data['role']);
 
-        if (!empty($data)) {
-            $user->update($data);
-        }
+        DB::transaction(function () use ($user, $data, $role) {
+            if (!empty($data)) {
+                $user->update($data);
+            }
 
-        if ($role) {
-            $user->syncRoles([$role]);
-        }
+            if ($role) {
+                $user->syncRoles([$role]);
+            }
+        });
 
         return response()->json($user->load('empresa', 'roles'));
     }

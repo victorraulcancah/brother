@@ -11,7 +11,7 @@ class RoleController extends Controller
     public function index(): JsonResponse
     {
         return response()->json(
-            Role::orderBy('name')->get(['id', 'name', 'guard_name'])
+            Role::where('guard_name', 'web')->orderBy('name')->get(['id', 'name', 'guard_name'])
         );
     }
 
@@ -21,21 +21,21 @@ class RoleController extends Controller
             'name' => 'required|string|max:255|unique:roles,name',
         ]);
 
-        $role = Role::create(['name' => $data['name']]);
+        $role = Role::create(['name' => $data['name'], 'guard_name' => 'web']);
 
         return response()->json($role, 201);
     }
 
     public function show(int $id): JsonResponse
     {
-        $role = Role::findOrFail($id);
+        $role = Role::where('guard_name', 'web')->findOrFail($id);
 
         return response()->json($role->only(['id', 'name', 'guard_name']));
     }
 
     public function update(Request $request, int $id): JsonResponse
     {
-        $role = Role::findOrFail($id);
+        $role = Role::where('guard_name', 'web')->findOrFail($id);
 
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
@@ -48,7 +48,7 @@ class RoleController extends Controller
 
     public function destroy(int $id): JsonResponse
     {
-        Role::findOrFail($id)->delete();
+        Role::where('guard_name', 'web')->findOrFail($id)->delete();
 
         return response()->json(['message' => 'Rol eliminado']);
     }

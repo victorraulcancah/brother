@@ -17,6 +17,10 @@ export default function Empresa() {
         razon_social: '',
         nombre_comercial: '',
         direccion: '',
+        departamento: '',
+        provincia: '',
+        distrito: '',
+        ciudad: '',
         telefono: '',
         email: '',
         activa: true,
@@ -36,6 +40,10 @@ export default function Empresa() {
                     razon_social: current.razon_social ?? '',
                     nombre_comercial: current.nombre_comercial ?? '',
                     direccion: current.direccion ?? '',
+                    departamento: current.departamento ?? '',
+                    provincia: current.provincia ?? '',
+                    distrito: current.distrito ?? '',
+                    ciudad: current.ciudad ?? '',
                     telefono: current.telefono ?? '',
                     email: current.email ?? '',
                     activa: current.activa ?? false,
@@ -144,20 +152,48 @@ export default function Empresa() {
                                     onChange={handleChange}
                                     error={errors.razon_social}
                                 />
-                                <Input
-                                    label="Nombre comercial"
-                                    name="nombre_comercial"
-                                    value={form.nombre_comercial}
-                                    onChange={handleChange}
-                                    error={errors.nombre_comercial}
-                                />
-                                <Input
-                                    label="Teléfono"
-                                    name="telefono"
-                                    value={form.telefono}
-                                    onChange={handleChange}
-                                    error={errors.telefono}
-                                />
+                            <Input
+                                label="Nombre comercial"
+                                name="nombre_comercial"
+                                value={form.nombre_comercial}
+                                onChange={handleChange}
+                                error={errors.nombre_comercial}
+                            />
+                            <Input
+                                label="Departamento"
+                                name="departamento"
+                                value={form.departamento}
+                                onChange={handleChange}
+                                error={errors.departamento}
+                            />
+                            <Input
+                                label="Provincia"
+                                name="provincia"
+                                value={form.provincia}
+                                onChange={handleChange}
+                                error={errors.provincia}
+                            />
+                            <Input
+                                label="Distrito"
+                                name="distrito"
+                                value={form.distrito}
+                                onChange={handleChange}
+                                error={errors.distrito}
+                            />
+                            <Input
+                                label="Ciudad"
+                                name="ciudad"
+                                value={form.ciudad}
+                                onChange={handleChange}
+                                error={errors.ciudad}
+                            />
+                            <Input
+                                label="Teléfono"
+                                name="telefono"
+                                value={form.telefono}
+                                onChange={handleChange}
+                                error={errors.telefono}
+                            />
                                 <Input
                                     label="Correo"
                                     name="email"

@@ -35,7 +35,7 @@ class EmpresaController extends Controller
         $empresa = Empresa::findOrFail($id);
         $empresa->update($request->validated());
 
-        return response()->json($empresa);
+        return response()->json($empresa->load('users'));
     }
 
     public function destroy(int $id): JsonResponse

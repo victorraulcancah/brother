@@ -6,49 +6,6 @@ import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
 
-const roleColumns = [
-    { key: 'id', label: 'ID' },
-    {
-        key: 'name',
-        label: 'Nombre',
-        render: (row) => (
-            <span className="inline-flex items-center gap-2 font-medium text-warm-900">
-                <Shield className="h-4 w-4 text-primary-600" />
-                {row.name}
-            </span>
-        ),
-    },
-    { key: 'guard_name', label: 'Guard' },
-    {
-        key: 'permisos',
-        label: 'Permisos',
-        render: () => <Badge variant="gray">—</Badge>,
-    },
-    {
-        type: 'actions',
-        key: 'actions',
-        label: 'Acciones',
-        actions: (row) => (
-            <>
-                <button
-                    aria-label="Editar"
-                    onClick={() => openEdit(row)}
-                    className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 hover:text-primary-700"
-                >
-                    <Edit className="h-4 w-4" />
-                </button>
-                <button
-                    aria-label="Eliminar"
-                    onClick={() => confirmDelete(row)}
-                    className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700"
-                >
-                    <Trash2 className="h-4 w-4" />
-                </button>
-            </>
-        ),
-    },
-];
-
 export default function Roles() {
     const toast = useToast();
     const [roles, setRoles] = useState([]);
@@ -163,6 +120,49 @@ export default function Roles() {
     );
 
     const filterCount = Object.keys(activeFilters).length;
+
+    const roleColumns = [
+        { key: 'id', label: 'ID' },
+        {
+            key: 'name',
+            label: 'Nombre',
+            render: (row) => (
+                <span className="inline-flex items-center gap-2 font-medium text-warm-900">
+                    <Shield className="h-4 w-4 text-primary-600" />
+                    {row.name}
+                </span>
+            ),
+        },
+        { key: 'guard_name', label: 'Guard' },
+        {
+            key: 'permisos',
+            label: 'Permisos',
+            render: () => <Badge variant="gray">—</Badge>,
+        },
+        {
+            type: 'actions',
+            key: 'actions',
+            label: 'Acciones',
+            actions: (row) => (
+                <>
+                    <button
+                        aria-label="Editar"
+                        onClick={() => openEdit(row)}
+                        className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 hover:text-primary-700"
+                    >
+                        <Edit className="h-4 w-4" />
+                    </button>
+                    <button
+                        aria-label="Eliminar"
+                        onClick={() => confirmDelete(row)}
+                        className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </button>
+                </>
+            ),
+        },
+    ];
 
     const roleFilters = (
         <div className="flex flex-wrap items-end gap-3">
