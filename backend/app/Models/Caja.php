@@ -35,4 +35,9 @@ class Caja extends Model
     {
         return $this->hasMany(AperturaCaja::class);
     }
+
+    public function usuario()
+    {
+        return $this->belongsTo(User::class, 'id', 'caja_id');
+    }
 }

@@ -6,7 +6,7 @@ import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
 
-const emptyForm = { nombre: '', almacen_id: '', activo: true, metodos_pago: [] };
+const emptyForm = { nombre: '', almacen_id: '', usuario_id: '', activo: true, metodos_pago: [] };
 
 const tipoMetodo = (tipo) => {
     const map = { efectivo: 'green', banco: 'blue', billetera: 'amber', tarjeta: 'gray' };
@@ -18,6 +18,7 @@ export default function Cajas() {
     const [cajas, setCajas] = useState([]);
     const [almacenes, setAlmacenes] = useState([]);
     const [metodos, setMetodos] = useState([]);
+    const [usuarios, setUsuarios] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -34,14 +35,16 @@ export default function Cajas() {
         setLoading(true);
         setError(null);
         try {
-            const [cajasRes, almacenesRes, metodosRes] = await Promise.all([
+            const [cajasRes, almacenesRes, metodosRes, usuariosRes] = await Promise.all([
                 api.get('/cajas'),
                 api.get('/almacenes'),
                 api.get('/metodos-pago'),
+                api.get('/users'),
             ]);
             setCajas(asList(cajasRes));
             setAlmacenes(asList(almacenesRes));
             setMetodos(asList(metodosRes));
+            setUsuarios(asList(usuariosRes));
         } catch {
             setError('No se pudieron cargar las cajas.');
         } finally {
@@ -65,6 +68,7 @@ export default function Cajas() {
         setForm({
             nombre: caja.nombre,
             almacen_id: caja.almacen_id ?? '',
+            usuario_id: caja.usuario?.id ?? '',
             activo: Boolean(caja.activo),
             metodos_pago: (caja.metodos_pago ?? []).map((m) => m.id),
         });
@@ -88,6 +92,7 @@ export default function Cajas() {
         const payload = {
             nombre: form.nombre,
             almacen_id: form.almacen_id || null,
+            usuario_id: form.usuario_id || null,
             activo: form.activo,
             metodos_pago: form.metodos_pago,
         };
@@ -144,6 +149,19 @@ export default function Cajas() {
             key: 'almacen',
             label: 'Almacén',
             render: (row) => row.almacen?.nombre ?? <span className="text-gray-400">—</span>,
+        },
+        {
+            key: 'usuario',
+            label: 'Usuario',
+            render: (row) =>
+                row.usuario ? (
+                    <span className="text-sm">
+                        {row.usuario.name}
+                        <span className="block text-xs text-gray-400">{row.usuario.email}</span>
+                    </span>
+                ) : (
+                    <span className="text-gray-400">—</span>
+                ),
         },
         {
             key: 'metodos_pago',
@@ -249,6 +267,20 @@ export default function Cajas() {
                             ...almacenes.map((a) => ({ value: a.id, label: a.nombre })),
                         ]}
                         error={formErrors.almacen_id}
+                    />
+                    <Select
+                        label="Usuario asignado"
+                        value={form.usuario_id}
+                        onChange={(e) =>
+                            setForm((prev) => ({ ...prev, usuario_id: e.target.value }))
+                        }
+                        options={[
+                            { value: '', label: 'Sin usuario' },
+                            ...usuarios
+                                .filter((u) => !u.caja_id || u.caja_id === form.usuario_id)
+                                .map((u) => ({ value: u.id, label: `${u.name} (${u.email})` })),
+                        ]}
+                        error={formErrors.usuario_id}
                     />
                     <div>
                         <label className="mb-2 block text-sm font-medium text-gray-700">
