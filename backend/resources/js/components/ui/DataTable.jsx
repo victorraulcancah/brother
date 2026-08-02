@@ -61,6 +61,7 @@ export default function DataTable({
     loading = false,
     emptyMessage = 'No hay registros para mostrar',
     onRowClick = null,
+    maxHeight = '60vh',
 }) {
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search, 300);
@@ -102,6 +103,20 @@ export default function DataTable({
     const resetColumns = () => setHiddenColumns({});
 
     const isActionsColumn = (col) => col.type === 'actions';
+
+    // Ancho real de la barra de scroll (para reservar el hueco en el encabezado y que
+    // el encabezado fijo quede alineado con el cuerpo desplazable).
+    const [scrollbarW, setScrollbarW] = useState(0);
+    useEffect(() => {
+        const el = document.createElement('div');
+        el.style.cssText = 'overflow:scroll;position:absolute;top:-9999px;width:100px;height:100px';
+        document.body.appendChild(el);
+        setScrollbarW(el.offsetWidth - el.clientWidth);
+        document.body.removeChild(el);
+    }, []);
+
+    // Ancho por columna (para alinear encabezado y cuerpo con table-fixed).
+    const colWidth = (col) => col.width ?? (col.type === 'actions' ? '120px' : col.key === 'id' ? '72px' : undefined);
 
     return (
         <div className="relative rounded-lg border border-edge bg-white shadow-sm">
@@ -216,7 +231,7 @@ export default function DataTable({
                 </div>
             )}
 
-            <div className="overflow-x-auto">
+            <div>
                 {loading ? (
                     <div className="flex items-center justify-center py-16">
                         <Spinner size="lg" className="text-primary-600" />
@@ -224,80 +239,95 @@ export default function DataTable({
                 ) : (
                     <>
                         <div className="hidden md:block">
-                            <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr className="bg-primary-600 text-white">
-                                    {visibleColumns.map((col) => (
-                                        <th
-                                            key={col.key}
-                                            scope="col"
-                                            className={cn(
-                                                'px-4 py-3 text-xs font-semibold uppercase tracking-wide',
-                                                col.align === 'right' && 'text-right',
-                                                col.headerClassName,
-                                            )}
-                                        >
-                                            {col.label}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredRows.length === 0 && (
-                                    <tr>
-                                        <td
-                                            colSpan={visibleColumns.length}
-                                            className="px-4 py-12 text-center text-sm text-gray-400"
-                                        >
-                                            {emptyMessage}
-                                        </td>
-                                    </tr>
-                                )}
-                                {filteredRows.map((row, index) => (
-                                    <tr
-                                        key={row[keyField] ?? index}
-                                        onClick={
-                                            onRowClick
-                                                ? () => onRowClick(row)
-                                                : undefined
-                                        }
-                                        className={cn(
-                                            'transition',
-                                            onRowClick
-                                                ? 'cursor-pointer hover:bg-primary-50/50'
-                                                : 'hover:bg-gray-50',
-                                        )}
-                                    >
+                            {/* Encabezado fijo (fuera del scroll). Reserva el hueco de la barra
+                                y lo pinta del mismo color para que no quede un espacio en blanco. */}
+                            <div className="bg-primary-600" style={{ paddingRight: scrollbarW }}>
+                                <table className="w-full table-fixed text-left text-sm">
+                                    <colgroup>
                                         {visibleColumns.map((col) => (
-                                            <td
-                                                key={col.key}
+                                            <col key={col.key} style={{ width: colWidth(col) }} />
+                                        ))}
+                                    </colgroup>
+                                    <thead>
+                                        <tr className="bg-primary-600 text-white">
+                                            {visibleColumns.map((col) => (
+                                                <th
+                                                    key={col.key}
+                                                    scope="col"
+                                                    className={cn(
+                                                        'px-4 py-3 text-xs font-semibold uppercase tracking-wide',
+                                                        col.align === 'right' && 'text-right',
+                                                        col.headerClassName,
+                                                    )}
+                                                >
+                                                    {col.label}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                            {/* Cuerpo desplazable: la barra de scroll aparece solo aquí. */}
+                            <div className="overflow-y-auto" style={{ maxHeight, scrollbarGutter: 'stable' }}>
+                                <table className="w-full table-fixed text-left text-sm">
+                                    <colgroup>
+                                        {visibleColumns.map((col) => (
+                                            <col key={col.key} style={{ width: colWidth(col) }} />
+                                        ))}
+                                    </colgroup>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {filteredRows.length === 0 && (
+                                            <tr>
+                                                <td
+                                                    colSpan={visibleColumns.length}
+                                                    className="px-4 py-12 text-center text-sm text-gray-400"
+                                                >
+                                                    {emptyMessage}
+                                                </td>
+                                            </tr>
+                                        )}
+                                        {filteredRows.map((row, index) => (
+                                            <tr
+                                                key={row[keyField] ?? index}
+                                                onClick={onRowClick ? () => onRowClick(row) : undefined}
                                                 className={cn(
-                                                    'px-4 py-3 text-gray-700',
-                                                    col.align === 'right' && 'text-right',
+                                                    'transition',
+                                                    onRowClick
+                                                        ? 'cursor-pointer hover:bg-primary-50/50'
+                                                        : 'hover:bg-gray-50',
                                                 )}
                                             >
-                                                {isActionsColumn(col) ? (
-                                                    col.render ? (
-                                                        col.render(row)
-                                                    ) : (
-                                                        <span className="flex items-center justify-end gap-1">
-                                                            {col.actions?.(row)}
-                                                        </span>
-                                                    )
-                                                ) : col.render ? (
-                                                    col.render(row)
-                                                ) : (
-                                                    row[col.key]
-                                                )}
-                                            </td>
+                                                {visibleColumns.map((col) => (
+                                                    <td
+                                                        key={col.key}
+                                                        className={cn(
+                                                            'px-4 py-3 align-middle text-gray-700',
+                                                            col.align === 'right' && 'text-right',
+                                                        )}
+                                                    >
+                                                        {isActionsColumn(col) ? (
+                                                            col.render ? (
+                                                                col.render(row)
+                                                            ) : (
+                                                                <span className="flex items-center justify-end gap-1">
+                                                                    {col.actions?.(row)}
+                                                                </span>
+                                                            )
+                                                        ) : col.render ? (
+                                                            col.render(row)
+                                                        ) : (
+                                                            row[col.key]
+                                                        )}
+                                                    </td>
+                                                ))}
+                                            </tr>
                                         ))}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
-                    <div className="space-y-3 bg-gray-50 p-3 md:hidden">
+                    <div className="space-y-3 overflow-y-auto bg-gray-50 p-3 md:hidden" style={{ maxHeight }}>
                         {filteredRows.length === 0 && (
                             <p className="px-4 py-12 text-center text-sm text-gray-400">
                                 {emptyMessage}
