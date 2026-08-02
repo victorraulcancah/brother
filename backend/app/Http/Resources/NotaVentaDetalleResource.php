@@ -16,6 +16,7 @@ class NotaVentaDetalleResource extends JsonResource
             'precio_unitario' => $this->precio_unitario,
             'descuento' => $this->descuento,
             'subtotal' => $this->subtotal,
+            'producto_nombre' => $this->presentacion?->producto?->nombre,
             'presentacion' => ProductoPresentacionResource::make($this->whenLoaded('presentacion')),
         ];
     }
