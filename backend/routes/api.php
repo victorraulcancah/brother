@@ -14,6 +14,7 @@ use App\Http\Controllers\TarjetaBancariaController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CompraController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\MetodoPagoController;
@@ -41,6 +42,9 @@ Route::post('refresh', [AuthController::class, 'refresh']);
 Route::middleware('auth:api')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
+
+    // Dashboard / escritorio
+    Route::get('dashboard', [DashboardController::class, 'index']);
 
     // Catálogo
     Route::apiResource('categorias', CategoriaController::class);

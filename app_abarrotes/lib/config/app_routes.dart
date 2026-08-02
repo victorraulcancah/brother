@@ -45,6 +45,7 @@ class AppRoutes {
   static const String cuentasMedios = '/cuentas-medios';
   static const String cajas = '/cajas';
   static const String movimientosCaja = '/movimientos-caja';
+  static const String motivosMovimiento = '/motivos-movimiento';
   static const String cuentasPorCobrar = '/cuentas-por-cobrar';
   static const String cuentasPorPagar = '/cuentas-por-pagar';
 }

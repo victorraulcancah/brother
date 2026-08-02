@@ -12,7 +12,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('apertura_caja_id')->constrained('aperturas_caja');
             $table->string('tipo', 10);
-            $table->foreignId('metodo_pago_id')->constrained('metodos_pago');
+            // Nullable: los movimientos que nacen de un documento (venta contado, pago de
+            // cuenta por cobrar/pagar) usan forma_pago en el documento, no un metodo_pago_id.
+            $table->foreignId('metodo_pago_id')->nullable()->constrained('metodos_pago')->nullOnDelete();
             $table->foreignId('cuenta_bancaria_id')->nullable()->constrained('cuentas_bancarias')->nullOnDelete();
             $table->foreignId('tarjeta_id')->nullable()->constrained('tarjetas_bancarias')->nullOnDelete();
             $table->foreignId('billetera_id')->nullable()->constrained('billeteras_digitales')->nullOnDelete();

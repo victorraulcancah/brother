@@ -15,6 +15,7 @@ import 'screens/empresa_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/marcas_screen.dart';
+import 'screens/motivos_movimiento_screen.dart';
 import 'screens/movimientos_screen.dart';
 import 'screens/movimientos_caja_screen.dart';
 import 'screens/notas_venta_screen.dart';
@@ -79,6 +80,7 @@ class MyApp extends StatelessWidget {
           AppRoutes.cuentasMedios: (_) => const CuentasMediosScreen(),
           AppRoutes.cajas: (_) => const CajasScreen(),
           AppRoutes.movimientosCaja: (_) => const MovimientosCajaScreen(),
+          AppRoutes.motivosMovimiento: (_) => const MotivosMovimientoScreen(),
           AppRoutes.cuentasPorCobrar: (_) => const CuentasPorCobrarScreen(),
           AppRoutes.cuentasPorPagar: (_) => const CuentasPorPagarScreen(),
         },

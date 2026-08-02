@@ -3,13 +3,20 @@ import '../config/api_endpoints.dart';
 import '../services/api_service.dart';
 import '../services/crud_service.dart';
 import '../widgets/app_badge.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_form_section.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/app_select.dart';
+import '../widgets/app_snackbar.dart';
+import '../widgets/app_text_field.dart';
 import '../widgets/data_card.dart';
 
 String _money(dynamic v) {
   final n = double.tryParse('${v ?? 0}') ?? 0;
   return 'S/ ${n.toStringAsFixed(2)}';
 }
+
+String _hoy() => DateTime.now().toIso8601String().substring(0, 10);
 
 class MovimientosCajaScreen extends StatefulWidget {
   const MovimientosCajaScreen({super.key});
@@ -39,10 +46,23 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
+  Future<void> _registrar() async {
+    final ok = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const RegistrarMovimientoCajaScreen()),
+    );
+    if (ok == true) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Movimientos de Caja',
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _registrar,
+        icon: const Icon(Icons.add),
+        label: const Text('Registrar'),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
@@ -56,6 +76,7 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
                 final apertura = item['apertura'] as Map<String, dynamic>?;
                 final caja = apertura?['caja'] as Map<String, dynamic>?;
                 final metodo = item['metodo_pago'] as Map<String, dynamic>?;
+                final motivo = item['motivo'] as Map<String, dynamic>?;
                 return DataCard(
                   title: '${item['fecha'] ?? ''}',
                   rows: [
@@ -67,11 +88,271 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
                       ),
                     ),
                     DataCardRow.text('Caja', caja?['nombre'] as String? ?? '—'),
+                    DataCardRow.text('Motivo', motivo?['nombre'] as String? ?? '—'),
                     DataCardRow.text('Método', metodo?['nombre'] as String? ?? '—'),
-                    DataCardRow.text('Monto', _money(item['monto'])),
+                    if ((item['numero_operacion'] ?? '').toString().isNotEmpty)
+                      DataCardRow.text('N° Operación', '${item['numero_operacion']}'),
+                    DataCardRow.text('Monto', '${esIngreso ? '+' : '-'} ${_money(item['monto'])}'),
                   ],
                 );
               },
+            ),
+    );
+  }
+}
+
+class RegistrarMovimientoCajaScreen extends StatefulWidget {
+  const RegistrarMovimientoCajaScreen({super.key});
+
+  @override
+  State<RegistrarMovimientoCajaScreen> createState() => _RegistrarMovimientoCajaScreenState();
+}
+
+class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaScreen> {
+  final ApiService _api = ApiService();
+  bool _loading = true;
+  bool _saving = false;
+
+  List<Map<String, dynamic>> _motivos = [];
+  List<Map<String, dynamic>> _cajas = [];
+  List<Map<String, dynamic>> _cuentas = [];
+  List<Map<String, dynamic>> _billeteras = [];
+  int? _miCajaId;
+  bool _esSuperAdmin = false;
+
+  // Form
+  String _tipo = 'ingreso'; // ingreso | egreso
+  int? _motivoId;
+  int? _cajaId;
+  int? _metodoId;
+  int? _cuentaBancariaId;
+  int? _billeteraId;
+  final _numeroOperacion = TextEditingController();
+  final _monto = TextEditingController();
+  final _descripcion = TextEditingController();
+  final String _fecha = _hoy();
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _numeroOperacion.dispose();
+    _monto.dispose();
+    _descripcion.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final results = await Future.wait([
+        _api.get('${ApiEndpoints.motivosMovimiento}?ambito=caja'),
+        _api.get(ApiEndpoints.cajas),
+        _api.get(ApiEndpoints.cuentasBancarias),
+        _api.get(ApiEndpoints.billeterasDigitales),
+        _api.get(ApiEndpoints.me),
+      ]);
+      _motivos = _asList(results[0]);
+      _cajas = _asList(results[1]);
+      _cuentas = _asList(results[2]);
+      _billeteras = _asList(results[3]);
+      final me = results[4] is Map<String, dynamic> ? results[4] as Map<String, dynamic> : <String, dynamic>{};
+      _miCajaId = me['caja_id'] as int?;
+      final roles = (me['roles'] as List?)?.map((r) => (r as Map)['name']).toList() ?? [];
+      _esSuperAdmin = roles.contains('super-admin');
+      if (!_esSuperAdmin) _cajaId = _miCajaId;
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  List<Map<String, dynamic>> _asList(dynamic res) {
+    if (res is List) return res.cast<Map<String, dynamic>>();
+    if (res is Map && res['data'] is List) return (res['data'] as List).cast<Map<String, dynamic>>();
+    return [];
+  }
+
+  Map<String, dynamic>? get _caja {
+    final id = _esSuperAdmin ? _cajaId : _miCajaId;
+    if (id == null) return null;
+    for (final c in _cajas) {
+      if (c['id'] == id) return c;
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> get _metodosCaja =>
+      ((_caja?['metodos_pago'] as List?) ?? []).cast<Map<String, dynamic>>();
+
+  Map<String, dynamic>? get _metodo {
+    for (final m in _metodosCaja) {
+      if (m['id'] == _metodoId) return m;
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> get _motivosTipo {
+    final t = _tipo == 'ingreso' ? 'entrada' : 'salida';
+    return _motivos.where((m) => m['tipo'] == t).toList();
+  }
+
+  bool get _reqCuenta => _metodo?['requiere_cuenta_bancaria'] == true;
+  bool get _reqBilletera => _metodo?['tipo'] == 'billetera';
+  bool get _reqNumOp => _metodo?['requiere_numero_operacion'] == true;
+
+  Future<void> _guardar() async {
+    final cajaId = _esSuperAdmin ? _cajaId : _miCajaId;
+    if (cajaId == null) {
+      showAppSnackbar(context, 'No tienes una caja asignada', type: AppSnackbarType.error);
+      return;
+    }
+    if (_motivoId == null) {
+      showAppSnackbar(context, 'Selecciona el motivo', type: AppSnackbarType.error);
+      return;
+    }
+    if (_metodoId == null) {
+      showAppSnackbar(context, 'Selecciona el método de pago', type: AppSnackbarType.error);
+      return;
+    }
+    if ((double.tryParse(_monto.text) ?? 0) <= 0) {
+      showAppSnackbar(context, 'Ingresa un monto válido', type: AppSnackbarType.error);
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await _api.post(ApiEndpoints.movimientosCaja, body: {
+        'tipo': _tipo,
+        'motivo_movimiento_id': _motivoId,
+        'caja_id': cajaId,
+        'metodo_pago_id': _metodoId,
+        'cuenta_bancaria_id': _reqCuenta ? _cuentaBancariaId : null,
+        'billetera_id': _reqBilletera ? _billeteraId : null,
+        'numero_operacion': _numeroOperacion.text.trim().isEmpty ? null : _numeroOperacion.text.trim(),
+        'monto': double.tryParse(_monto.text) ?? 0,
+        'fecha': _fecha,
+        'descripcion': _descripcion.text.trim().isEmpty ? null : _descripcion.text.trim(),
+      });
+      if (mounted) {
+        showAppSnackbar(context, _tipo == 'ingreso' ? 'Ingreso registrado' : 'Egreso registrado',
+            type: AppSnackbarType.success);
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sinCaja = !_esSuperAdmin && _miCajaId == null;
+    return AppScaffold(
+      title: 'Registrar Movimiento',
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'ingreso', label: Text('Ingreso'), icon: Icon(Icons.south_west)),
+                      ButtonSegment(value: 'egreso', label: Text('Egreso'), icon: Icon(Icons.north_east)),
+                    ],
+                    selected: {_tipo},
+                    onSelectionChanged: (s) => setState(() {
+                      _tipo = s.first;
+                      _motivoId = null; // el motivo depende del tipo
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  if (sinCaja)
+                    const AppBadge('No tienes una caja asignada. Pide al administrador que te asigne una.',
+                        type: AppBadgeType.warning)
+                  else
+                    AppFormSection(
+                      title: 'Datos del movimiento',
+                      children: [
+                        if (_esSuperAdmin)
+                          AppSelect<int>(
+                            label: 'Caja',
+                            icon: Icons.point_of_sale_outlined,
+                            value: _cajaId,
+                            options: [
+                              for (final c in _cajas) AppSelectOption(c['id'] as int, c['nombre'] as String? ?? '')
+                            ],
+                            onChanged: (v) => setState(() {
+                              _cajaId = v;
+                              _metodoId = null; // los métodos dependen de la caja
+                            }),
+                          ),
+                        AppSelect<int>(
+                          label: 'Motivo',
+                          icon: Icons.label_outline,
+                          value: _motivoId,
+                          options: [
+                            for (final m in _motivosTipo) AppSelectOption(m['id'] as int, m['nombre'] as String? ?? '')
+                          ],
+                          onChanged: (v) => setState(() => _motivoId = v),
+                        ),
+                        AppSelect<int>(
+                          label: 'Método de pago',
+                          icon: Icons.payments_outlined,
+                          value: _metodoId,
+                          options: [
+                            for (final m in _metodosCaja) AppSelectOption(m['id'] as int, m['nombre'] as String? ?? '')
+                          ],
+                          onChanged: (v) => setState(() {
+                            _metodoId = v;
+                            _cuentaBancariaId = null;
+                            _billeteraId = null;
+                          }),
+                        ),
+                        if (_reqCuenta)
+                          AppSelect<int>(
+                            label: 'Cuenta bancaria',
+                            icon: Icons.account_balance_outlined,
+                            value: _cuentaBancariaId,
+                            options: [
+                              for (final c in _cuentas)
+                                AppSelectOption(c['id'] as int, '${c['nombre'] ?? ''} (${c['numero'] ?? ''})')
+                            ],
+                            onChanged: (v) => setState(() => _cuentaBancariaId = v),
+                          ),
+                        if (_reqBilletera)
+                          AppSelect<int>(
+                            label: 'Billetera digital',
+                            icon: Icons.account_balance_wallet_outlined,
+                            value: _billeteraId,
+                            options: [
+                              for (final b in _billeteras) AppSelectOption(b['id'] as int, b['nombre'] as String? ?? '')
+                            ],
+                            onChanged: (v) => setState(() => _billeteraId = v),
+                          ),
+                        if (_reqNumOp)
+                          AppTextField(controller: _numeroOperacion, label: 'Número de operación', icon: Icons.tag),
+                        AppTextField(
+                          controller: _monto,
+                          label: 'Monto',
+                          icon: Icons.attach_money,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        ),
+                        AppTextField(controller: _descripcion, label: 'Descripción (opcional)', icon: Icons.notes),
+                      ],
+                    ),
+                  const SizedBox(height: 16),
+                  if (!sinCaja)
+                    PrimaryButton(
+                      label: _tipo == 'ingreso' ? 'Registrar ingreso' : 'Registrar egreso',
+                      loading: _saving,
+                      onPressed: _guardar,
+                    ),
+                ],
+              ),
             ),
     );
   }

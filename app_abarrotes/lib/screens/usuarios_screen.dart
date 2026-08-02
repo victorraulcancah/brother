@@ -27,6 +27,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
   List<Map<String, dynamic>> _roles = [];
+  List<Map<String, dynamic>> _cajas = [];
   bool _loading = true;
 
   @override
@@ -41,6 +42,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     try {
       _items = await _crud.getAll();
       _roles = await CrudService(_api, ApiEndpoints.roles).getAll();
+      _cajas = await CrudService(_api, ApiEndpoints.cajas).getAll();
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -49,7 +51,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     final result = await showAppModal<Map<String, dynamic>>(
       context,
       title: item == null ? 'Nuevo usuario' : 'Editar usuario',
-      child: _UsuarioFormSheet(initial: item, roles: _roles),
+      child: _UsuarioFormSheet(initial: item, roles: _roles, cajas: _cajas),
     );
     if (result == null) return;
     try {
@@ -130,6 +132,10 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                                 .join(', ')
                           : '',
                     ),
+                    DataCardRow.text(
+                      'Caja',
+                      (item['caja'] as Map<String, dynamic>?)?['nombre'] as String? ?? '—',
+                    ),
                     DataCardRow(
                       label: 'Verificado',
                       value: AppBadge(
@@ -164,7 +170,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
 class _UsuarioFormSheet extends StatefulWidget {
   final Map<String, dynamic>? initial;
   final List<Map<String, dynamic>> roles;
-  const _UsuarioFormSheet({this.initial, required this.roles});
+  final List<Map<String, dynamic>> cajas;
+  const _UsuarioFormSheet({this.initial, required this.roles, required this.cajas});
 
   @override
   State<_UsuarioFormSheet> createState() => _UsuarioFormSheetState();
@@ -176,6 +183,7 @@ class _UsuarioFormSheetState extends State<_UsuarioFormSheet> {
   late final TextEditingController _email;
   late final TextEditingController _password;
   String? _selectedRole;
+  int? _cajaId;
   bool _activo = true;
 
   @override
@@ -191,6 +199,7 @@ class _UsuarioFormSheetState extends State<_UsuarioFormSheet> {
           ? first['name']?.toString()
           : first.toString();
     }
+    _cajaId = widget.initial?['caja_id'] as int?;
     _activo = widget.initial?['activo'] as bool? ?? true;
   }
 
@@ -208,6 +217,7 @@ class _UsuarioFormSheetState extends State<_UsuarioFormSheet> {
       'name': _name.text.trim(),
       'email': _email.text.trim(),
       'role': _selectedRole,
+      'caja_id': _cajaId,
       'activo': _activo,
     };
     if (_password.text.trim().isNotEmpty) {
@@ -265,6 +275,16 @@ class _UsuarioFormSheetState extends State<_UsuarioFormSheet> {
                 value: _selectedRole,
                 options: roles,
                 onChanged: (v) => setState(() => _selectedRole = v),
+              ),
+              AppSelect<int>(
+                label: 'Caja asignada (opcional)',
+                icon: Icons.point_of_sale_outlined,
+                value: _cajaId,
+                options: [
+                  for (final c in widget.cajas)
+                    AppSelectOption<int>(c['id'] as int, c['nombre'] as String? ?? ''),
+                ],
+                onChanged: (v) => setState(() => _cajaId = v),
               ),
               AppToggle(
                 label: 'Activo',

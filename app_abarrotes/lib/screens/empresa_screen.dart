@@ -127,6 +127,12 @@ class _EmpresaScreenState extends State<EmpresaScreen> {
                       item['direccion'] as String? ?? '',
                     ),
                     DataCardRow.text(
+                      'Ubicación',
+                      [item['distrito'], item['provincia'], item['departamento']]
+                          .where((e) => e != null && '$e'.trim().isNotEmpty)
+                          .join(', '),
+                    ),
+                    DataCardRow.text(
                       'Teléfono',
                       item['telefono'] as String? ?? '',
                     ),
@@ -167,6 +173,10 @@ class _EmpresaFormSheetState extends State<_EmpresaFormSheet> {
   late final TextEditingController _nombreComercial;
   late final TextEditingController _ruc;
   late final TextEditingController _direccion;
+  late final TextEditingController _departamento;
+  late final TextEditingController _provincia;
+  late final TextEditingController _distrito;
+  late final TextEditingController _ciudad;
   late final TextEditingController _telefono;
   late final TextEditingController _email;
 
@@ -183,6 +193,10 @@ class _EmpresaFormSheetState extends State<_EmpresaFormSheet> {
     _direccion = TextEditingController(
       text: widget.initial?['direccion'] ?? '',
     );
+    _departamento = TextEditingController(text: widget.initial?['departamento'] ?? '');
+    _provincia = TextEditingController(text: widget.initial?['provincia'] ?? '');
+    _distrito = TextEditingController(text: widget.initial?['distrito'] ?? '');
+    _ciudad = TextEditingController(text: widget.initial?['ciudad'] ?? '');
     _telefono = TextEditingController(text: widget.initial?['telefono'] ?? '');
     _email = TextEditingController(text: widget.initial?['email'] ?? '');
   }
@@ -193,6 +207,10 @@ class _EmpresaFormSheetState extends State<_EmpresaFormSheet> {
     _nombreComercial.dispose();
     _ruc.dispose();
     _direccion.dispose();
+    _departamento.dispose();
+    _provincia.dispose();
+    _distrito.dispose();
+    _ciudad.dispose();
     _telefono.dispose();
     _email.dispose();
     super.dispose();
@@ -205,6 +223,10 @@ class _EmpresaFormSheetState extends State<_EmpresaFormSheet> {
       'nombre_comercial': _nombreComercial.text.trim(),
       'ruc': _ruc.text.trim(),
       'direccion': _direccion.text.trim(),
+      'departamento': _departamento.text.trim(),
+      'provincia': _provincia.text.trim(),
+      'distrito': _distrito.text.trim(),
+      'ciudad': _ciudad.text.trim(),
       'telefono': _telefono.text.trim(),
       'email': _email.text.trim(),
     });
@@ -242,6 +264,26 @@ class _EmpresaFormSheetState extends State<_EmpresaFormSheet> {
                 controller: _direccion,
                 label: 'Dirección',
                 icon: Icons.location_on_outlined,
+              ),
+              AppTextField(
+                controller: _departamento,
+                label: 'Departamento',
+                icon: Icons.map_outlined,
+              ),
+              AppTextField(
+                controller: _provincia,
+                label: 'Provincia',
+                icon: Icons.map_outlined,
+              ),
+              AppTextField(
+                controller: _distrito,
+                label: 'Distrito',
+                icon: Icons.map_outlined,
+              ),
+              AppTextField(
+                controller: _ciudad,
+                label: 'Ciudad',
+                icon: Icons.location_city_outlined,
               ),
               AppTextField(
                 controller: _telefono,

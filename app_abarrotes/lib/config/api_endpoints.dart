@@ -71,6 +71,8 @@ class ApiEndpoints {
   static const String cajas = '/cajas';
   static String caja(int id) => '/cajas/$id';
   static const String movimientosCaja = '/movimientos-caja';
+  static const String metodosPago = '/metodos-pago';
+  static const String motivosMovimiento = '/motivos-movimiento';
   static const String cuentasPorCobrar = '/cuentas-por-cobrar';
   static const String cuentasPorPagar = '/cuentas-por-pagar';
 

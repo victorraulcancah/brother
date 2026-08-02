@@ -1,5 +1,5 @@
 import {
-    Home,
+    LayoutDashboard,
     SlidersHorizontal,
     Shield,
     Users,
@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 
 export const navigation = [
-    { label: 'Inicio', icon: Home, to: '/dashboard' },
+    { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
     {
         label: 'Ventas',
         icon: ShoppingBag,

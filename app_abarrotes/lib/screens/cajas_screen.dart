@@ -28,6 +28,8 @@ class _CajasScreenState extends State<CajasScreen> {
   late final CrudService _almacenesCrud;
   List<Map<String, dynamic>> _items = [];
   List<Map<String, dynamic>> _almacenes = [];
+  List<Map<String, dynamic>> _metodos = [];
+  List<Map<String, dynamic>> _usuarios = [];
   bool _loading = true;
 
   @override
@@ -41,9 +43,16 @@ class _CajasScreenState extends State<CajasScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final results = await Future.wait([_crud.getAll(), _almacenesCrud.getAll()]);
+      final results = await Future.wait([
+        _crud.getAll(),
+        _almacenesCrud.getAll(),
+        CrudService(_api, ApiEndpoints.metodosPago).getAll(),
+        CrudService(_api, ApiEndpoints.usuarios).getAll(),
+      ]);
       _items = results[0];
       _almacenes = results[1];
+      _metodos = results[2];
+      _usuarios = results[3];
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -52,7 +61,12 @@ class _CajasScreenState extends State<CajasScreen> {
     final result = await showAppModal<Map<String, dynamic>>(
       context,
       title: item == null ? 'Nueva caja' : 'Editar caja',
-      child: _CajaFormSheet(initial: item, almacenes: _almacenes),
+      child: _CajaFormSheet(
+        initial: item,
+        almacenes: _almacenes,
+        metodos: _metodos,
+        usuarios: _usuarios,
+      ),
     );
     if (result == null) return;
     try {
@@ -110,10 +124,19 @@ class _CajasScreenState extends State<CajasScreen> {
                 final item = _items[index];
                 final activo = item['activo'] as bool? ?? true;
                 final almacen = item['almacen'] as Map<String, dynamic>?;
+                final usuario = item['usuario'] as Map<String, dynamic>?;
+                final metodos = (item['metodos_pago'] as List?) ?? [];
                 return DataCard(
                   title: item['nombre'] as String? ?? '',
                   rows: [
                     DataCardRow.text('Almacén', almacen?['nombre'] as String? ?? '—'),
+                    DataCardRow.text('Responsable', usuario?['name'] as String? ?? '—'),
+                    DataCardRow.text(
+                      'Métodos',
+                      metodos.isEmpty
+                          ? '—'
+                          : metodos.map((m) => (m as Map)['nombre']).join(', '),
+                    ),
                     DataCardRow(
                       label: 'Estado',
                       value: AppBadge(
@@ -146,7 +169,14 @@ class _CajasScreenState extends State<CajasScreen> {
 class _CajaFormSheet extends StatefulWidget {
   final Map<String, dynamic>? initial;
   final List<Map<String, dynamic>> almacenes;
-  const _CajaFormSheet({this.initial, required this.almacenes});
+  final List<Map<String, dynamic>> metodos;
+  final List<Map<String, dynamic>> usuarios;
+  const _CajaFormSheet({
+    this.initial,
+    required this.almacenes,
+    required this.metodos,
+    required this.usuarios,
+  });
 
   @override
   State<_CajaFormSheet> createState() => _CajaFormSheetState();
@@ -156,6 +186,8 @@ class _CajaFormSheetState extends State<_CajaFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nombre;
   int? _almacenId;
+  int? _usuarioId;
+  final Set<int> _metodosSel = {};
   bool _activo = true;
 
   @override
@@ -163,6 +195,10 @@ class _CajaFormSheetState extends State<_CajaFormSheet> {
     super.initState();
     _nombre = TextEditingController(text: widget.initial?['nombre'] ?? '');
     _almacenId = widget.initial?['almacen_id'] as int?;
+    _usuarioId = (widget.initial?['usuario'] as Map<String, dynamic>?)?['id'] as int?;
+    for (final m in (widget.initial?['metodos_pago'] as List?) ?? []) {
+      _metodosSel.add((m as Map)['id'] as int);
+    }
     _activo = widget.initial?['activo'] as bool? ?? true;
   }
 
@@ -177,6 +213,8 @@ class _CajaFormSheetState extends State<_CajaFormSheet> {
     Navigator.pop(context, {
       'nombre': _nombre.text.trim(),
       'almacen_id': _almacenId,
+      'usuario_id': _usuarioId,
+      'metodos_pago': _metodosSel.toList(),
       'activo': _activo,
     });
   }
@@ -207,7 +245,45 @@ class _CajaFormSheetState extends State<_CajaFormSheet> {
                 ],
                 onChanged: (v) => setState(() => _almacenId = v),
               ),
+              AppSelect<int>(
+                label: 'Usuario responsable (opcional)',
+                icon: Icons.person_outline,
+                value: _usuarioId,
+                options: [
+                  for (final u in widget.usuarios)
+                    AppSelectOption(u['id'] as int, u['name'] as String? ?? ''),
+                ],
+                onChanged: (v) => setState(() => _usuarioId = v),
+              ),
               AppToggle(label: 'Activa', value: _activo, onChanged: (v) => setState(() => _activo = v)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          AppFormSection(
+            title: 'Métodos de pago aceptados',
+            children: [
+              if (widget.metodos.isEmpty)
+                const Text('No hay métodos de pago disponibles')
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final m in widget.metodos)
+                      FilterChip(
+                        label: Text(m['nombre'] as String? ?? ''),
+                        selected: _metodosSel.contains(m['id']),
+                        onSelected: (sel) => setState(() {
+                          final id = m['id'] as int;
+                          if (sel) {
+                            _metodosSel.add(id);
+                          } else {
+                            _metodosSel.remove(id);
+                          }
+                        }),
+                      ),
+                  ],
+                ),
             ],
           ),
           const SizedBox(height: 16),

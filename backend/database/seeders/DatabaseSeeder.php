@@ -47,6 +47,7 @@ class DatabaseSeeder extends Seeder
             MotivosMovimientoSeeder::class,
             CatalogSeeder::class,
             DemoSeeder::class,
+            DashboardDemoSeeder::class,
         ]);
     }
 }
