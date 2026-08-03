@@ -17,7 +17,7 @@ export default function UnidadesMedida() {
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ nombre: '', abreviatura: '' });
+    const [form, setForm] = useState({ nombre: '', abreviatura: '', factor_base: '1' });
     const [errors, setErrors] = useState({});
     const [saving, setSaving] = useState(false);
 
@@ -43,14 +43,14 @@ export default function UnidadesMedida() {
 
     const openCreate = () => {
         setEditing(null);
-        setForm({ nombre: '', abreviatura: '' });
+        setForm({ nombre: '', abreviatura: '', factor_base: '1' });
         setErrors({});
         setModalOpen(true);
     };
 
     const openEdit = (u) => {
         setEditing(u);
-        setForm({ nombre: u.nombre, abreviatura: u.abreviatura });
+        setForm({ nombre: u.nombre, abreviatura: u.abreviatura, factor_base: u.factor_base ?? '1' });
         setErrors({});
         setModalOpen(true);
     };
@@ -248,6 +248,19 @@ export default function UnidadesMedida() {
                         }}
                         error={errors.abreviatura}
                     />
+                    <Input
+                        label="Equivale a (en su unidad mínima)"
+                        type="number"
+                        step="any"
+                        min="0.0001"
+                        placeholder="Ej: 1 (gramo), 1000 (kilo), 12 (docena)"
+                        value={form.factor_base}
+                        onChange={(e) => setForm((prev) => ({ ...prev, factor_base: e.target.value }))}
+                        error={errors.factor_base}
+                    />
+                    <p className="-mt-2 text-xs text-gray-400">
+                        Cuántas unidades base representa. Ej: kilo = 1000 (gramos), docena = 12 (unidades).
+                    </p>
                 </form>
             </Modal>
 

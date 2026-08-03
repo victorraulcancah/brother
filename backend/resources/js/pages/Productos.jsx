@@ -380,6 +380,20 @@ export default function Productos() {
         label: u.nombre,
     }));
 
+    // Factor de una unidad respecto a su familia (g=1, kg=1000, …).
+    const unidadFactor = (id) => Number(unidades.find((u) => String(u.id) === String(id))?.factor_base) || 1;
+    const unidadAbrev = (id) => unidades.find((u) => String(u.id) === String(id))?.abreviatura ?? '';
+
+    // Al elegir la unidad de una presentación, el factor a la unidad base se calcula solo.
+    const setPresentacionUnidad = (index, unidadId) => {
+        const prodBase = unidadFactor(form.unidad_base_id);
+        const factor = prodBase > 0 ? +(unidadFactor(unidadId) / prodBase).toFixed(4) : unidadFactor(unidadId);
+        setPresentaciones((prev) =>
+            prev.map((p, i) => (i === index ? { ...p, unidad_base_id: unidadId, factor_conversion: String(factor) } : p)),
+        );
+        setErrors((prev) => ({ ...prev, [`presentaciones.${index}.factor_conversion`]: undefined }));
+    };
+
     const applyFilters = () => {
         const next = {};
         if (filterEstado) next.estado = filterEstado;
@@ -683,30 +697,21 @@ export default function Productos() {
                                                 error={errors[`presentaciones.${index}.precio_venta`]}
                                             />
                                             <div className="grid grid-cols-2 gap-3">
-                                                <Input
-                                                    label="Factor (a unidad base)"
-                                                    type="number"
-                                                    step="any"
-                                                    min="0.01"
-                                                    value={p.factor_conversion}
-                                                    onChange={setPresentacionField(index, 'factor_conversion')}
-                                                    error={
-                                                        errors[
-                                                            `presentaciones.${index}.factor_conversion`
-                                                        ]
-                                                    }
-                                                />
                                                 <Select
-                                                    label="Unidad base"
+                                                    label="Unidad"
                                                     value={p.unidad_base_id}
-                                                    onChange={setPresentacionField(
-                                                        index,
-                                                        'unidad_base_id',
-                                                    )}
-                                                    options={[
-                                                        { value: '', label: '—' },
-                                                        ...unidadOptions,
-                                                    ]}
+                                                    onChange={(e) => setPresentacionUnidad(index, e.target.value)}
+                                                    options={[{ value: '', label: 'Selecciona…' }, ...unidadOptions]}
+                                                    error={errors[`presentaciones.${index}.factor_conversion`]}
+                                                />
+                                                <Input
+                                                    label="Equivale a (unidad base)"
+                                                    value={
+                                                        form.unidad_base_id
+                                                            ? `${p.factor_conversion} ${unidadAbrev(form.unidad_base_id)}`
+                                                            : p.factor_conversion
+                                                    }
+                                                    readOnly
                                                 />
                                             </div>
                                         </div>

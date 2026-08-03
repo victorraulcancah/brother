@@ -11,7 +11,13 @@ class UnidadMedida extends Model
     protected $fillable = [
         'nombre',
         'abreviatura',
+        'factor_base',
     ];
+
+    protected function casts(): array
+    {
+        return ['factor_base' => 'decimal:4'];
+    }
 
     public function productos()
     {

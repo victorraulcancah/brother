@@ -22,6 +22,7 @@ class UnidadMedidaController extends Controller
         $data = $request->validate([
             'nombre' => 'required|string|max:255',
             'abreviatura' => 'required|string|max:50',
+            'factor_base' => 'nullable|numeric|min:0.0001',
         ]);
         return new UnidadMedidaResource(UnidadMedida::create($data));
     }
@@ -36,6 +37,7 @@ class UnidadMedidaController extends Controller
         $data = $request->validate([
             'nombre' => 'required|string|max:255',
             'abreviatura' => 'required|string|max:50',
+            'factor_base' => 'nullable|numeric|min:0.0001',
         ]);
         $unidadesMedida->update($data);
         return new UnidadMedidaResource($unidadesMedida);

@@ -18,17 +18,17 @@ class CatalogSeeder extends Seeder
     {
         // ── Unidades de Medida ──
         $unidades = [
-            ['nombre' => 'Unidad', 'abreviatura' => 'u'],
-            ['nombre' => 'Kilogramo', 'abreviatura' => 'kg'],
-            ['nombre' => 'Gramo', 'abreviatura' => 'g'],
-            ['nombre' => 'Litro', 'abreviatura' => 'l'],
-            ['nombre' => 'Mililitro', 'abreviatura' => 'ml'],
-            ['nombre' => 'Bolsa', 'abreviatura' => 'bolsa'],
-            ['nombre' => 'Caja', 'abreviatura' => 'caja'],
-            ['nombre' => 'Paquete', 'abreviatura' => 'pqte'],
-            ['nombre' => 'Galón', 'abreviatura' => 'gal'],
-            ['nombre' => 'Saco', 'abreviatura' => 'saco'],
-            ['nombre' => 'Docena', 'abreviatura' => 'doc'],
+            ['nombre' => 'Unidad', 'abreviatura' => 'u', 'factor_base' => 1],
+            ['nombre' => 'Kilogramo', 'abreviatura' => 'kg', 'factor_base' => 1000],
+            ['nombre' => 'Gramo', 'abreviatura' => 'g', 'factor_base' => 1],
+            ['nombre' => 'Litro', 'abreviatura' => 'l', 'factor_base' => 1000],
+            ['nombre' => 'Mililitro', 'abreviatura' => 'ml', 'factor_base' => 1],
+            ['nombre' => 'Bolsa', 'abreviatura' => 'bolsa', 'factor_base' => 1],
+            ['nombre' => 'Caja', 'abreviatura' => 'caja', 'factor_base' => 1],
+            ['nombre' => 'Paquete', 'abreviatura' => 'pqte', 'factor_base' => 1],
+            ['nombre' => 'Galón', 'abreviatura' => 'gal', 'factor_base' => 3785],
+            ['nombre' => 'Saco', 'abreviatura' => 'saco', 'factor_base' => 1],
+            ['nombre' => 'Docena', 'abreviatura' => 'doc', 'factor_base' => 12],
         ];
         foreach ($unidades as $u) {
             UnidadMedida::create($u);
