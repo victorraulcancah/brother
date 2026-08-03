@@ -4,6 +4,7 @@ import api from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
+import MetodoCajaPicker from '../components/MetodoCajaPicker';
 import { Alert, Badge, Button, Card, DataTable, Input, Modal, Select, Spinner } from '../components/ui';
 
 const money = (n) =>
@@ -22,7 +23,7 @@ const metodoLabel = (row) => {
     return 'Efectivo';
 };
 
-const emptyMov = () => ({ motivo_movimiento_id: '', metodo: '', numero_operacion: '', monto: '', fecha: new Date().toISOString().slice(0, 10), descripcion: '' });
+const emptyMov = () => ({ motivo_movimiento_id: '', metodoTipo: '', cuentaId: '', billeteraId: '', numero_operacion: '', monto: '', descripcion: '' });
 
 function Stat({ icon: Icon, label, value, accent = 'text-warm-900', bg = 'bg-gray-100' }) {
     return (
@@ -99,27 +100,16 @@ export default function MiCaja() {
     };
 
     const registrar = async () => {
-        let forma = 'efectivo';
-        let cuenta_bancaria_id = null;
-        let billetera_id = null;
-        if (mov.metodo.startsWith('transferencia:')) {
-            forma = 'transferencia';
-            cuenta_bancaria_id = Number(mov.metodo.split(':')[1]);
-        } else if (mov.metodo.startsWith('billetera:')) {
-            forma = 'billetera';
-            billetera_id = Number(mov.metodo.split(':')[1]);
-        }
         setSaving(true);
         try {
             await api.post('/movimientos-caja', {
                 tipo: regTipo,
                 motivo_movimiento_id: mov.motivo_movimiento_id,
-                forma,
-                cuenta_bancaria_id,
-                billetera_id,
+                forma: mov.metodoTipo,
+                cuenta_bancaria_id: mov.cuentaId || null,
+                billetera_id: mov.billeteraId || null,
                 numero_operacion: mov.numero_operacion || null,
                 monto: mov.monto,
-                fecha: mov.fecha,
                 descripcion: mov.descripcion || null,
             });
             setRegTipo(null);
@@ -149,15 +139,10 @@ export default function MiCaja() {
     const diferencia = (Number(montoContado) || 0) - esperado;
 
     // Opciones de método según lo que acepta la caja.
-    const metodoOptions = [{ value: '', label: 'Selecciona un método' }];
-    if (caja?.acepta_efectivo) metodoOptions.push({ value: 'efectivo', label: 'Efectivo' });
-    (caja?.cuentas_bancarias ?? []).forEach((c) => metodoOptions.push({ value: `transferencia:${c.id}`, label: `Transferencia · ${c.alias || c.numero_cuenta}` }));
-    (caja?.billeteras ?? []).forEach((b) => metodoOptions.push({ value: `billetera:${b.id}`, label: b.nombre }));
-
     const motivosTipo = motivos.filter(
         (m) => !m.es_sistema && (regTipo === 'ingreso' ? m.tipo === 'entrada' : m.tipo === 'salida'),
     );
-    const requiereOperacion = mov.metodo.startsWith('transferencia:') || mov.metodo.startsWith('billetera:');
+    const requiereOperacion = mov.metodoTipo === 'transferencia' || mov.metodoTipo === 'billetera';
 
     const columns = [
         { key: 'fecha', label: 'Fecha', render: (r) => fechaCorta(r.fecha) },
@@ -251,11 +236,15 @@ export default function MiCaja() {
                 title={regTipo === 'ingreso' ? 'Nuevo ingreso' : 'Nuevo gasto'}
                 footer={<><Button variant="secondary" onClick={() => setRegTipo(null)}>Cancelar</Button><Button loading={saving} onClick={registrar}>{regTipo === 'ingreso' ? 'Registrar ingreso' : 'Registrar gasto'}</Button></>}>
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                        <Select label="Motivo" value={mov.motivo_movimiento_id} onChange={(e) => setMov((p) => ({ ...p, motivo_movimiento_id: e.target.value }))}
-                            options={[{ value: '', label: 'Selecciona un motivo' }, ...motivosTipo.map((m) => ({ value: String(m.id), label: m.nombre }))]} />
-                        <Select label="Método" value={mov.metodo} onChange={(e) => setMov((p) => ({ ...p, metodo: e.target.value }))} options={metodoOptions} />
-                    </div>
+                    <Select label="Motivo" value={mov.motivo_movimiento_id} onChange={(e) => setMov((p) => ({ ...p, motivo_movimiento_id: e.target.value }))}
+                        options={[{ value: '', label: 'Selecciona un motivo' }, ...motivosTipo.map((m) => ({ value: String(m.id), label: m.nombre }))]} />
+                    <MetodoCajaPicker
+                        caja={caja}
+                        tipo={mov.metodoTipo}
+                        cuentaId={mov.cuentaId}
+                        billeteraId={mov.billeteraId}
+                        onChange={({ tipo, cuentaId, billeteraId }) => setMov((p) => ({ ...p, metodoTipo: tipo, cuentaId, billeteraId }))}
+                    />
                     {requiereOperacion && (
                         <Input label="N° de operación (opcional)" placeholder="Ej: 0045-885123" value={mov.numero_operacion} onChange={(e) => setMov((p) => ({ ...p, numero_operacion: e.target.value }))} />
                     )}

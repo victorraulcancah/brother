@@ -9,8 +9,9 @@ use Illuminate\Http\Request;
 class CajaController extends Controller
 {
     private const WITH = [
-        'cuentasBancarias:id,alias,numero_cuenta',
-        'billeteras:id,nombre',
+        'cuentasBancarias:id,banco_id,alias,numero_cuenta,titular',
+        'cuentasBancarias.banco:id,nombre',
+        'billeteras:id,nombre,numero_asociado,titular',
         'usuario:id,name,email,caja_id',
     ];
 

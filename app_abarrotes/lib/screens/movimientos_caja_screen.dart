@@ -16,7 +16,6 @@ String _money(dynamic v) {
   return 'S/ ${n.toStringAsFixed(2)}';
 }
 
-String _hoy() => DateTime.now().toIso8601String().substring(0, 10);
 
 class MovimientosCajaScreen extends StatefulWidget {
   const MovimientosCajaScreen({super.key});
@@ -129,11 +128,12 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
   late String _tipo = widget.tipoInicial ?? 'ingreso'; // ingreso | egreso
   int? _motivoId;
   int? _cajaId;
-  String? _metodo; // 'efectivo' | 'transferencia:<id>' | 'billetera:<id>'
+  String? _metodoTipo; // 'efectivo' | 'transferencia' | 'billetera'
+  int? _cuentaId;
+  int? _billeteraId;
   final _numeroOperacion = TextEditingController();
   final _monto = TextEditingController();
   final _descripcion = TextEditingController();
-  final String _fecha = _hoy();
 
   @override
   void initState() {
@@ -187,19 +187,20 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
   List<Map<String, dynamic>> get _billeterasCaja =>
       ((_caja?['billeteras'] as List?) ?? []).cast<Map<String, dynamic>>();
 
-  List<AppSelectOption<String>> get _metodoOptions {
+  List<AppSelectOption<String>> get _tipoOptions {
     final opts = <AppSelectOption<String>>[];
     if (_caja?['acepta_efectivo'] == true) opts.add(const AppSelectOption('efectivo', 'Efectivo'));
-    for (final c in _cuentasCaja) {
-      opts.add(AppSelectOption('transferencia:${c['id']}', 'Transferencia · ${c['alias'] ?? c['numero_cuenta'] ?? ''}'));
-    }
-    for (final b in _billeterasCaja) {
-      opts.add(AppSelectOption('billetera:${b['id']}', b['nombre'] as String? ?? ''));
-    }
+    if (_cuentasCaja.isNotEmpty) opts.add(const AppSelectOption('transferencia', 'Transferencia'));
+    if (_billeterasCaja.isNotEmpty) opts.add(const AppSelectOption('billetera', 'Billetera digital'));
     return opts;
   }
 
-  bool get _reqNumOp => _metodo != null && _metodo != 'efectivo';
+  String _cuentaLabel(Map c) =>
+      [(c['banco'] as Map?)?['nombre'], c['alias'], c['numero_cuenta']].where((e) => e != null && '$e'.isNotEmpty).join(' · ');
+  String _billeteraLabel(Map b) =>
+      [b['nombre'], b['titular'], b['numero_asociado']].where((e) => e != null && '$e'.isNotEmpty).join(' · ');
+
+  bool get _reqNumOp => _metodoTipo == 'transferencia' || _metodoTipo == 'billetera';
 
   List<Map<String, dynamic>> get _motivosTipo {
     final t = _tipo == 'ingreso' ? 'entrada' : 'salida';
@@ -216,23 +217,21 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
       showAppSnackbar(context, 'Selecciona el motivo', type: AppSnackbarType.error);
       return;
     }
-    if (_metodo == null) {
+    if (_metodoTipo == null) {
       showAppSnackbar(context, 'Selecciona el método', type: AppSnackbarType.error);
+      return;
+    }
+    if (_metodoTipo == 'transferencia' && _cuentaId == null) {
+      showAppSnackbar(context, 'Selecciona la cuenta bancaria', type: AppSnackbarType.error);
+      return;
+    }
+    if (_metodoTipo == 'billetera' && _billeteraId == null) {
+      showAppSnackbar(context, 'Selecciona la billetera', type: AppSnackbarType.error);
       return;
     }
     if ((double.tryParse(_monto.text) ?? 0) <= 0) {
       showAppSnackbar(context, 'Ingresa un monto válido', type: AppSnackbarType.error);
       return;
-    }
-    String forma = 'efectivo';
-    int? cuentaId;
-    int? billeteraId;
-    if (_metodo!.startsWith('transferencia:')) {
-      forma = 'transferencia';
-      cuentaId = int.tryParse(_metodo!.split(':')[1]);
-    } else if (_metodo!.startsWith('billetera:')) {
-      forma = 'billetera';
-      billeteraId = int.tryParse(_metodo!.split(':')[1]);
     }
     setState(() => _saving = true);
     try {
@@ -240,12 +239,11 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
         'tipo': _tipo,
         'motivo_movimiento_id': _motivoId,
         'caja_id': cajaId,
-        'forma': forma,
-        'cuenta_bancaria_id': cuentaId,
-        'billetera_id': billeteraId,
+        'forma': _metodoTipo,
+        'cuenta_bancaria_id': _metodoTipo == 'transferencia' ? _cuentaId : null,
+        'billetera_id': _metodoTipo == 'billetera' ? _billeteraId : null,
         'numero_operacion': _numeroOperacion.text.trim().isEmpty ? null : _numeroOperacion.text.trim(),
         'monto': double.tryParse(_monto.text) ?? 0,
-        'fecha': _fecha,
         'descripcion': _descripcion.text.trim().isEmpty ? null : _descripcion.text.trim(),
       });
       if (mounted) {
@@ -301,7 +299,9 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
                             ],
                             onChanged: (v) => setState(() {
                               _cajaId = v;
-                              _metodo = null; // los métodos dependen de la caja
+                              _metodoTipo = null; // los métodos dependen de la caja
+                              _cuentaId = null;
+                              _billeteraId = null;
                             }),
                           ),
                         AppSelect<int>(
@@ -314,12 +314,36 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
                           onChanged: (v) => setState(() => _motivoId = v),
                         ),
                         AppSelect<String>(
-                          label: 'Método',
+                          label: 'Tipo de método',
                           icon: Icons.payments_outlined,
-                          value: _metodo,
-                          options: _metodoOptions,
-                          onChanged: (v) => setState(() => _metodo = v),
+                          value: _metodoTipo,
+                          options: _tipoOptions,
+                          onChanged: (v) => setState(() {
+                            _metodoTipo = v;
+                            _cuentaId = null;
+                            _billeteraId = null;
+                          }),
                         ),
+                        if (_metodoTipo == 'transferencia')
+                          AppSelect<int>(
+                            label: 'Cuenta bancaria',
+                            icon: Icons.account_balance_outlined,
+                            value: _cuentaId,
+                            options: [
+                              for (final c in _cuentasCaja) AppSelectOption(c['id'] as int, _cuentaLabel(c))
+                            ],
+                            onChanged: (v) => setState(() => _cuentaId = v),
+                          ),
+                        if (_metodoTipo == 'billetera')
+                          AppSelect<int>(
+                            label: 'Billetera',
+                            icon: Icons.account_balance_wallet_outlined,
+                            value: _billeteraId,
+                            options: [
+                              for (final b in _billeterasCaja) AppSelectOption(b['id'] as int, _billeteraLabel(b))
+                            ],
+                            onChanged: (v) => setState(() => _billeteraId = v),
+                          ),
                         if (_reqNumOp)
                           AppTextField(controller: _numeroOperacion, label: 'Número de operación (opcional)', icon: Icons.tag),
                         AppTextField(

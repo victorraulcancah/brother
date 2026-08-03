@@ -4,6 +4,7 @@ import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
+import MetodoCajaPicker from '../components/MetodoCajaPicker';
 import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
 
 const money = (n) =>
@@ -20,10 +21,11 @@ const emptyForm = (tipo) => ({
     tipo,
     motivo_movimiento_id: '',
     caja_id: '',
-    metodo: '', // '' | 'efectivo' | 'transferencia:<id>' | 'billetera:<id>'
+    metodoTipo: '', // 'efectivo' | 'transferencia' | 'billetera'
+    cuentaId: '',
+    billeteraId: '',
     numero_operacion: '',
     monto: '',
-    fecha: new Date().toISOString().slice(0, 10),
     descripcion: '',
 });
 
@@ -86,15 +88,7 @@ export default function MovimientosCaja() {
     const cajaActualId = esSuperAdmin ? form.caja_id : miCajaId;
     const caja = cajas.find((c) => String(c.id) === String(cajaActualId));
 
-    // Opciones de método según lo que acepta la caja.
-    const metodoOptions = [{ value: '', label: 'Selecciona un método' }];
-    if (caja?.acepta_efectivo) metodoOptions.push({ value: 'efectivo', label: 'Efectivo' });
-    (caja?.cuentas_bancarias ?? []).forEach((c) =>
-        metodoOptions.push({ value: `transferencia:${c.id}`, label: `Transferencia · ${c.alias || c.numero_cuenta}` }),
-    );
-    (caja?.billeteras ?? []).forEach((b) => metodoOptions.push({ value: `billetera:${b.id}`, label: b.nombre }));
-
-    const requiereOperacion = form.metodo.startsWith('transferencia:') || form.metodo.startsWith('billetera:');
+    const requiereOperacion = form.metodoTipo === 'transferencia' || form.metodoTipo === 'billetera';
 
     const motivosTipo = motivos.filter(
         (m) => !m.es_sistema && (form.tipo === 'ingreso' ? m.tipo === 'entrada' : m.tipo === 'salida'),
@@ -105,27 +99,15 @@ export default function MovimientosCaja() {
         setSaving(true);
         setFormErrors({});
 
-        let forma = 'efectivo';
-        let cuenta_bancaria_id = null;
-        let billetera_id = null;
-        if (form.metodo.startsWith('transferencia:')) {
-            forma = 'transferencia';
-            cuenta_bancaria_id = Number(form.metodo.split(':')[1]);
-        } else if (form.metodo.startsWith('billetera:')) {
-            forma = 'billetera';
-            billetera_id = Number(form.metodo.split(':')[1]);
-        }
-
         const payload = {
             tipo: form.tipo,
             motivo_movimiento_id: form.motivo_movimiento_id,
             caja_id: esSuperAdmin ? form.caja_id : miCajaId,
-            forma,
-            cuenta_bancaria_id,
-            billetera_id,
+            forma: form.metodoTipo,
+            cuenta_bancaria_id: form.cuentaId || null,
+            billetera_id: form.billeteraId || null,
             numero_operacion: form.numero_operacion || null,
             monto: form.monto,
-            fecha: form.fecha,
             descripcion: form.descripcion || null,
         };
         try {
@@ -255,7 +237,7 @@ export default function MovimientosCaja() {
                             <Select
                                 label="Caja"
                                 value={form.caja_id}
-                                onChange={(e) => setForm((prev) => ({ ...prev, caja_id: e.target.value, metodo: '' }))}
+                                onChange={(e) => setForm((prev) => ({ ...prev, caja_id: e.target.value, metodoTipo: '', cuentaId: '', billeteraId: '' }))}
                                 options={[{ value: '', label: 'Selecciona una caja' }, ...cajas.map((c) => ({ value: String(c.id), label: c.nombre }))]}
                                 error={formErrors.caja_id}
                             />
@@ -268,25 +250,24 @@ export default function MovimientosCaja() {
                             </div>
                         )}
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <Select
-                            label="Método"
-                            value={form.metodo}
-                            onChange={(e) => setForm((prev) => ({ ...prev, metodo: e.target.value }))}
-                            options={metodoOptions}
-                            error={formErrors.forma || formErrors.cuenta_bancaria_id || formErrors.billetera_id}
-                        />
-                        <Input
-                            label="Monto"
-                            type="number"
-                            min="0.01"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={form.monto}
-                            onChange={(e) => setForm((prev) => ({ ...prev, monto: e.target.value }))}
-                            error={formErrors.monto}
-                        />
-                    </div>
+                    <MetodoCajaPicker
+                        caja={caja}
+                        tipo={form.metodoTipo}
+                        cuentaId={form.cuentaId}
+                        billeteraId={form.billeteraId}
+                        onChange={({ tipo, cuentaId, billeteraId }) => setForm((prev) => ({ ...prev, metodoTipo: tipo, cuentaId, billeteraId }))}
+                        error={formErrors.forma || formErrors.cuenta_bancaria_id || formErrors.billetera_id}
+                    />
+                    <Input
+                        label="Monto"
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={form.monto}
+                        onChange={(e) => setForm((prev) => ({ ...prev, monto: e.target.value }))}
+                        error={formErrors.monto}
+                    />
                     {requiereOperacion && (
                         <Input
                             label="Número de operación (opcional)"
