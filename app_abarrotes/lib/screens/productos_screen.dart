@@ -340,6 +340,19 @@ class _ProductoWizardState extends State<_ProductoWizard> {
       .map((e) => AppSelectOption<int>(e['id'] as int, e['nombre']?.toString() ?? ''))
       .toList();
 
+  double _unidadFactor(int? id) {
+    final u = widget.unidades.firstWhere((e) => e['id'] == id, orElse: () => <String, dynamic>{});
+    return double.tryParse('${u['factor_base'] ?? 1}') ?? 1;
+  }
+
+  // Al elegir la unidad de una presentación, auto-sugiere el factor a la unidad base (editable).
+  void _setPresUnidad(_PresentacionEntry p, int? id) {
+    p.unidadBaseId = id;
+    final base = _unidadFactor(_unidadBaseId);
+    final f = base > 0 ? _unidadFactor(id) / base : _unidadFactor(id);
+    p.factorCtrl.text = f == f.roundToDouble() ? f.toInt().toString() : f.toStringAsFixed(4);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -579,20 +592,20 @@ class _ProductoWizardState extends State<_ProductoWizard> {
             Row(
               children: [
                 Expanded(
-                  child: AppTextField(
-                    controller: p.factorCtrl,
-                    label: 'Factor (a unidad base)',
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                  child: AppSelect<int>(
+                    label: 'Unidad',
+                    value: p.unidadBaseId,
+                    options: _opts(widget.unidades),
+                    onChanged: (v) => setState(() => _setPresUnidad(p, v)),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: AppSelect<int>(
-                    label: 'Unidad base',
-                    value: p.unidadBaseId,
-                    options: _opts(widget.unidades),
-                    onChanged: (v) => setState(() => p.unidadBaseId = v),
+                  child: AppTextField(
+                    controller: p.factorCtrl,
+                    label: 'Equivale a (base)',
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
                   ),
                 ),
               ],

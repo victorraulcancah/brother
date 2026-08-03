@@ -705,13 +705,13 @@ export default function Productos() {
                                                     error={errors[`presentaciones.${index}.factor_conversion`]}
                                                 />
                                                 <Input
-                                                    label="Equivale a (unidad base)"
-                                                    value={
-                                                        form.unidad_base_id
-                                                            ? `${p.factor_conversion} ${unidadAbrev(form.unidad_base_id)}`
-                                                            : p.factor_conversion
-                                                    }
-                                                    readOnly
+                                                    label={`Equivale a (${unidadAbrev(form.unidad_base_id) || 'base'})`}
+                                                    type="number"
+                                                    step="any"
+                                                    min="0.0001"
+                                                    value={p.factor_conversion}
+                                                    onChange={setPresentacionField(index, 'factor_conversion')}
+                                                    error={errors[`presentaciones.${index}.factor_conversion`]}
                                                 />
                                             </div>
                                         </div>

@@ -151,20 +151,21 @@ class _UnidadFormSheetState extends State<_UnidadFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nombre;
   late final TextEditingController _abreviatura;
+  late final TextEditingController _factorBase;
 
   @override
   void initState() {
     super.initState();
     _nombre = TextEditingController(text: widget.initial?['nombre'] ?? '');
-    _abreviatura = TextEditingController(
-      text: widget.initial?['abreviatura'] ?? '',
-    );
+    _abreviatura = TextEditingController(text: widget.initial?['abreviatura'] ?? '');
+    _factorBase = TextEditingController(text: '${widget.initial?['factor_base'] ?? '1'}');
   }
 
   @override
   void dispose() {
     _nombre.dispose();
     _abreviatura.dispose();
+    _factorBase.dispose();
     super.dispose();
   }
 
@@ -173,6 +174,7 @@ class _UnidadFormSheetState extends State<_UnidadFormSheet> {
     Navigator.pop(context, {
       'nombre': _nombre.text.trim(),
       'abreviatura': _abreviatura.text.trim(),
+      'factor_base': double.tryParse(_factorBase.text.trim()) ?? 1,
     });
   }
 
@@ -201,6 +203,12 @@ class _UnidadFormSheetState extends State<_UnidadFormSheet> {
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Ingrese la abreviatura'
                     : null,
+              ),
+              AppTextField(
+                controller: _factorBase,
+                label: 'Equivale a (en su unidad mínima)',
+                icon: Icons.calculate_outlined,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
             ],
           ),
