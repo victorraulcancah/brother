@@ -239,7 +239,9 @@ export default function MiCaja() {
                     <Select label="Motivo" value={mov.motivo_movimiento_id} onChange={(e) => setMov((p) => ({ ...p, motivo_movimiento_id: e.target.value }))}
                         options={[{ value: '', label: 'Selecciona un motivo' }, ...motivosTipo.map((m) => ({ value: String(m.id), label: m.nombre }))]} />
                     <MetodoCajaPicker
-                        caja={caja}
+                        cuentas={caja?.cuentas_bancarias ?? []}
+                        billeteras={caja?.billeteras ?? []}
+                        aceptaEfectivo={caja?.acepta_efectivo}
                         tipo={mov.metodoTipo}
                         cuentaId={mov.cuentaId}
                         billeteraId={mov.billeteraId}

@@ -12,6 +12,8 @@ class NotaVentaPago extends Model
         'nota_venta_id',
         'metodo_pago_id',
         'forma_pago',
+        'cuenta_bancaria_id',
+        'billetera_id',
         'monto',
         'fecha',
         'referencia',

@@ -4,6 +4,7 @@ import { ArrowLeft, Package, Plus, ShoppingBag, Trash2, Wallet } from 'lucide-re
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
+import MetodoCajaPicker from '../components/MetodoCajaPicker';
 import { Alert, Button, Input, Select, Spinner } from '../components/ui';
 
 const money = (n) =>
@@ -11,16 +12,8 @@ const money = (n) =>
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-const METODOS_PAGO = [
-    { value: 'efectivo', label: 'Efectivo' },
-    { value: 'transferencia', label: 'Transferencia' },
-    { value: 'tarjeta', label: 'Tarjeta' },
-    { value: 'yape', label: 'Yape' },
-    { value: 'plin', label: 'Plin' },
-    { value: 'otro', label: 'Otro' },
-];
-
 const emptyLinea = { producto_presentacion_id: '', cantidad: '1', costo_unitario: '0' };
+const emptyPago = () => ({ tipo: 'efectivo', cuentaId: '', billeteraId: '', monto: '' });
 
 export default function CrearCompra() {
     const toast = useToast();
@@ -28,6 +21,8 @@ export default function CrearCompra() {
 
     const [proveedores, setProveedores] = useState([]);
     const [productos, setProductos] = useState([]);
+    const [cuentas, setCuentas] = useState([]);
+    const [billeteras, setBilleteras] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [formErrors, setFormErrors] = useState({});
@@ -46,17 +41,21 @@ export default function CrearCompra() {
         observaciones: '',
     });
     const [lineas, setLineas] = useState([{ ...emptyLinea }]);
-    const [pagos, setPagos] = useState([{ metodo: 'efectivo', monto: '' }]);
+    const [pagos, setPagos] = useState([emptyPago()]);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [provRes, prodRes] = await Promise.all([
+            const [provRes, prodRes, cuentasRes, billeterasRes] = await Promise.all([
                 api.get('/proveedores'),
                 api.get('/productos'),
+                api.get('/cuentas-bancarias'),
+                api.get('/billeteras-digitales'),
             ]);
             setProveedores(asList(provRes));
             setProductos(asList(prodRes));
+            setCuentas(asList(cuentasRes));
+            setBilleteras(asList(billeterasRes));
         } catch {
             toast.error('No se pudieron cargar proveedores/productos.');
         } finally {
@@ -86,7 +85,7 @@ export default function CrearCompra() {
     const removeLinea = (i) => setLineas((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
 
     const setPago = (i, patch) => setPagos((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
-    const addPago = () => setPagos((prev) => [...prev, { metodo: 'efectivo', monto: '' }]);
+    const addPago = () => setPagos((prev) => [...prev, emptyPago()]);
     const removePago = (i) => setPagos((prev) => prev.filter((_, idx) => idx !== i));
 
     const subtotal = lineas.reduce((acc, l) => acc + (Number(l.cantidad) || 0) * (Number(l.costo_unitario) || 0), 0);
@@ -124,7 +123,12 @@ export default function CrearCompra() {
                     cantidad: l.cantidad,
                     costo_unitario: l.costo_unitario,
                 })),
-                pagos: pagos.filter((p) => Number(p.monto) > 0).map((p) => ({ metodo: p.metodo, monto: p.monto })),
+                pagos: pagos.filter((p) => Number(p.monto) > 0).map((p) => ({
+                    metodo: p.tipo,
+                    cuenta_bancaria_id: p.tipo === 'transferencia' ? p.cuentaId || null : null,
+                    billetera_id: p.tipo === 'billetera' ? p.billeteraId || null : null,
+                    monto: p.monto,
+                })),
             });
             toast.success('Compra registrada correctamente.');
             navigate('/compras');
@@ -282,20 +286,21 @@ export default function CrearCompra() {
                                 <Plus className="h-4 w-4" /> Agregar pago
                             </Button>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {pagos.map((p, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                    <Select
-                                        value={p.metodo}
-                                        onChange={(e) => setPago(i, { metodo: e.target.value })}
-                                        options={METODOS_PAGO}
-                                        className="flex-1"
+                                <div key={i} className="rounded-lg border border-edge p-3">
+                                    <MetodoCajaPicker
+                                        cuentas={cuentas} billeteras={billeteras}
+                                        tipo={p.tipo} cuentaId={p.cuentaId} billeteraId={p.billeteraId}
+                                        onChange={({ tipo, cuentaId, billeteraId }) => setPago(i, { tipo, cuentaId, billeteraId })}
                                     />
-                                    <Input type="number" min="0" step="any" placeholder="Monto" value={p.monto} onChange={(e) => setPago(i, { monto: e.target.value })} className="w-32 text-right" />
-                                    <button type="button" onClick={() => removePago(i)}
-                                        className="rounded-md p-2 text-red-600 transition hover:bg-red-50" aria-label="Quitar">
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <Input type="number" min="0" step="any" placeholder="Monto" value={p.monto} onChange={(e) => setPago(i, { monto: e.target.value })} className="flex-1 text-right" />
+                                        <button type="button" onClick={() => removePago(i)}
+                                            className="rounded-md p-2 text-red-600 transition hover:bg-red-50" aria-label="Quitar">
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

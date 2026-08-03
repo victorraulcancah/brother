@@ -5,6 +5,7 @@ import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import { useAuth } from '../lib/auth';
 import Layout from '../components/Layout';
+import MetodoCajaPicker from '../components/MetodoCajaPicker';
 import { Button, Input, Select, Spinner } from '../components/ui';
 
 const money = (n) =>
@@ -12,14 +13,7 @@ const money = (n) =>
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-const FORMAS_PAGO = [
-    { value: 'efectivo', label: 'Efectivo' },
-    { value: 'transferencia', label: 'Transferencia' },
-    { value: 'tarjeta', label: 'Tarjeta' },
-    { value: 'yape', label: 'Yape' },
-    { value: 'plin', label: 'Plin' },
-    { value: 'otro', label: 'Otro' },
-];
+const emptyPago = () => ({ tipo: 'efectivo', cuentaId: '', billeteraId: '', monto: '' });
 
 const emptyLinea = { producto_presentacion_id: '', cantidad: '1', precio_unitario: '0' };
 
@@ -31,6 +25,8 @@ export default function CrearVenta() {
     const [clientes, setClientes] = useState([]);
     const [almacenes, setAlmacenes] = useState([]);
     const [productos, setProductos] = useState([]);
+    const [cuentas, setCuentas] = useState([]);
+    const [billeteras, setBilleteras] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -42,19 +38,23 @@ export default function CrearVenta() {
         observaciones: '',
     });
     const [lineas, setLineas] = useState([{ ...emptyLinea }]);
-    const [pagos, setPagos] = useState([{ forma_pago: 'efectivo', monto: '' }]);
+    const [pagos, setPagos] = useState([emptyPago()]);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [cliRes, almRes, prodRes] = await Promise.all([
+            const [cliRes, almRes, prodRes, cuentasRes, billeterasRes] = await Promise.all([
                 api.get('/clientes'),
                 api.get('/almacenes'),
                 api.get('/productos'),
+                api.get('/cuentas-bancarias'),
+                api.get('/billeteras-digitales'),
             ]);
             setClientes(asList(cliRes));
             setAlmacenes(asList(almRes));
             setProductos(asList(prodRes));
+            setCuentas(asList(cuentasRes));
+            setBilleteras(asList(billeterasRes));
         } catch {
             toast.error('No se pudieron cargar los datos.');
         } finally {
@@ -91,7 +91,7 @@ export default function CrearVenta() {
     };
 
     const setPago = (i, patch) => setPagos((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
-    const addPago = () => setPagos((prev) => [...prev, { forma_pago: 'efectivo', monto: '' }]);
+    const addPago = () => setPagos((prev) => [...prev, emptyPago()]);
     const removePago = (i) => setPagos((prev) => prev.filter((_, idx) => idx !== i));
 
     const total = lineas.reduce((acc, l) => acc + (Number(l.cantidad) || 0) * (Number(l.precio_unitario) || 0), 0);
@@ -134,7 +134,15 @@ export default function CrearVenta() {
             form.tipo_pago === 'contado'
                 ? pagos
                       .filter((p) => Number(p.monto) > 0)
-                      .map((p) => ({ metodo_pago_id: null, forma_pago: p.forma_pago, monto: Number(p.monto), fecha: form.fecha_emision, referencia: null }))
+                      .map((p) => ({
+                          metodo_pago_id: null,
+                          forma_pago: p.tipo,
+                          cuenta_bancaria_id: p.tipo === 'transferencia' ? p.cuentaId || null : null,
+                          billetera_id: p.tipo === 'billetera' ? p.billeteraId || null : null,
+                          monto: Number(p.monto),
+                          fecha: form.fecha_emision,
+                          referencia: null,
+                      }))
                 : [{ metodo_pago_id: null, forma_pago: 'credito', monto: total, fecha: form.fecha_emision, referencia: null }];
 
         if (pagosPayload.length === 0) {
@@ -297,14 +305,20 @@ export default function CrearVenta() {
                                     <Plus className="h-4 w-4" /> Agregar pago
                                 </Button>
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 {pagos.map((p, i) => (
-                                    <div key={i} className="flex items-center gap-2">
-                                        <Select value={p.forma_pago} onChange={(e) => setPago(i, { forma_pago: e.target.value })} options={FORMAS_PAGO} className="flex-1" />
-                                        <Input type="number" min="0" step="any" placeholder="Monto" value={p.monto} onChange={(e) => setPago(i, { monto: e.target.value })} className="w-32 text-right" />
-                                        <button type="button" onClick={() => removePago(i)} className="rounded-md p-2 text-red-600 transition hover:bg-red-50" aria-label="Quitar">
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                    <div key={i} className="rounded-lg border border-edge p-3">
+                                        <MetodoCajaPicker
+                                            cuentas={cuentas} billeteras={billeteras}
+                                            tipo={p.tipo} cuentaId={p.cuentaId} billeteraId={p.billeteraId}
+                                            onChange={({ tipo, cuentaId, billeteraId }) => setPago(i, { tipo, cuentaId, billeteraId })}
+                                        />
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <Input type="number" min="0" step="any" placeholder="Monto" value={p.monto} onChange={(e) => setPago(i, { monto: e.target.value })} className="flex-1 text-right" />
+                                            <button type="button" onClick={() => removePago(i)} className="rounded-md p-2 text-red-600 transition hover:bg-red-50" aria-label="Quitar">
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>

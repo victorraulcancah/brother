@@ -9,19 +9,13 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/metodo_picker.dart';
 import '../widgets/product_lines_editor.dart';
 
-const _metodosPago = [
-  AppSelectOption('efectivo', 'Efectivo'),
-  AppSelectOption('transferencia', 'Transferencia'),
-  AppSelectOption('tarjeta', 'Tarjeta'),
-  AppSelectOption('yape', 'Yape'),
-  AppSelectOption('plin', 'Plin'),
-  AppSelectOption('otro', 'Otro'),
-];
-
 class _Pago {
-  String metodo = 'efectivo';
+  String tipo = 'efectivo';
+  int? cuentaId;
+  int? billeteraId;
   final TextEditingController monto = TextEditingController();
   double get valor => double.tryParse(monto.text.trim()) ?? 0;
   void dispose() => monto.dispose();
@@ -40,6 +34,8 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
   bool _saving = false;
 
   List<Map<String, dynamic>> _proveedores = [];
+  List<Map<String, dynamic>> _cuentas = [];
+  List<Map<String, dynamic>> _billeteras = [];
   final List<AppSelectOption<int>> _presOptions = [];
 
   int? _proveedorId;
@@ -75,8 +71,12 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
       final results = await Future.wait([
         CrudService(_api, ApiEndpoints.proveedores).getAll(),
         CrudService(_api, ApiEndpoints.productos).getAll(),
+        CrudService(_api, ApiEndpoints.cuentasBancarias).getAll(),
+        CrudService(_api, ApiEndpoints.billeterasDigitales).getAll(),
       ]);
       _proveedores = results[0];
+      _cuentas = results[2];
+      _billeteras = results[3];
       for (final p in results[1]) {
         for (final pres in (p['presentaciones'] as List? ?? [])) {
           _presOptions.add(AppSelectOption(pres['id'] as int, '${p['nombre']} — ${pres['nombre']}'));
@@ -110,7 +110,12 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
         'detalles': lineasValidas
             .map((l) => {'producto_presentacion_id': l.presentacionId, 'cantidad': l.cant, 'costo_unitario': l.precioVal})
             .toList(),
-        'pagos': _pagos.where((p) => p.valor > 0).map((p) => {'metodo': p.metodo, 'monto': p.valor}).toList(),
+        'pagos': _pagos.where((p) => p.valor > 0).map((p) => {
+              'metodo': p.tipo,
+              'cuenta_bancaria_id': p.tipo == 'transferencia' ? p.cuentaId : null,
+              'billetera_id': p.tipo == 'billetera' ? p.billeteraId : null,
+              'monto': p.valor,
+            }).toList(),
       });
       if (mounted) {
         showAppSnackbar(context, 'Compra registrada.', type: AppSnackbarType.success);
@@ -190,30 +195,40 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
                     title: 'Pagos (mixto)',
                     children: [
                       for (int i = 0; i < _pagos.length; i++)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
+                          child: Column(
                             children: [
-                              Expanded(
-                                child: AppSelect<String>(
-                                  label: 'Método',
-                                  value: _pagos[i].metodo,
-                                  options: _metodosPago,
-                                  onChanged: (v) => setState(() => _pagos[i].metodo = v ?? 'efectivo'),
-                                ),
+                              MetodoPicker(
+                                cuentas: _cuentas,
+                                billeteras: _billeteras,
+                                tipo: _pagos[i].tipo,
+                                cuentaId: _pagos[i].cuentaId,
+                                billeteraId: _pagos[i].billeteraId,
+                                onChanged: (t, c, b) => setState(() {
+                                  _pagos[i].tipo = t ?? 'efectivo';
+                                  _pagos[i].cuentaId = c;
+                                  _pagos[i].billeteraId = b;
+                                }),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: AppTextField(
-                                  controller: _pagos[i].monto,
-                                  label: 'Monto',
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: _pagos.length == 1 ? null : () => setState(() => _pagos.removeAt(i).dispose()),
-                                icon: const Icon(Icons.delete_outline),
-                                color: AppColors.danger,
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: AppTextField(
+                                      controller: _pagos[i].monto,
+                                      label: 'Monto',
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: _pagos.length == 1 ? null : () => setState(() => _pagos.removeAt(i).dispose()),
+                                    icon: const Icon(Icons.delete_outline),
+                                    color: AppColors.danger,
+                                  ),
+                                ],
                               ),
                             ],
                           ),

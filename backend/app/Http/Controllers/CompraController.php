@@ -36,7 +36,9 @@ class CompraController extends Controller
             'detalles.*.cantidad' => 'required|numeric|min:0.01',
             'detalles.*.costo_unitario' => 'required|numeric|min:0',
             'pagos' => 'nullable|array',
-            'pagos.*.metodo' => 'required_with:pagos|string|max:40',
+            'pagos.*.metodo' => 'required_with:pagos|in:efectivo,transferencia,billetera',
+            'pagos.*.cuenta_bancaria_id' => 'nullable|exists:cuentas_bancarias,id',
+            'pagos.*.billetera_id' => 'nullable|exists:billeteras_digitales,id',
             'pagos.*.monto' => 'required_with:pagos|numeric|min:0',
         ]);
 
@@ -95,6 +97,8 @@ class CompraController extends Controller
                 }
                 $compra->pagos()->create([
                     'metodo' => $pago['metodo'],
+                    'cuenta_bancaria_id' => $pago['metodo'] === 'transferencia' ? ($pago['cuenta_bancaria_id'] ?? null) : null,
+                    'billetera_id' => $pago['metodo'] === 'billetera' ? ($pago['billetera_id'] ?? null) : null,
                     'monto' => (float) $pago['monto'],
                 ]);
             }

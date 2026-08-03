@@ -77,7 +77,8 @@ class NotaVentaService
                     MovimientoCaja::create([
                         'apertura_caja_id' => $apertura->id,
                         'tipo' => 'ingreso',
-                        'metodo_pago_id' => $pago['metodo_pago_id'] ?? null,
+                        'cuenta_bancaria_id' => ($pago['forma_pago'] ?? null) === 'transferencia' ? ($pago['cuenta_bancaria_id'] ?? null) : null,
+                        'billetera_id' => ($pago['forma_pago'] ?? null) === 'billetera' ? ($pago['billetera_id'] ?? null) : null,
                         'monto' => $pago['monto'],
                         'fecha' => $pago['fecha'],
                         'numero_operacion' => $pago['referencia'] ?? null,

@@ -11,13 +11,13 @@ use Illuminate\Support\Facades\DB;
 
 class CuentaPorCobrarController extends Controller
 {
-    /** Formas de pago admitidas (mismas que el POS). */
-    private const FORMAS = 'efectivo,transferencia,tarjeta,yape,plin,otro';
+    /** Tipos de método admitidos. */
+    private const FORMAS = 'efectivo,transferencia,billetera';
 
     public function index()
     {
         return response()->json(
-            CuentaPorCobrar::with(['cliente:id,nombre', 'notaVenta:id', 'pagos'])
+            CuentaPorCobrar::with(['cliente:id,nombre', 'notaVenta:id', 'pagos.cuentaBancaria:id,alias,numero_cuenta', 'pagos.billetera:id,nombre'])
                 ->latest('id')
                 ->get()
         );
@@ -25,7 +25,7 @@ class CuentaPorCobrarController extends Controller
 
     public function show(CuentaPorCobrar $cuenta)
     {
-        return response()->json($cuenta->load(['cliente:id,nombre', 'pagos']));
+        return response()->json($cuenta->load(['cliente:id,nombre', 'pagos.cuentaBancaria:id,alias,numero_cuenta', 'pagos.billetera:id,nombre']));
     }
 
     /** Registra uno o varios pagos (mixto) contra la cuenta y genera movimiento de caja. */
@@ -39,6 +39,8 @@ class CuentaPorCobrarController extends Controller
             'fecha' => 'nullable|date',
             'pagos' => 'required|array|min:1',
             'pagos.*.forma_pago' => 'required|in:'.self::FORMAS,
+            'pagos.*.cuenta_bancaria_id' => 'nullable|exists:cuentas_bancarias,id',
+            'pagos.*.billetera_id' => 'nullable|exists:billeteras_digitales,id',
             'pagos.*.monto' => 'required|numeric|min:0.01',
             'pagos.*.referencia' => 'nullable|string|max:100',
         ]);
@@ -53,10 +55,15 @@ class CuentaPorCobrarController extends Controller
         DB::transaction(function () use ($cuenta, $data, $fecha) {
             $apertura = $this->aperturaAbierta();
             foreach ($data['pagos'] as $p) {
+                $cuentaBancariaId = $p['forma_pago'] === 'transferencia' ? ($p['cuenta_bancaria_id'] ?? null) : null;
+                $billeteraId = $p['forma_pago'] === 'billetera' ? ($p['billetera_id'] ?? null) : null;
+
                 $mov = $apertura
                     ? MovimientoCaja::create([
                         'apertura_caja_id' => $apertura->id,
                         'tipo' => 'ingreso',
+                        'cuenta_bancaria_id' => $cuentaBancariaId,
+                        'billetera_id' => $billeteraId,
                         'monto' => (float) $p['monto'],
                         'fecha' => $fecha,
                         'numero_operacion' => $p['referencia'] ?? null,
@@ -67,6 +74,8 @@ class CuentaPorCobrarController extends Controller
 
                 $cuenta->pagos()->create([
                     'forma_pago' => $p['forma_pago'],
+                    'cuenta_bancaria_id' => $cuentaBancariaId,
+                    'billetera_id' => $billeteraId,
                     'monto' => (float) $p['monto'],
                     'referencia' => $p['referencia'] ?? null,
                     'movimiento_caja_id' => $mov?->id,
@@ -76,7 +85,7 @@ class CuentaPorCobrarController extends Controller
             $this->recalcular($cuenta);
         });
 
-        return response()->json($cuenta->fresh()->load(['cliente:id,nombre', 'pagos']));
+        return response()->json($cuenta->fresh()->load(['cliente:id,nombre', 'pagos.cuentaBancaria:id,alias,numero_cuenta', 'pagos.billetera:id,nombre']));
     }
 
     /** Edita un pago existente y ajusta su movimiento de caja. */
@@ -84,6 +93,8 @@ class CuentaPorCobrarController extends Controller
     {
         $data = $request->validate([
             'forma_pago' => 'required|in:'.self::FORMAS,
+            'cuenta_bancaria_id' => 'nullable|exists:cuentas_bancarias,id',
+            'billetera_id' => 'nullable|exists:billeteras_digitales,id',
             'monto' => 'required|numeric|min:0.01',
             'referencia' => 'nullable|string|max:100',
             'fecha' => 'nullable|date',
@@ -95,9 +106,14 @@ class CuentaPorCobrarController extends Controller
             return response()->json(['message' => 'El monto excede el total de la cuenta.'], 422);
         }
 
-        DB::transaction(function () use ($pago, $cuenta, $data) {
+        $cuentaBancariaId = $data['forma_pago'] === 'transferencia' ? ($data['cuenta_bancaria_id'] ?? null) : null;
+        $billeteraId = $data['forma_pago'] === 'billetera' ? ($data['billetera_id'] ?? null) : null;
+
+        DB::transaction(function () use ($pago, $cuenta, $data, $cuentaBancariaId, $billeteraId) {
             $pago->update([
                 'forma_pago' => $data['forma_pago'],
+                'cuenta_bancaria_id' => $cuentaBancariaId,
+                'billetera_id' => $billeteraId,
                 'monto' => (float) $data['monto'],
                 'referencia' => $data['referencia'] ?? null,
                 'fecha' => $data['fecha'] ?? $pago->fecha,
@@ -105,6 +121,8 @@ class CuentaPorCobrarController extends Controller
 
             if ($pago->movimiento_caja_id) {
                 MovimientoCaja::where('id', $pago->movimiento_caja_id)->update([
+                    'cuenta_bancaria_id' => $cuentaBancariaId,
+                    'billetera_id' => $billeteraId,
                     'monto' => (float) $data['monto'],
                     'numero_operacion' => $data['referencia'] ?? null,
                     'fecha' => $data['fecha'] ?? $pago->fecha,
@@ -114,7 +132,7 @@ class CuentaPorCobrarController extends Controller
             $this->recalcular($cuenta);
         });
 
-        return response()->json($cuenta->fresh()->load(['cliente:id,nombre', 'pagos']));
+        return response()->json($cuenta->fresh()->load(['cliente:id,nombre', 'pagos.cuentaBancaria:id,alias,numero_cuenta', 'pagos.billetera:id,nombre']));
     }
 
     /** Anula (elimina) un pago y revierte su movimiento de caja. */
@@ -130,7 +148,7 @@ class CuentaPorCobrarController extends Controller
             $this->recalcular($cuenta);
         });
 
-        return response()->json($cuenta->fresh()->load(['cliente:id,nombre', 'pagos']));
+        return response()->json($cuenta->fresh()->load(['cliente:id,nombre', 'pagos.cuentaBancaria:id,alias,numero_cuenta', 'pagos.billetera:id,nombre']));
     }
 
     private function aperturaAbierta(): ?AperturaCaja

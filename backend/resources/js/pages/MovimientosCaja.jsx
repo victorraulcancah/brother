@@ -251,7 +251,9 @@ export default function MovimientosCaja() {
                         )}
                     </div>
                     <MetodoCajaPicker
-                        caja={caja}
+                        cuentas={caja?.cuentas_bancarias ?? []}
+                        billeteras={caja?.billeteras ?? []}
+                        aceptaEfectivo={caja?.acepta_efectivo}
                         tipo={form.metodoTipo}
                         cuentaId={form.cuentaId}
                         billeteraId={form.billeteraId}

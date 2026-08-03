@@ -4,21 +4,33 @@ const cuentaLabel = (c) => [c.banco?.nombre, c.alias, c.numero_cuenta].filter(Bo
 const billeteraLabel = (b) => [b.nombre, b.titular, b.numero_asociado].filter(Boolean).join(' · ');
 
 /**
- * Selector de método de pago de una caja, por tipo (Efectivo / Transferencia / Billetera).
- * Al elegir transferencia o billetera se despliega el detalle (banco+cuenta / titular+teléfono).
+ * Selector de método por tipo (Efectivo / Transferencia / Billetera).
+ * Al elegir transferencia o billetera se despliega el detalle
+ * (banco + cuenta / titular + teléfono).
  *
+ * Fuentes: pasa `cuentas` y `billeteras` (arrays) y `aceptaEfectivo`.
  * value = { tipo, cuentaId, billeteraId }
  */
-export default function MetodoCajaPicker({ caja, tipo, cuentaId, billeteraId, onChange, error }) {
-    const tipos = [{ value: '', label: 'Selecciona un tipo' }];
-    if (caja?.acepta_efectivo) tipos.push({ value: 'efectivo', label: 'Efectivo' });
-    if ((caja?.cuentas_bancarias ?? []).length) tipos.push({ value: 'transferencia', label: 'Transferencia' });
-    if ((caja?.billeteras ?? []).length) tipos.push({ value: 'billetera', label: 'Billetera digital' });
+export default function MetodoCajaPicker({
+    cuentas = [],
+    billeteras = [],
+    aceptaEfectivo = true,
+    tipo,
+    cuentaId,
+    billeteraId,
+    onChange,
+    error,
+    compact = false,
+}) {
+    const tipos = [{ value: '', label: 'Tipo de método' }];
+    if (aceptaEfectivo) tipos.push({ value: 'efectivo', label: 'Efectivo' });
+    if (cuentas.length) tipos.push({ value: 'transferencia', label: 'Transferencia' });
+    if (billeteras.length) tipos.push({ value: 'billetera', label: 'Billetera digital' });
 
     return (
-        <div className="space-y-2">
+        <div className={compact ? 'space-y-1.5' : 'space-y-2'}>
             <Select
-                label="Tipo de método"
+                label={compact ? undefined : 'Tipo de método'}
                 value={tipo}
                 onChange={(e) => onChange({ tipo: e.target.value, cuentaId: '', billeteraId: '' })}
                 options={tipos}
@@ -26,24 +38,18 @@ export default function MetodoCajaPicker({ caja, tipo, cuentaId, billeteraId, on
             />
             {tipo === 'transferencia' && (
                 <Select
-                    label="Cuenta bancaria"
+                    label={compact ? undefined : 'Cuenta bancaria'}
                     value={cuentaId}
                     onChange={(e) => onChange({ tipo, cuentaId: e.target.value, billeteraId: '' })}
-                    options={[
-                        { value: '', label: 'Selecciona la cuenta' },
-                        ...(caja?.cuentas_bancarias ?? []).map((c) => ({ value: String(c.id), label: cuentaLabel(c) })),
-                    ]}
+                    options={[{ value: '', label: 'Selecciona la cuenta' }, ...cuentas.map((c) => ({ value: String(c.id), label: cuentaLabel(c) }))]}
                 />
             )}
             {tipo === 'billetera' && (
                 <Select
-                    label="Billetera"
+                    label={compact ? undefined : 'Billetera'}
                     value={billeteraId}
                     onChange={(e) => onChange({ tipo, cuentaId: '', billeteraId: e.target.value })}
-                    options={[
-                        { value: '', label: 'Selecciona la billetera' },
-                        ...(caja?.billeteras ?? []).map((b) => ({ value: String(b.id), label: billeteraLabel(b) })),
-                    ]}
+                    options={[{ value: '', label: 'Selecciona la billetera' }, ...billeteras.map((b) => ({ value: String(b.id), label: billeteraLabel(b) }))]}
                 />
             )}
         </div>

@@ -11,6 +11,8 @@ class CompraPago extends Model
     protected $fillable = [
         'compra_id',
         'metodo',
+        'cuenta_bancaria_id',
+        'billetera_id',
         'monto',
     ];
 

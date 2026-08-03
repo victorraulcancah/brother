@@ -11,19 +11,13 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/metodo_picker.dart';
 import '../widgets/product_lines_editor.dart';
 
-const _formasPago = [
-  AppSelectOption('efectivo', 'Efectivo'),
-  AppSelectOption('transferencia', 'Transferencia'),
-  AppSelectOption('tarjeta', 'Tarjeta'),
-  AppSelectOption('yape', 'Yape'),
-  AppSelectOption('plin', 'Plin'),
-  AppSelectOption('otro', 'Otro'),
-];
-
 class _Pago {
-  String forma = 'efectivo';
+  String tipo = 'efectivo';
+  int? cuentaId;
+  int? billeteraId;
   final TextEditingController monto = TextEditingController();
   double get valor => double.tryParse(monto.text.trim()) ?? 0;
   void dispose() => monto.dispose();
@@ -43,6 +37,8 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
 
   List<Map<String, dynamic>> _clientes = [];
   List<Map<String, dynamic>> _almacenes = [];
+  List<Map<String, dynamic>> _cuentas = [];
+  List<Map<String, dynamic>> _billeteras = [];
   final List<AppSelectOption<int>> _presOptions = [];
   final Map<int, double> _precioMap = {};
 
@@ -76,9 +72,13 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
         CrudService(_api, ApiEndpoints.clientes).getAll(),
         CrudService(_api, ApiEndpoints.almacenes).getAll(),
         CrudService(_api, ApiEndpoints.productos).getAll(),
+        CrudService(_api, ApiEndpoints.cuentasBancarias).getAll(),
+        CrudService(_api, ApiEndpoints.billeterasDigitales).getAll(),
       ]);
       _clientes = results[0];
       _almacenes = results[1];
+      _cuentas = results[3];
+      _billeteras = results[4];
       for (final p in results[2]) {
         final presentaciones = p['presentaciones'] as List? ?? [];
         for (final pres in presentaciones) {
@@ -125,7 +125,15 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
     final pagos = _tipoPago == 'contado'
         ? _pagos
             .where((p) => p.valor > 0)
-            .map((p) => {'metodo_pago_id': null, 'forma_pago': p.forma, 'monto': p.valor, 'fecha': fecha, 'referencia': null})
+            .map((p) => {
+                  'metodo_pago_id': null,
+                  'forma_pago': p.tipo,
+                  'cuenta_bancaria_id': p.tipo == 'transferencia' ? p.cuentaId : null,
+                  'billetera_id': p.tipo == 'billetera' ? p.billeteraId : null,
+                  'monto': p.valor,
+                  'fecha': fecha,
+                  'referencia': null,
+                })
             .toList()
         : [
             {'metodo_pago_id': null, 'forma_pago': 'credito', 'monto': _total, 'fecha': fecha, 'referencia': null}
@@ -224,31 +232,41 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
                       title: 'Pagos (mixto)',
                       children: [
                         for (int i = 0; i < _pagos.length; i++)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Row(
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
+                            child: Column(
                               children: [
-                                Expanded(
-                                  child: AppSelect<String>(
-                                    label: 'Forma',
-                                    value: _pagos[i].forma,
-                                    options: _formasPago,
-                                    onChanged: (v) => setState(() => _pagos[i].forma = v ?? 'efectivo'),
-                                  ),
+                                MetodoPicker(
+                                  cuentas: _cuentas,
+                                  billeteras: _billeteras,
+                                  tipo: _pagos[i].tipo,
+                                  cuentaId: _pagos[i].cuentaId,
+                                  billeteraId: _pagos[i].billeteraId,
+                                  onChanged: (t, c, b) => setState(() {
+                                    _pagos[i].tipo = t ?? 'efectivo';
+                                    _pagos[i].cuentaId = c;
+                                    _pagos[i].billeteraId = b;
+                                  }),
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: AppTextField(
-                                    controller: _pagos[i].monto,
-                                    label: 'Monto',
-                                    keyboardType: TextInputType.number,
-                                    onChanged: (_) => setState(() {}),
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: _pagos.length == 1 ? null : () => setState(() => _pagos.removeAt(i).dispose()),
-                                  icon: const Icon(Icons.delete_outline),
-                                  color: AppColors.danger,
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: AppTextField(
+                                        controller: _pagos[i].monto,
+                                        label: 'Monto',
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        onChanged: (_) => setState(() {}),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: _pagos.length == 1 ? null : () => setState(() => _pagos.removeAt(i).dispose()),
+                                      icon: const Icon(Icons.delete_outline),
+                                      color: AppColors.danger,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
