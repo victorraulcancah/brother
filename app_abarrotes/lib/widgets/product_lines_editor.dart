@@ -103,7 +103,7 @@ class ProductLinesEditor extends StatelessWidget {
                 child: AppTextField(
                   controller: line.cantidad,
                   label: qtyLabel,
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   onChanged: (_) => onChanged(),
                 ),
               ),
@@ -113,7 +113,7 @@ class ProductLinesEditor extends StatelessWidget {
                   child: AppTextField(
                     controller: line.precio,
                     label: priceLabel,
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     onChanged: (_) => onChanged(),
                   ),
                 ),

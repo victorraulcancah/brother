@@ -1,0 +1,536 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.modal{background:var(--surface-2);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;font-family:var(--font-sans)}
+.modal-header{background:#1a7abf;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center}
+.modal-header .title{font-size:14px;font-weight:500;letter-spacing:0.04em}
+.legend{display:flex;gap:14px;font-size:11px;align-items:center}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot.opt{background:#4db8e8}.dot.req{background:#e8324d}
+.tabs{display:flex;border-bottom:2px solid var(--border);background:var(--surface-2);padding:0 14px}
+.tab{padding:10px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab.active{color:#1a7abf;border-bottom-color:#1a7abf}
+.body{padding:14px 16px;background:var(--surface-2)}
+.row{display:flex;gap:10px;margin-bottom:10px;align-items:flex-end;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.field.w2{flex:2}.field.w3{flex:3}.field.wfixed{flex:0 0 180px}
+.flabel{font-size:10px;font-weight:500;color:var(--text-secondary);letter-spacing:0.06em;display:flex;align-items:center;gap:4px}
+.rdot{width:7px;height:7px;border-radius:50%;background:#e8324d;flex-shrink:0}
+.odot{width:7px;height:7px;border-radius:50%;background:#4db8e8;flex-shrink:0}
+.finput{height:32px;border:0.5px solid var(--border-strong);border-radius:var(--radius);background:var(--surface-1);color:var(--text-primary);font-size:12px;padding:0 8px;width:100%;display:flex;align-items:center;gap:6px}
+.finput input,.finput select{border:none;background:transparent;color:var(--text-primary);font-size:12px;width:100%;outline:none}
+.icon{font-size:14px;color:#e8324d}.icon.opt{color:#4db8e8}
+.plus-btn{flex:0 0 18px;align-self:flex-end;padding-bottom:7px;cursor:pointer}
+.plus-btn i{font-size:18px;color:#27a85a;transition:transform 0.15s}
+.plus-btn:hover i{transform:scale(1.2)}
+.checkbox-row{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);margin-top:2px}
+.divider{border:none;border-top:0.5px solid var(--border);margin:10px 0}
+.lote-bar{display:flex;align-items:center;gap:10px;margin:8px 0}
+.lote-line{flex:1;height:1px;background:#27a85a}
+.lote-label{font-size:11px;font-weight:500;color:#27a85a;white-space:nowrap}
+.section-label{font-size:12px;font-weight:500;color:var(--text-primary);margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.btn-add{background:#27a85a;color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;padding:5px 12px;cursor:pointer;display:flex;align-items:center;gap:4px}
+.table-wrap{overflow-x:auto;border:0.5px solid var(--border);border-radius:8px;margin-top:6px}
+table{width:100%;border-collapse:collapse;font-size:11px;min-width:900px}
+thead tr{background:#27a85a;color:#fff}
+thead th{padding:7px 8px;font-weight:500;text-align:left;font-size:11px;white-space:nowrap}
+.sort{font-size:9px;opacity:0.7;margin-left:3px}
+tbody tr{border-top:0.5px solid var(--border)}
+tbody tr:hover{background:var(--surface-1)}
+td{padding:5px 8px;color:var(--text-primary);vertical-align:middle}
+.td-num{color:var(--text-muted);font-size:11px;text-align:center}
+.td-drag{color:var(--text-muted);cursor:grab;text-align:center}
+.td-del button{background:none;border:none;cursor:pointer;color:#e8324d;font-size:14px}
+.td-input{height:26px;border:0.5px solid var(--border);border-radius:4px;background:var(--surface-0);color:var(--text-primary);font-size:11px;padding:0 6px;width:100%}
+.td-select{height:26px;border:0.5px solid var(--border);border-radius:4px;background:var(--surface-0);color:var(--text-primary);font-size:11px;padding:0 4px;width:100%}
+.td-search{display:flex;align-items:center;gap:4px}
+.td-search input{flex:1;height:26px;border:0.5px solid var(--border);border-radius:4px;background:var(--surface-0);color:var(--text-primary);font-size:11px;padding:0 6px}
+.footer{display:flex;justify-content:flex-end;gap:10px;padding:12px 16px;border-top:0.5px solid var(--border);background:var(--surface-2)}
+.btn-cancel{padding:7px 20px;border:0.5px solid var(--border-strong);border-radius:var(--radius);background:var(--surface-1);color:var(--text-primary);font-size:13px;cursor:pointer}
+.btn-create{padding:7px 24px;border:none;border-radius:var(--radius);background:#27a85a;color:#fff;font-size:13px;font-weight:500;cursor:pointer}
+.btn-create:disabled{opacity:0.45;cursor:not-allowed}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.upload-zone{border:1.5px dashed var(--border-strong);border-radius:8px;background:var(--surface-1);padding:18px 14px;text-align:center;cursor:pointer}
+.upload-zone:hover{border-color:#1a7abf}
+.upload-zone.has-file{border-color:#27a85a;background:var(--bg-success)}
+.uz-btn{display:inline-flex;align-items:center;gap:6px;background:#1a7abf;color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;padding:6px 14px;cursor:pointer;margin-bottom:6px}
+.uz-hint{font-size:11px;color:var(--text-muted)}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.info-section-title{font-size:11px;font-weight:500;color:var(--text-secondary);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)}
+.accion-box{border:0.5px solid var(--border-strong);border-radius:8px;background:var(--surface-1);padding:10px 12px}
+.accion-box textarea{width:100%;border:none;background:transparent;color:var(--text-primary);font-size:12px;resize:none;outline:none;min-height:70px;font-family:var(--font-sans);line-height:1.5}
+
+/* MINI MODAL OVERLAY */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.mini-modal{background:var(--surface-2);border:0.5px solid var(--border);border-radius:12px;width:360px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.18)}
+.mini-header{padding:10px 14px;display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:13px;font-weight:500}
+.mini-body{padding:16px 14px;display:flex;flex-direction:column;gap:10px}
+.mini-field{display:flex;flex-direction:column;gap:3px}
+.mini-label{font-size:10px;font-weight:500;color:var(--text-secondary);letter-spacing:0.06em;display:flex;align-items:center;gap:4px}
+.mini-input{height:32px;border:0.5px solid var(--border-strong);border-radius:var(--radius);background:var(--surface-1);color:var(--text-primary);font-size:12px;padding:0 10px;width:100%;outline:none}
+.mini-input:focus{border-color:#1a7abf}
+.mini-select{height:32px;border:0.5px solid var(--border-strong);border-radius:var(--radius);background:var(--surface-1);color:var(--text-primary);font-size:12px;padding:0 8px;width:100%;outline:none}
+.mini-footer{display:flex;justify-content:flex-end;gap:8px;padding:10px 14px;border-top:0.5px solid var(--border)}
+.mini-btn-cancel{padding:6px 16px;border:0.5px solid var(--border-strong);border-radius:var(--radius);background:var(--surface-1);color:var(--text-primary);font-size:12px;cursor:pointer}
+.mini-btn-save{padding:6px 18px;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;color:#fff;cursor:pointer}
+.mini-btn-save:disabled{opacity:0.45;cursor:not-allowed}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#27a85a;color:#fff;border-radius:var(--radius);padding:8px 18px;font-size:12px;font-weight:500;opacity:0;transition:opacity 0.25s;pointer-events:none;z-index:200;white-space:nowrap}
+.toast.show{opacity:1}
+</style>
+
+<h2 class="sr-only">Formulario registro producto catálogo con modales de creación rápida para marca, submarca, categoría, subcategoría y unidad de medida</h2>
+
+<!-- OVERLAYS -->
+<div class="overlay" id="overlayMarca">
+  <div class="mini-modal">
+    <div class="mini-header" style="background:#1a7abf"><i class="ti ti-rosette" style="margin-right:6px" aria-hidden="true"></i>Nueva marca</div>
+    <div class="mini-body">
+      <div class="mini-field">
+        <div class="mini-label"><span class="rdot"></span>NOMBRE DE MARCA</div>
+        <input class="mini-input" id="inMarca" placeholder="Ej: Cemento Sol" oninput="checkMini('inMarca','saveMarca')">
+      </div>
+      <div class="mini-field">
+        <div class="mini-label"><span class="odot"></span>DESCRIPCIÓN</div>
+        <input class="mini-input" id="inMarcaDesc" placeholder="Descripción opcional">
+      </div>
+      <div class="mini-field">
+        <div class="mini-label"><span class="odot"></span>ESTADO</div>
+        <select class="mini-select"><option>ACTIVO</option><option>INACTIVO</option></select>
+      </div>
+    </div>
+    <div class="mini-footer">
+      <button class="mini-btn-cancel" onclick="closeOverlay('overlayMarca')">Cancelar</button>
+      <button class="mini-btn-save" id="saveMarca" style="background:#1a7abf" disabled onclick="guardarMarca()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlaySubmarca">
+  <div class="mini-modal">
+    <div class="mini-header" style="background:#1a7abf"><i class="ti ti-rosette" style="margin-right:6px" aria-hidden="true"></i>Nueva submarca</div>
+    <div class="mini-body">
+      <div class="mini-field">
+        <div class="mini-label"><span class="rdot"></span>MARCA PADRE</div>
+        <select class="mini-select" id="inSubmarcaPadre"></select>
+      </div>
+      <div class="mini-field">
+        <div class="mini-label"><span class="rdot"></span>NOMBRE DE SUBMARCA</div>
+        <input class="mini-input" id="inSubmarca" placeholder="Ej: Sol Tipo I" oninput="checkMini('inSubmarca','saveSubmarca')">
+      </div>
+    </div>
+    <div class="mini-footer">
+      <button class="mini-btn-cancel" onclick="closeOverlay('overlaySubmarca')">Cancelar</button>
+      <button class="mini-btn-save" id="saveSubmarca" style="background:#1a7abf" disabled onclick="guardarSubmarca()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlayCat">
+  <div class="mini-modal">
+    <div class="mini-header" style="background:#27a85a"><i class="ti ti-layout-grid" style="margin-right:6px" aria-hidden="true"></i>Nueva categoría</div>
+    <div class="mini-body">
+      <div class="mini-field">
+        <div class="mini-label"><span class="rdot"></span>NOMBRE DE CATEGORÍA</div>
+        <input class="mini-input" id="inCat" placeholder="Ej: Herramientas" oninput="checkMini('inCat','saveCat')">
+      </div>
+      <div class="mini-field">
+        <div class="mini-label"><span class="odot"></span>DESCRIPCIÓN</div>
+        <input class="mini-input" placeholder="Descripción opcional">
+      </div>
+      <div class="mini-field">
+        <div class="mini-label"><span class="odot"></span>ESTADO</div>
+        <select class="mini-select"><option>ACTIVO</option><option>INACTIVO</option></select>
+      </div>
+    </div>
+    <div class="mini-footer">
+      <button class="mini-btn-cancel" onclick="closeOverlay('overlayCat')">Cancelar</button>
+      <button class="mini-btn-save" id="saveCat" style="background:#27a85a" disabled onclick="guardarCat()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlaySubcat">
+  <div class="mini-modal">
+    <div class="mini-header" style="background:#27a85a"><i class="ti ti-layout-grid" style="margin-right:6px" aria-hidden="true"></i>Nueva subcategoría</div>
+    <div class="mini-body">
+      <div class="mini-field">
+        <div class="mini-label"><span class="rdot"></span>CATEGORÍA PADRE</div>
+        <select class="mini-select" id="inSubcatPadre"></select>
+      </div>
+      <div class="mini-field">
+        <div class="mini-label"><span class="rdot"></span>NOMBRE DE SUBCATEGORÍA</div>
+        <input class="mini-input" id="inSubcat" placeholder="Ej: Tornillos" oninput="checkMini('inSubcat','saveSubcat')">
+      </div>
+    </div>
+    <div class="mini-footer">
+      <button class="mini-btn-cancel" onclick="closeOverlay('overlaySubcat')">Cancelar</button>
+      <button class="mini-btn-save" id="saveSubcat" style="background:#27a85a" disabled onclick="guardarSubcat()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlayUmed">
+  <div class="mini-modal">
+    <div class="mini-header" style="background:#7b5ea7"><i class="ti ti-ruler" style="margin-right:6px" aria-hidden="true"></i>Nueva unidad de medida</div>
+    <div class="mini-body">
+      <div class="mini-field">
+        <div class="mini-label"><span class="rdot"></span>NOMBRE</div>
+        <input class="mini-input" id="inUmed" placeholder="Ej: METRO" oninput="checkMini('inUmed','saveUmed')">
+      </div>
+      <div class="mini-field">
+        <div class="mini-label"><span class="rdot"></span>ABREVIATURA</div>
+        <input class="mini-input" id="inUmedAbrev" placeholder="Ej: MT">
+      </div>
+    </div>
+    <div class="mini-footer">
+      <button class="mini-btn-cancel" onclick="closeOverlay('overlayUmed')">Cancelar</button>
+      <button class="mini-btn-save" id="saveUmed" style="background:#7b5ea7" disabled onclick="guardarUmed()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- FORMULARIO PRINCIPAL -->
+<div class="modal">
+  <div class="modal-header">
+    <span class="title">AGREGAR PRODUCTO</span>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div class="legend">
+        <span><span class="dot opt"></span>OPCIONAL</span>
+        <span><span class="dot req"></span>OBLIGATORIO</span>
+      </div>
+      <span style="cursor:pointer;font-size:18px;opacity:0.8">×</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('datos')">DATOS INICIALES</div>
+    <div class="tab" onclick="switchTab('info')">INFORMACIÓN ADICIONAL</div>
+  </div>
+
+  <div class="body">
+    <div id="tab-datos" class="tab-panel active">
+
+      <div class="row">
+        <div class="field wfixed">
+          <div class="flabel"><span class="odot"></span>COD. PRODUCTO:</div>
+          <div class="finput"><i class="ti ti-arrows-exchange icon opt" aria-hidden="true"></i><input placeholder="CÓDIGO DE PRODUCTO" id="codProd"></div>
+          <div class="checkbox-row"><input type="checkbox" checked id="chkAuto" onchange="toggleCod()"><label for="chkAuto">AUTOMÁTICO</label></div>
+        </div>
+        <div class="field w2">
+          <div class="flabel"><span class="odot"></span>COD. DE BARRA:</div>
+          <div class="finput"><i class="ti ti-barcode icon opt" aria-hidden="true"></i><input placeholder="CÓDIGO DE BARRA"></div>
+        </div>
+        <div class="field w2">
+          <div class="flabel"><span class="rdot"></span>ESTADO:</div>
+          <div class="finput"><i class="ti ti-bolt" style="font-size:14px;color:#e8c32d" aria-hidden="true"></i><select><option>ACTIVO</option><option>INACTIVO</option></select></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <div class="flabel"><span class="rdot"></span>PRODUCTO:</div>
+          <div class="finput"><i class="ti ti-tag icon" aria-hidden="true"></i><input id="inputProd" placeholder="PRODUCTO" oninput="checkFields()"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <div class="flabel"><span class="odot"></span>DESCRIP. TICKET:</div>
+          <div class="finput"><i class="ti ti-receipt icon opt" aria-hidden="true"></i><input placeholder="DESCRIPCIÓN TICKET"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <div class="flabel"><span class="odot"></span>CATEGORÍA:</div>
+          <div class="finput"><i class="ti ti-layout-grid icon opt" aria-hidden="true"></i><select id="selCat" onchange="filtrarSubCat()"><option value="">SELECCIONAR CATEGORÍA</option></select></div>
+        </div>
+        <div class="plus-btn" onclick="openCat()" title="Nueva categoría"><i class="ti ti-circle-plus" aria-hidden="true"></i></div>
+        <div class="field">
+          <div class="flabel"><span class="odot"></span>SUBCATEGORÍA:</div>
+          <div class="finput"><i class="ti ti-layout-grid icon opt" aria-hidden="true"></i><select id="selSubCat"><option value="">SELECCIONAR SUBCATEGORÍA</option></select></div>
+        </div>
+        <div class="plus-btn" onclick="openSubcat()" title="Nueva subcategoría"><i class="ti ti-circle-plus" aria-hidden="true"></i></div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <div class="flabel"><span class="odot"></span>MARCA:</div>
+          <div class="finput"><i class="ti ti-rosette icon opt" aria-hidden="true"></i><select id="selMarca" onchange="filtrarSubMarca()"><option value="">SELECCIONAR MARCA</option></select></div>
+        </div>
+        <div class="plus-btn" onclick="openMarca()" title="Nueva marca"><i class="ti ti-circle-plus" aria-hidden="true"></i></div>
+        <div class="field">
+          <div class="flabel"><span class="odot"></span>SUBMARCA:</div>
+          <div class="finput"><i class="ti ti-rosette icon opt" aria-hidden="true"></i><select id="selSubMarca"><option value="">SELECCIONAR SUBMARCA</option></select></div>
+        </div>
+        <div class="plus-btn" onclick="openSubmarca()" title="Nueva submarca"><i class="ti ti-circle-plus" aria-hidden="true"></i></div>
+      </div>
+
+      <div class="row">
+        <div class="field w2">
+          <div class="flabel"><span class="rdot"></span>U. DE MEDIDA:</div>
+          <div class="finput"><i class="ti ti-ruler icon" aria-hidden="true"></i><select id="selUMedida" onchange="checkFields()"><option value="">UNIDAD DE MEDIDA</option></select></div>
+        </div>
+        <div class="plus-btn" onclick="openUmed()" title="Nueva unidad de medida"><i class="ti ti-circle-plus" aria-hidden="true"></i></div>
+        <div class="field w2">
+          <div class="flabel"><span class="odot"></span>U. CONTENIDAS:</div>
+          <div class="finput"><i class="ti ti-stack-2 icon opt" aria-hidden="true"></i><input value="1,00" type="number" step="0.01"></div>
+        </div>
+        <div class="field w2">
+          <div class="flabel"><span class="odot"></span>STOCK MIN:</div>
+          <div class="finput"><i class="ti ti-package icon opt" aria-hidden="true"></i><input placeholder="STO..." type="number" min="0"></div>
+        </div>
+        <div class="field w2">
+          <div class="flabel"><span class="odot"></span>STOCK MAX:</div>
+          <div class="finput"><i class="ti ti-packages icon opt" aria-hidden="true"></i><input placeholder="STO..." type="number" min="0"></div>
+        </div>
+      </div>
+
+      <div class="lote-bar">
+        <div class="lote-line"></div>
+        <div class="lote-label">LOTE INICIAL: <span id="loteFlag" style="color:#e8324d">0F</span></div>
+        <div class="lote-line"></div>
+      </div>
+
+      <div class="row">
+        <div class="field w3">
+          <div class="flabel"><span class="odot"></span>N° LOTE:</div>
+          <div class="finput"><i class="ti ti-123 icon opt" aria-hidden="true"></i><input placeholder="N° LOTE" id="inputLote" oninput="toggleLote()"></div>
+        </div>
+        <div class="field w3">
+          <div class="flabel"><span class="odot"></span>VENCIMIENTO:</div>
+          <div class="finput"><i class="ti ti-alert-triangle icon opt" aria-hidden="true"></i><input type="date"></div>
+        </div>
+        <div class="field w3">
+          <div class="flabel"><span class="odot"></span>STOCK ENTERO:</div>
+          <div class="finput"><i class="ti ti-package icon opt" aria-hidden="true"></i><input placeholder="STOCK ENTERO" type="number" min="0"></div>
+        </div>
+        <div class="field w3">
+          <div class="flabel"><span class="odot"></span>STOCK FRACCIÓN:</div>
+          <div class="finput"><i class="ti ti-packages icon opt" aria-hidden="true"></i><input placeholder="STOCK FRACCION" type="number" min="0" step="0.01"></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section-label">
+        DETALLE DE PRECIOS
+        <button class="btn-add" onclick="addRow()"><i class="ti ti-plus" aria-hidden="true"></i> + AGREGAR UNIDAD DERIVADA</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:28px">#</th>
+              <th style="width:28px"><i class="ti ti-menu-2" aria-hidden="true"></i></th>
+              <th style="width:32px"></th>
+              <th>FORMATO DE VENTA <span class="sort">⇅</span></th>
+              <th style="width:28px"></th>
+              <th>FACTOR <span class="sort">⇅</span></th>
+              <th>PROD. COMPLEMENTARIO <span class="sort">⇅</span></th>
+              <th>CANT. COMPL. <span class="sort">⇅</span></th>
+              <th>P. COMPRA <span class="sort">⇅</span></th>
+              <th>% VENTA <span class="sort">⇅</span></th>
+            </tr>
+          </thead>
+          <tbody id="tablaRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tab-info" class="tab-panel">
+      <div class="info-grid">
+        <div>
+          <div class="info-section-title">Adjuntar imagen</div>
+          <div class="upload-zone" id="zoneImg" ondragover="ev(event)" ondrop="dropFile(event,'zoneImg','imgName')" onclick="fakeUpload('zoneImg','imgName','imagen')">
+            <i class="ti ti-photo" style="font-size:28px;color:var(--text-muted);display:block;margin-bottom:6px" aria-hidden="true"></i>
+            <button class="uz-btn" type="button"><i class="ti ti-upload" aria-hidden="true"></i> Subir imagen</button>
+            <div class="uz-hint" id="imgName">Puede arrastrar la imagen aquí</div>
+          </div>
+        </div>
+        <div>
+          <div class="info-section-title">Adjuntar ficha técnica</div>
+          <div class="upload-zone" id="zonePdf" ondragover="ev(event)" ondrop="dropFile(event,'zonePdf','pdfName')" onclick="fakeUpload('zonePdf','pdfName','ficha técnica')">
+            <i class="ti ti-file-description" style="font-size:28px;color:var(--text-muted);display:block;margin-bottom:6px" aria-hidden="true"></i>
+            <button class="uz-btn" type="button"><i class="ti ti-upload" aria-hidden="true"></i> Subir ficha técnica</button>
+            <div class="uz-hint" id="pdfName">Puede arrastrar la ficha técnica aquí</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="info-section-title">Acción técnica</div>
+        <div class="accion-box">
+          <textarea placeholder="Describe la acción técnica del producto: instrucciones de uso, advertencias, aplicaciones recomendadas..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="btn-cancel">CANCELAR</button>
+    <button class="btn-create" id="btnCrear" disabled onclick="showToast('Producto creado correctamente')">CREAR</button>
+  </div>
+</div>
+
+<script>
+// --- DATA ---
+const marcas = ['Sol','Aceros Arequipa','3M','Tekno'];
+const subMarcasMap = {'Sol':['Sol Tipo I','Sol Tipo II'],'Aceros Arequipa':['Barra corrugada','Alambrón'],'3M':['Scotch','VHB'],'Tekno':['Teknolátex','Teknoesmalte']};
+const cats = ['Ferretería','Construcción','Eléctrico','Pinturas'];
+const subCatsMap = {'Ferretería':['Tornillos','Herramientas'],'Construcción':['Cemento','Ladrillos'],'Eléctrico':['Cables','Interruptores'],'Pinturas':['Látex','Esmalte']};
+const umeds = ['UND','KG','LT','MT'];
+
+let rowCount = 0;
+
+function poblarSelect(selId, items, placeholder) {
+  const sel = document.getElementById(selId);
+  const val = sel.value;
+  sel.innerHTML = `<option value="">${placeholder}</option>`;
+  items.forEach(i => { const o = document.createElement('option'); o.value = i; o.textContent = i; if(i===val) o.selected=true; sel.appendChild(o); });
+}
+
+function initSelects() {
+  poblarSelect('selMarca', marcas, 'SELECCIONAR MARCA');
+  poblarSelect('selCat', cats, 'SELECCIONAR CATEGORÍA');
+  poblarSelect('selUMedida', umeds, 'UNIDAD DE MEDIDA');
+}
+
+function filtrarSubMarca() {
+  const v = document.getElementById('selMarca').value;
+  poblarSelect('selSubMarca', subMarcasMap[v]||[], 'SELECCIONAR SUBMARCA');
+}
+function filtrarSubCat() {
+  const v = document.getElementById('selCat').value;
+  poblarSelect('selSubCat', subCatsMap[v]||[], 'SELECCIONAR SUBCATEGORÍA');
+}
+
+// --- OVERLAYS ---
+function openOverlay(id) { document.getElementById(id).classList.add('open'); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+function checkMini(inId, btnId) {
+  document.getElementById(btnId).disabled = !document.getElementById(inId).value.trim();
+}
+
+function openMarca() { document.getElementById('inMarca').value=''; document.getElementById('inMarcaDesc').value=''; document.getElementById('saveMarca').disabled=true; openOverlay('overlayMarca'); }
+function guardarMarca() {
+  const n = document.getElementById('inMarca').value.trim();
+  if(!n) return;
+  if(!marcas.includes(n)) { marcas.push(n); subMarcasMap[n]=[]; }
+  poblarSelect('selMarca', marcas, 'SELECCIONAR MARCA');
+  document.getElementById('selMarca').value = n;
+  filtrarSubMarca();
+  closeOverlay('overlayMarca');
+  showToast(`Marca "${n}" creada`);
+}
+
+function openSubmarca() {
+  const sel = document.getElementById('inSubmarcaPadre');
+  sel.innerHTML = marcas.map(m=>`<option>${m}</option>`).join('');
+  sel.value = document.getElementById('selMarca').value || marcas[0];
+  document.getElementById('inSubmarca').value=''; document.getElementById('saveSubmarca').disabled=true;
+  openOverlay('overlaySubmarca');
+}
+function guardarSubmarca() {
+  const padre = document.getElementById('inSubmarcaPadre').value;
+  const n = document.getElementById('inSubmarca').value.trim();
+  if(!n) return;
+  if(!subMarcasMap[padre]) subMarcasMap[padre]=[];
+  if(!subMarcasMap[padre].includes(n)) subMarcasMap[padre].push(n);
+  if(document.getElementById('selMarca').value===padre) filtrarSubMarca(), document.getElementById('selSubMarca').value=n;
+  closeOverlay('overlaySubmarca');
+  showToast(`Submarca "${n}" creada`);
+}
+
+function openCat() { document.getElementById('inCat').value=''; document.getElementById('saveCat').disabled=true; openOverlay('overlayCat'); }
+function guardarCat() {
+  const n = document.getElementById('inCat').value.trim();
+  if(!n) return;
+  if(!cats.includes(n)) { cats.push(n); subCatsMap[n]=[]; }
+  poblarSelect('selCat', cats, 'SELECCIONAR CATEGORÍA');
+  document.getElementById('selCat').value = n;
+  filtrarSubCat();
+  closeOverlay('overlayCat');
+  showToast(`Categoría "${n}" creada`);
+}
+
+function openSubcat() {
+  const sel = document.getElementById('inSubcatPadre');
+  sel.innerHTML = cats.map(c=>`<option>${c}</option>`).join('');
+  sel.value = document.getElementById('selCat').value || cats[0];
+  document.getElementById('inSubcat').value=''; document.getElementById('saveSubcat').disabled=true;
+  openOverlay('overlaySubcat');
+}
+function guardarSubcat() {
+  const padre = document.getElementById('inSubcatPadre').value;
+  const n = document.getElementById('inSubcat').value.trim();
+  if(!n) return;
+  if(!subCatsMap[padre]) subCatsMap[padre]=[];
+  if(!subCatsMap[padre].includes(n)) subCatsMap[padre].push(n);
+  if(document.getElementById('selCat').value===padre) filtrarSubCat(), document.getElementById('selSubCat').value=n;
+  closeOverlay('overlaySubcat');
+  showToast(`Subcategoría "${n}" creada`);
+}
+
+function openUmed() { document.getElementById('inUmed').value=''; document.getElementById('inUmedAbrev').value=''; document.getElementById('saveUmed').disabled=true; openOverlay('overlayUmed'); }
+function guardarUmed() {
+  const n = document.getElementById('inUmed').value.trim().toUpperCase();
+  if(!n) return;
+  if(!umeds.includes(n)) umeds.push(n);
+  poblarSelect('selUMedida', umeds, 'UNIDAD DE MEDIDA');
+  document.getElementById('selUMedida').value = n;
+  checkFields();
+  closeOverlay('overlayUmed');
+  showToast(`Unidad "${n}" creada`);
+}
+
+// cerrar overlay al click fuera
+document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click', e => { if(e.target===el) closeOverlay(el.id); }));
+
+// --- TABLA ---
+function addRow() {
+  rowCount++;
+  const n = rowCount;
+  const tr = document.createElement('tr');
+  tr.id = 'row-'+n;
+  tr.innerHTML = `
+    <td class="td-num">${n}</td>
+    <td class="td-drag"><i class="ti ti-grip-vertical" aria-hidden="true"></i></td>
+    <td class="td-del"><button onclick="delRow(${n})"><i class="ti ti-trash" aria-hidden="true"></i></button></td>
+    <td><select class="td-select"><option>UNIDAD DERIVADA</option><option>CAJA</option><option>BOLSA</option><option>PACK</option><option>DOCENA</option></select></td>
+    <td><i class="ti ti-circle-plus" style="color:#27a85a;font-size:14px;cursor:pointer" aria-hidden="true"></i></td>
+    <td><input class="td-input" type="number" value="${n}.000" step="0.001" min="0.001" style="width:80px"></td>
+    <td class="td-search"><input placeholder="BUSCAR PRODUCTO COMPLEMENTA..."><i class="ti ti-search" style="font-size:13px;color:var(--text-muted)" aria-hidden="true"></i></td>
+    <td><input class="td-input" placeholder="CANT." type="number" min="0" style="width:70px"></td>
+    <td><input class="td-input" value="S/. 0.0000" style="width:90px"></td>
+    <td><div style="display:flex;align-items:center;gap:3px"><input class="td-input" value="0,00" type="number" step="0.01" style="width:60px"><span style="font-size:11px;color:var(--text-muted)">%</span></div></td>
+  `;
+  document.getElementById('tablaRows').appendChild(tr);
+}
+function delRow(n) {
+  const r = document.getElementById('row-'+n); if(r) r.remove();
+  document.querySelectorAll('#tablaRows tr').forEach((tr,i)=>tr.querySelector('.td-num').textContent=i+1);
+}
+
+// --- UTILS ---
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',(tab==='datos'&&i===0)||(tab==='info'&&i===1)));
+  document.getElementById('tab-datos').classList.toggle('active',tab==='datos');
+  document.getElementById('tab-info').classList.toggle('active',tab==='info');
+}
+function toggleCod() { const a=document.getElementById('chkAuto').checked,i=document.getElementById('codProd'); i.disabled=a; i.style.opacity=a?'0.4':'1'; }
+function toggleLote() { const v=document.getElementById('inputLote').value.trim(),f=document.getElementById('loteFlag'); f.textContent=v?'1F':'0F'; f.style.color=v?'#27a85a':'#e8324d'; }
+function checkFields() { const ok=document.getElementById('inputProd').value.trim()&&document.getElementById('selUMedida').value; document.getElementById('btnCrear').disabled=!ok; }
+function ev(e){e.preventDefault();}
+function dropFile(e,zId,nId){e.preventDefault();const f=e.dataTransfer.files[0];if(f)markUp(zId,nId,f.name);}
+function fakeUpload(zId,nId,tipo){markUp(zId,nId,`${tipo}_ejemplo.${tipo==='imagen'?'jpg':'pdf'}`);}
+function markUp(zId,nId,nombre){document.getElementById(zId).classList.add('has-file');const el=document.getElementById(nId);el.textContent='✓ '+nombre;el.style.color='var(--text-success)';}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+initSelects();
+toggleCod();
+addRow();addRow();addRow();
+</script>
