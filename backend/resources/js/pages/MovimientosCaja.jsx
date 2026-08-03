@@ -96,7 +96,9 @@ export default function MovimientosCaja() {
 
     const requiereOperacion = form.metodo.startsWith('transferencia:') || form.metodo.startsWith('billetera:');
 
-    const motivosTipo = motivos.filter((m) => (form.tipo === 'ingreso' ? m.tipo === 'entrada' : m.tipo === 'salida'));
+    const motivosTipo = motivos.filter(
+        (m) => !m.es_sistema && (form.tipo === 'ingreso' ? m.tipo === 'entrada' : m.tipo === 'salida'),
+    );
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -294,22 +296,13 @@ export default function MovimientosCaja() {
                             error={formErrors.numero_operacion}
                         />
                     )}
-                    <div className="grid grid-cols-2 gap-3">
-                        <Input
-                            label="Fecha"
-                            type="date"
-                            value={form.fecha}
-                            onChange={(e) => setForm((prev) => ({ ...prev, fecha: e.target.value }))}
-                            error={formErrors.fecha}
-                        />
-                        <Input
-                            label="Descripción (opcional)"
-                            placeholder="Ej: Recibo de luz de julio"
-                            value={form.descripcion}
-                            onChange={(e) => setForm((prev) => ({ ...prev, descripcion: e.target.value }))}
-                            error={formErrors.descripcion}
-                        />
-                    </div>
+                    <Input
+                        label="Descripción (opcional)"
+                        placeholder="Ej: Recibo de luz de julio"
+                        value={form.descripcion}
+                        onChange={(e) => setForm((prev) => ({ ...prev, descripcion: e.target.value }))}
+                        error={formErrors.descripcion}
+                    />
                     {!caja && (
                         <Alert variant="warning">
                             {esSuperAdmin ? 'Selecciona una caja para ver sus métodos.' : 'No tienes una caja asignada. Pide al administrador que te asigne una.'}

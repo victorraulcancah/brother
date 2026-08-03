@@ -50,7 +50,6 @@ class MovimientoCajaController extends Controller
             'numero_operacion' => 'nullable|string|max:100',
             'monto' => 'required|numeric|min:0.01',
             'descripcion' => 'nullable|string|max:255',
-            'fecha' => 'required|date',
         ]);
 
         $cajaId = $data['caja_id'] ?? $user?->caja_id;
@@ -75,6 +74,12 @@ class MovimientoCajaController extends Controller
         if ($motivo->tipo !== $tipoMotivo) {
             throw ValidationException::withMessages([
                 'motivo_movimiento_id' => "El motivo \"{$motivo->nombre}\" no corresponde a un ".($data['tipo'] === 'ingreso' ? 'ingreso' : 'egreso').'.',
+            ]);
+        }
+        // Los motivos del sistema (ventas, cobranzas, pagos) se generan automáticamente.
+        if ($motivo->es_sistema) {
+            throw ValidationException::withMessages([
+                'motivo_movimiento_id' => "El motivo \"{$motivo->nombre}\" es del sistema y no se registra manualmente.",
             ]);
         }
 
@@ -108,7 +113,7 @@ class MovimientoCajaController extends Controller
                 'numero_operacion' => $data['numero_operacion'] ?? null,
                 'monto' => $data['monto'],
                 'descripcion' => $data['descripcion'] ?? null,
-                'fecha' => $data['fecha'],
+                'fecha' => now()->toDateString(), // siempre la fecha actual
             ]);
         });
 

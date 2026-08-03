@@ -154,7 +154,9 @@ export default function MiCaja() {
     (caja?.cuentas_bancarias ?? []).forEach((c) => metodoOptions.push({ value: `transferencia:${c.id}`, label: `Transferencia · ${c.alias || c.numero_cuenta}` }));
     (caja?.billeteras ?? []).forEach((b) => metodoOptions.push({ value: `billetera:${b.id}`, label: b.nombre }));
 
-    const motivosTipo = motivos.filter((m) => (regTipo === 'ingreso' ? m.tipo === 'entrada' : m.tipo === 'salida'));
+    const motivosTipo = motivos.filter(
+        (m) => !m.es_sistema && (regTipo === 'ingreso' ? m.tipo === 'entrada' : m.tipo === 'salida'),
+    );
     const requiereOperacion = mov.metodo.startsWith('transferencia:') || mov.metodo.startsWith('billetera:');
 
     const columns = [
@@ -257,10 +259,7 @@ export default function MiCaja() {
                     {requiereOperacion && (
                         <Input label="N° de operación (opcional)" placeholder="Ej: 0045-885123" value={mov.numero_operacion} onChange={(e) => setMov((p) => ({ ...p, numero_operacion: e.target.value }))} />
                     )}
-                    <div className="grid grid-cols-2 gap-3">
-                        <Input label="Monto (S/)" type="number" min="0.01" step="0.01" placeholder="0.00" value={mov.monto} onChange={(e) => setMov((p) => ({ ...p, monto: e.target.value }))} />
-                        <Input label="Fecha" type="date" value={mov.fecha} onChange={(e) => setMov((p) => ({ ...p, fecha: e.target.value }))} />
-                    </div>
+                    <Input label="Monto (S/)" type="number" min="0.01" step="0.01" placeholder="0.00" value={mov.monto} onChange={(e) => setMov((p) => ({ ...p, monto: e.target.value }))} />
                     <Input label="Descripción (opcional)" placeholder="Ej: recibo de luz" value={mov.descripcion} onChange={(e) => setMov((p) => ({ ...p, descripcion: e.target.value }))} />
                 </div>
             </Modal>

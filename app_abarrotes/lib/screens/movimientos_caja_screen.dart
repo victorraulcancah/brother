@@ -203,7 +203,7 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
 
   List<Map<String, dynamic>> get _motivosTipo {
     final t = _tipo == 'ingreso' ? 'entrada' : 'salida';
-    return _motivos.where((m) => m['tipo'] == t).toList();
+    return _motivos.where((m) => m['tipo'] == t && m['es_sistema'] != true).toList();
   }
 
   Future<void> _guardar() async {
