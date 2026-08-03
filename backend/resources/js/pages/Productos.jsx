@@ -1,44 +1,37 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-    ArrowLeft,
-    ArrowRight,
-    Edit,
-    Package,
-    Plus,
-    Save,
-    Trash2,
-    X,
-} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Edit, Package, Plus, PlusCircle, Save, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
-import { Alert, Badge, Button, Card, DataTable, Input, Modal, Select, Tabs } from '../components/ui';
-import { cn } from '../components/ui/cn';
+import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
 
 const emptyProducto = {
     codigo: '',
+    codigo_barras: '',
     nombre: '',
+    descripcion_ticket: '',
     categoria_id: '',
+    sub_categoria_id: '',
     marca_id: '',
     sub_marca_id: '',
     unidad_medida_id: '',
-    unidad_compra_id: '',
-    unidad_base_id: '',
     factor_compra_base: '1',
-    precio_base: '',
-    descripcion: '',
-    afecto_igv: true,
+    stock_minimo: '',
+    stock_maximo: '',
     activo: true,
 };
 
-const emptyPresentacion = {
-    nombre: '',
-    codigo_barras: '',
-    precio_venta: '',
-    factor_conversion: '1',
+const nuevaDerivada = () => ({
     unidad_base_id: '',
-};
+    factor_conversion: '1',
+    precio_compra: '',
+    margen: '',
+    precio_venta: '',
+    producto_complementario_id: '',
+    cantidad_complementaria: '',
+    codigo_barras: '',
+});
 
 export default function Productos() {
     const toast = useToast();
@@ -52,14 +45,15 @@ export default function Productos() {
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [step, setStep] = useState(0);
     const [form, setForm] = useState(emptyProducto);
-    const [presentaciones, setPresentaciones] = useState([]);
+    const [derivadas, setDerivadas] = useState([nuevaDerivada()]);
     const [errors, setErrors] = useState({});
     const [saving, setSaving] = useState(false);
 
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
+
+    const [quick, setQuick] = useState(null); // { tipo }
 
     const [filterEstado, setFilterEstado] = useState('');
     const [activeFilters, setActiveFilters] = useState({});
@@ -91,45 +85,70 @@ export default function Productos() {
         load();
     }, [load]);
 
+    // ---- Catálogos derivados ----
+    const categoriasRaiz = categorias.filter((c) => !c.categoria_padre_id);
+    const subCategoriasDe = (padreId) =>
+        categorias.filter((c) => String(c.categoria_padre_id ?? '') === String(padreId));
+    const subMarcasDe = (marcaId) =>
+        subMarcas.filter((s) => String(s.marca_id) === String(marcaId));
+
+    const unidadOptions = unidades.map((u) => ({
+        value: String(u.id),
+        label: u.abreviatura ? `${u.nombre} (${u.abreviatura})` : u.nombre,
+    }));
+    const unidadFactor = (id) =>
+        Number(unidades.find((u) => String(u.id) === String(id))?.factor_base) || 1;
+    const unidadNombre = (id) => unidades.find((u) => String(u.id) === String(id))?.nombre ?? '';
+    const unidadAbrev = (id) => unidades.find((u) => String(u.id) === String(id))?.abreviatura ?? '';
+
+    // ---- Abrir / editar ----
     const openCreate = () => {
         setEditing(null);
         setForm(emptyProducto);
-        setPresentaciones([{ ...emptyPresentacion }]);
+        setDerivadas([nuevaDerivada()]);
         setErrors({});
-        setStep(0);
         setModalOpen(true);
     };
 
     const openEdit = (prod) => {
         const relId = (direct, rel) =>
-            prod[direct] ? String(prod[direct]) : (prod[rel]?.id ? String(prod[rel].id) : '');
+            prod[direct] ? String(prod[direct]) : prod[rel]?.id ? String(prod[rel].id) : '';
         setEditing(prod);
         setForm({
             codigo: prod.codigo ?? '',
+            codigo_barras: prod.codigo_barras ?? '',
             nombre: prod.nombre ?? '',
+            descripcion_ticket: prod.descripcion_ticket ?? '',
             categoria_id: relId('categoria_id', 'categoria'),
+            sub_categoria_id: relId('sub_categoria_id', 'sub_categoria'),
             marca_id: relId('marca_id', 'marca'),
             sub_marca_id: relId('sub_marca_id', 'sub_marca'),
             unidad_medida_id: relId('unidad_medida_id', 'unidad_medida'),
-            unidad_compra_id: relId('unidad_compra_id', 'unidad_compra'),
-            unidad_base_id: relId('unidad_base_id', 'unidad_base'),
             factor_compra_base: prod.factor_compra_base ?? '1',
-            precio_base: prod.precio_base ?? '',
-            descripcion: prod.descripcion ?? '',
-            afecto_igv: prod.afecto_igv !== false,
+            stock_minimo: prod.stock_minimo ?? '',
+            stock_maximo: prod.stock_maximo ?? '',
             activo: prod.activo !== false,
         });
-        setPresentaciones(
-            (Array.isArray(prod.presentaciones) ? prod.presentaciones : []).map((p) => ({
-                nombre: p.nombre ?? '',
-                codigo_barras: p.codigo_barras ?? '',
-                precio_venta: p.precio_venta ?? '',
-                factor_conversion: p.factor_conversion ?? '1',
-                unidad_base_id: p.unidad_base?.id ? String(p.unidad_base.id) : '',
-            })),
+        const pres = Array.isArray(prod.presentaciones) ? prod.presentaciones : [];
+        setDerivadas(
+            pres.length
+                ? pres.map((p) => ({
+                      unidad_base_id: p.unidad_base?.id ? String(p.unidad_base.id) : '',
+                      factor_conversion: String(p.factor_conversion ?? '1'),
+                      precio_compra: p.precio_compra != null ? String(p.precio_compra) : '',
+                      margen: p.margen != null ? String(p.margen) : '',
+                      precio_venta: p.precio_venta != null ? String(p.precio_venta) : '',
+                      producto_complementario_id: p.producto_complementario_id
+                          ? String(p.producto_complementario_id)
+                          : '',
+                      cantidad_complementaria:
+                          p.cantidad_complementaria != null ? String(p.cantidad_complementaria) : '',
+                      codigo_barras: p.codigo_barras ?? '',
+                      _nombre: p.nombre ?? '',
+                  }))
+                : [nuevaDerivada()],
         );
         setErrors({});
-        setStep(0);
         setModalOpen(true);
     };
 
@@ -139,122 +158,128 @@ export default function Productos() {
         setErrors((prev) => ({ ...prev, [field]: undefined }));
     };
 
-    const setPresentacionField = (index, field) => (e) => {
-        const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-        setPresentaciones((prev) =>
-            prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
+    // ---- Filas de unidades derivadas ----
+    const addDerivada = () => setDerivadas((prev) => [...prev, nuevaDerivada()]);
+    const removeDerivada = (index) =>
+        setDerivadas((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
+
+    const setDerivadaField = (index, field, value) =>
+        setDerivadas((prev) => prev.map((d, i) => (i === index ? { ...d, [field]: value } : d)));
+
+    // Al elegir la unidad de la fila, el factor a la unidad base se calcula solo (editable).
+    const setDerivadaUnidad = (index, unidadId) => {
+        const base = unidadFactor(form.unidad_medida_id);
+        const factor = base > 0 ? +(unidadFactor(unidadId) / base).toFixed(3) : unidadFactor(unidadId);
+        setDerivadas((prev) =>
+            prev.map((d, i) =>
+                i === index ? { ...d, unidad_base_id: unidadId, factor_conversion: String(factor) } : d,
+            ),
         );
-        setErrors((prev) => ({ ...prev, [`presentaciones.${index}.${field}`]: undefined }));
     };
 
-    const addPresentacion = () => {
-        setPresentaciones((prev) => [...prev, { ...emptyPresentacion }]);
+    // Precio venta = precio compra * (1 + margen/100).
+    const recomputeVenta = (index, patch) => {
+        setDerivadas((prev) =>
+            prev.map((d, i) => {
+                if (i !== index) return d;
+                const next = { ...d, ...patch };
+                const compra = Number(next.precio_compra);
+                const margen = Number(next.margen);
+                if (!Number.isNaN(compra) && next.precio_compra !== '' && next.margen !== '' && !Number.isNaN(margen)) {
+                    next.precio_venta = (compra * (1 + margen / 100)).toFixed(2);
+                }
+                return next;
+            }),
+        );
     };
 
-    const removePresentacion = (index) => {
-        setPresentaciones((prev) => prev.filter((_, i) => i !== index));
-    };
+    const productoOptions = useMemo(
+        () => [
+            { value: '', label: 'Ninguno' },
+            ...productos
+                .filter((p) => !editing || String(p.id) !== String(editing.id))
+                .map((p) => ({ value: String(p.id), label: p.nombre })),
+        ],
+        [productos, editing],
+    );
 
-    const validateStep1 = () => {
+    // ---- Guardar ----
+    const validate = () => {
         const next = {};
         if (!form.codigo.trim()) next.codigo = 'Ingrese el código';
         if (!form.nombre.trim()) next.nombre = 'Ingrese el nombre';
-        if (!form.marca_id) next.marca_id = 'Seleccione una marca';
-        if (!form.unidad_medida_id) next.unidad_medida_id = 'Seleccione una unidad de medida';
-        setErrors(next);
-        return Object.keys(next).length === 0;
-    };
-
-    const validateStep2 = () => {
-        const next = {};
-        if (presentaciones.length === 0) {
-            next.presentaciones = 'Agregue al menos una presentación';
-        }
-        presentaciones.forEach((p, index) => {
-            if (!p.nombre.trim()) {
-                next[`presentaciones.${index}.nombre`] = 'Requerido';
-            }
-            if (p.precio_venta === '' || Number.isNaN(Number(p.precio_venta))) {
-                next[`presentaciones.${index}.precio_venta`] = 'Requerido';
-            }
-            if (!p.factor_conversion || Number(p.factor_conversion) <= 0) {
-                next[`presentaciones.${index}.factor_conversion`] = 'Debe ser mayor a 0';
+        if (!form.unidad_medida_id) next.unidad_medida_id = 'Seleccione la unidad de medida';
+        if (derivadas.length === 0) next.derivadas = 'Agregue al menos una unidad derivada';
+        derivadas.forEach((d, i) => {
+            if (!d.factor_conversion || Number(d.factor_conversion) <= 0) {
+                next[`der.${i}.factor`] = 'Factor > 0';
             }
         });
-        if (form.precio_base === '' || Number.isNaN(Number(form.precio_base))) {
-            next.precio_base = 'Ingrese el precio base';
-        }
         setErrors(next);
         return Object.keys(next).length === 0;
     };
 
-    const syncPresentaciones = async (productoId, lista) => {
-        const { data: existentes } = await api.get(`/productos/${productoId}/presentaciones`);
-        const actuales = Array.isArray(existentes) ? existentes : [];
-        for (const p of actuales) {
-            await api.delete(`/presentaciones/${p.id}`);
-        }
-        for (const p of lista) {
-            const payload = {
-                nombre: p.nombre.trim(),
-                precio_venta: Number(p.precio_venta),
-                factor_conversion: Number(p.factor_conversion),
+    const buildPresentaciones = () =>
+        derivadas.map((d, i) => {
+            const nombre =
+                (d._nombre && d._nombre.trim()) ||
+                unidadNombre(d.unidad_base_id) ||
+                `Presentación ${i + 1}`;
+            const p = {
+                nombre,
+                factor_conversion: Number(d.factor_conversion),
+                precio_compra: d.precio_compra === '' ? 0 : Number(d.precio_compra),
+                margen: d.margen === '' ? 0 : Number(d.margen),
+                precio_venta: d.precio_venta === '' ? 0 : Number(d.precio_venta),
+                cantidad_complementaria:
+                    d.cantidad_complementaria === '' ? 0 : Number(d.cantidad_complementaria),
             };
-            if (p.codigo_barras.trim()) payload.codigo_barras = p.codigo_barras.trim();
-            if (p.unidad_base_id) payload.unidad_base_id = p.unidad_base_id;
-            await api.post(`/productos/${productoId}/presentaciones`, payload);
-        }
-    };
+            if (d.unidad_base_id) p.unidad_base_id = d.unidad_base_id;
+            if (d.producto_complementario_id) p.producto_complementario_id = d.producto_complementario_id;
+            if (d.codigo_barras && d.codigo_barras.trim()) p.codigo_barras = d.codigo_barras.trim();
+            return p;
+        });
 
     const handleSave = async () => {
-        if (step === 0) {
-            if (validateStep1()) setStep(1);
-            return;
-        }
-        if (!validateStep2()) return;
-
+        if (!validate()) return;
         setSaving(true);
         setErrors({});
+
+        const num = (v) => (v === '' || v == null ? undefined : Number(v));
+        const str = (v) => (v && String(v).trim() ? String(v).trim() : undefined);
 
         const payload = {
             codigo: form.codigo.trim(),
             nombre: form.nombre.trim(),
-            marca_id: form.marca_id,
             unidad_medida_id: form.unidad_medida_id,
-            precio_base: Number(form.precio_base),
-            afecto_igv: form.afecto_igv,
+            unidad_base_id: form.unidad_medida_id,
             activo: form.activo,
+            codigo_barras: str(form.codigo_barras),
+            descripcion_ticket: str(form.descripcion_ticket),
+            categoria_id: form.categoria_id || undefined,
+            sub_categoria_id: form.sub_categoria_id || undefined,
+            marca_id: form.marca_id || undefined,
+            sub_marca_id: form.sub_marca_id || undefined,
+            factor_compra_base: num(form.factor_compra_base),
+            stock_minimo: num(form.stock_minimo),
+            stock_maximo: num(form.stock_maximo),
+            presentaciones: buildPresentaciones(),
         };
-        if (form.categoria_id) payload.categoria_id = form.categoria_id;
-        if (form.sub_marca_id) payload.sub_marca_id = form.sub_marca_id;
-        if (form.unidad_compra_id) payload.unidad_compra_id = form.unidad_compra_id;
-        if (form.unidad_base_id) payload.unidad_base_id = form.unidad_base_id;
-        if (form.factor_compra_base) {
-            payload.factor_compra_base = Number(form.factor_compra_base);
-        }
-        if (form.descripcion.trim()) payload.descripcion = form.descripcion.trim();
 
         try {
-            const unwrap = (res) => (res.data?.data ?? res.data);
-            let productoId;
             if (editing) {
-                const res = await api.put(`/productos/${editing.id}`, payload);
-                productoId = unwrap(res).id ?? editing.id;
+                await api.put(`/productos/${editing.id}`, payload);
                 toast.success('Producto actualizado correctamente.');
             } else {
-                const res = await api.post('/productos', payload);
-                productoId = unwrap(res).id;
+                await api.post('/productos', payload);
                 toast.success('Producto creado correctamente.');
             }
-            await syncPresentaciones(productoId, presentaciones);
             setModalOpen(false);
             await load();
         } catch (err) {
             if (err.response?.status === 422) {
                 const validation = err.response.data?.errors ?? {};
-                setErrors(
-                    Object.fromEntries(Object.entries(validation).map(([k, v]) => [k, v[0]])),
-                );
+                setErrors(Object.fromEntries(Object.entries(validation).map(([k, v]) => [k, v[0]])));
                 toast.error('Verifique los datos del producto.');
             } else {
                 toast.error('No se pudo guardar el producto.');
@@ -278,10 +303,21 @@ export default function Productos() {
         }
     };
 
+    // ---- Creación rápida de catálogos ----
+    const handleQuickCreated = async (tipo, nuevo) => {
+        await load();
+        if (tipo === 'marca') setForm((p) => ({ ...p, marca_id: String(nuevo.id), sub_marca_id: '' }));
+        if (tipo === 'submarca') setForm((p) => ({ ...p, sub_marca_id: String(nuevo.id) }));
+        if (tipo === 'categoria')
+            setForm((p) => ({ ...p, categoria_id: String(nuevo.id), sub_categoria_id: '' }));
+        if (tipo === 'subcategoria') setForm((p) => ({ ...p, sub_categoria_id: String(nuevo.id) }));
+        // Unidad: no autoselecciona base; el usuario decide dónde usarla.
+    };
+
+    // ---- Tabla lista ----
     const relName = (row, key) => {
         const r = row[key];
-        if (r && typeof r === 'object') return r.nombre ?? '';
-        return '';
+        return r && typeof r === 'object' ? (r.nombre ?? '') : '';
     };
 
     const columns = [
@@ -301,35 +337,40 @@ export default function Productos() {
             ),
         },
         {
+            key: 'categoria',
+            label: 'Categoría',
+            render: (row) => {
+                const cat = relName(row, 'categoria');
+                const sub = relName(row, 'sub_categoria');
+                if (!cat) return <span className="text-gray-400">—</span>;
+                return (
+                    <span className="text-sm">
+                        {cat}
+                        {sub && <span className="text-gray-400"> · {sub}</span>}
+                    </span>
+                );
+            },
+        },
+        {
             key: 'marca',
             label: 'Marca',
             render: (row) => relName(row, 'marca') || <span className="text-gray-400">—</span>,
-        },
-        {
-            key: 'categoria',
-            label: 'Categoría',
-            render: (row) => relName(row, 'categoria') || <span className="text-gray-400">—</span>,
         },
         {
             key: 'unidad_medida',
             label: 'Unidad',
             render: (row) => {
                 const u = row.unidad_medida;
-                if (u && typeof u === 'object') {
-                    return <Badge variant="blue">{u.abreviatura ?? u.nombre}</Badge>;
-                }
-                return <span className="text-gray-400">—</span>;
+                return u && typeof u === 'object' ? (
+                    <Badge variant="blue">{u.abreviatura ?? u.nombre}</Badge>
+                ) : (
+                    <span className="text-gray-400">—</span>
+                );
             },
         },
         {
-            key: 'precio_base',
-            label: 'Precio base',
-            align: 'right',
-            render: (row) => `S/ ${Number(row.precio_base ?? 0).toFixed(2)}`,
-        },
-        {
             key: 'presentaciones',
-            label: 'Presentac.',
+            label: 'Unid. derivadas',
             align: 'right',
             render: (row) =>
                 Array.isArray(row.presentaciones) ? (
@@ -342,11 +383,7 @@ export default function Productos() {
             key: 'activo',
             label: 'Estado',
             render: (row) =>
-                row.activo ? (
-                    <Badge variant="green">Activo</Badge>
-                ) : (
-                    <Badge variant="red">Inactivo</Badge>
-                ),
+                row.activo ? <Badge variant="green">Activo</Badge> : <Badge variant="red">Inactivo</Badge>,
         },
         {
             type: 'actions',
@@ -373,44 +410,16 @@ export default function Productos() {
         },
     ];
 
-    const subMarcasDeMarca = subMarcas.filter((s) => String(s.marca_id) === String(form.marca_id));
-
-    const unidadOptions = unidades.map((u) => ({
-        value: String(u.id),
-        label: u.nombre,
-    }));
-
-    // Factor de una unidad respecto a su familia (g=1, kg=1000, …).
-    const unidadFactor = (id) => Number(unidades.find((u) => String(u.id) === String(id))?.factor_base) || 1;
-    const unidadAbrev = (id) => unidades.find((u) => String(u.id) === String(id))?.abreviatura ?? '';
-
-    // Al elegir la unidad de una presentación, el factor a la unidad base se calcula solo.
-    const setPresentacionUnidad = (index, unidadId) => {
-        const prodBase = unidadFactor(form.unidad_base_id);
-        const factor = prodBase > 0 ? +(unidadFactor(unidadId) / prodBase).toFixed(4) : unidadFactor(unidadId);
-        setPresentaciones((prev) =>
-            prev.map((p, i) => (i === index ? { ...p, unidad_base_id: unidadId, factor_conversion: String(factor) } : p)),
-        );
-        setErrors((prev) => ({ ...prev, [`presentaciones.${index}.factor_conversion`]: undefined }));
-    };
-
-    const applyFilters = () => {
-        const next = {};
-        if (filterEstado) next.estado = filterEstado;
-        setActiveFilters(next);
-    };
-
+    const applyFilters = () => setActiveFilters(filterEstado ? { estado: filterEstado } : {});
     const clearFilters = () => {
         setFilterEstado('');
         setActiveFilters({});
     };
-
     const filteredProductos = productos.filter((p) => {
         if (activeFilters.estado === 'activos') return p.activo !== false;
         if (activeFilters.estado === 'inactivos') return p.activo === false;
         return true;
     });
-
     const filterCount = Object.keys(activeFilters).length;
 
     const productFilters = (
@@ -437,15 +446,21 @@ export default function Productos() {
         </div>
     );
 
+    const baseAbrev = unidadAbrev(form.unidad_medida_id) || 'base';
+
     return (
         <Layout>
             <PageHeader
                 title="Productos"
-                description="Administra el catálogo de productos y sus presentaciones"
+                description="Administra el catálogo, sus unidades derivadas y precios"
                 actions={<CreateButton onClick={openCreate}>Crear producto</CreateButton>}
             />
 
-            {error && <Alert variant="error" className="mb-4">{error}</Alert>}
+            {error && (
+                <Alert variant="error" className="mb-4">
+                    {error}
+                </Alert>
+            )}
 
             <DataTable
                 columns={columns}
@@ -460,313 +475,357 @@ export default function Productos() {
             <Modal
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
-                title={editing ? 'Editar producto' : 'Nuevo producto'}
-                description={
-                    editing ? `Modifica "${editing.nombre}"` : 'Completa los datos del producto'
-                }
-                size="lg"
+                title={editing ? 'Editar producto' : 'Agregar producto'}
+                description={editing ? `Modifica "${editing.nombre}"` : 'Completa los datos del producto'}
+                size="3xl"
                 footer={
                     <>
-                        {step === 1 && (
-                            <Button variant="secondary" onClick={() => setStep(0)}>
-                                <ArrowLeft className="h-4 w-4" />
-                                Anterior
-                            </Button>
-                        )}
-                        {step === 0 ? (
-                            <Button onClick={() => validateStep1() && setStep(1)}>
-                                Siguiente
-                                <ArrowRight className="h-4 w-4" />
-                            </Button>
-                        ) : (
-                            <Button loading={saving} onClick={handleSave}>
-                                <Save className="h-4 w-4" />
-                                Guardar producto
-                            </Button>
-                        )}
+                        <Button variant="secondary" onClick={() => setModalOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button loading={saving} onClick={handleSave}>
+                            <Save className="h-4 w-4" />
+                            {editing ? 'Guardar cambios' : 'Crear producto'}
+                        </Button>
                     </>
                 }
             >
-                <div className="mb-4">
-                    <Tabs
-                        items={[
-                            { key: 'datos', label: 'Datos' },
-                            { key: 'presentaciones', label: 'Presentaciones y precio' },
-                        ]}
-                        value={step === 0 ? 'datos' : 'presentaciones'}
-                        onChange={(key) => {
-                            if (key === 'datos') {
-                                setStep(0);
-                            } else if (step === 0 && !validateStep1()) {
-                                return;
-                            } else {
-                                setStep(1);
-                            }
-                        }}
-                    />
-                </div>
-
-                {errors.presentaciones && (
-                    <Alert variant="warning" className="mb-3">
-                        {errors.presentaciones}
-                    </Alert>
-                )}
-
-                {step === 0 ? (
-                    <div className="space-y-6">
-                        <section>
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                Identificación
-                            </h3>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <Input
-                                    label="Código / SKU"
-                                    name="codigo"
-                                    value={form.codigo}
-                                    onChange={setField('codigo')}
-                                    error={errors.codigo}
+                <div className="space-y-6">
+                    {/* Identificación */}
+                    <section>
+                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            Identificación
+                        </h3>
+                        <div className="grid gap-4 sm:grid-cols-3">
+                            <Input
+                                label="Código / SKU"
+                                value={form.codigo}
+                                onChange={setField('codigo')}
+                                error={errors.codigo}
+                            />
+                            <Input
+                                label="Código de barra"
+                                value={form.codigo_barras}
+                                onChange={setField('codigo_barras')}
+                                error={errors.codigo_barras}
+                            />
+                            <label className="flex items-end gap-2 pb-2 text-sm text-gray-700">
+                                <input
+                                    type="checkbox"
+                                    checked={form.activo}
+                                    onChange={setField('activo')}
+                                    className="h-4 w-4 rounded border-gray-300 accent-primary-600"
                                 />
-                                <Input
-                                    label="Nombre del producto"
-                                    name="nombre"
-                                    value={form.nombre}
-                                    onChange={setField('nombre')}
-                                    error={errors.nombre}
-                                />
-                            </div>
-                        </section>
+                                Producto activo
+                            </label>
+                            <Input
+                                label="Producto"
+                                value={form.nombre}
+                                onChange={setField('nombre')}
+                                error={errors.nombre}
+                                className="sm:col-span-2"
+                            />
+                            <Input
+                                label="Descripción ticket"
+                                value={form.descripcion_ticket}
+                                onChange={setField('descripcion_ticket')}
+                            />
+                        </div>
+                    </section>
 
-                        <section>
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                Clasificación
-                            </h3>
-                            <div className="grid gap-4 sm:grid-cols-2">
+                    {/* Clasificación con creación rápida */}
+                    <section>
+                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            Clasificación
+                        </h3>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <FieldWithAdd onAdd={() => setQuick({ tipo: 'categoria' })}>
                                 <Select
                                     label="Categoría"
-                                    name="categoria_id"
                                     value={form.categoria_id}
-                                    onChange={setField('categoria_id')}
+                                    onChange={(e) =>
+                                        setForm((p) => ({
+                                            ...p,
+                                            categoria_id: e.target.value,
+                                            sub_categoria_id: '',
+                                        }))
+                                    }
                                     options={[
-                                        { value: '', label: 'Sin categoría' },
-                                        ...categorias.map((c) => ({
+                                        { value: '', label: 'Seleccionar categoría' },
+                                        ...categoriasRaiz.map((c) => ({
                                             value: String(c.id),
                                             label: c.nombre,
                                         })),
                                     ]}
-                                    error={errors.categoria_id}
                                 />
+                            </FieldWithAdd>
+                            <FieldWithAdd
+                                onAdd={() =>
+                                    form.categoria_id
+                                        ? setQuick({ tipo: 'subcategoria' })
+                                        : toast.error('Elige una categoría primero.')
+                                }
+                            >
                                 <Select
-                                    label="Marca"
-                                    name="marca_id"
-                                    value={form.marca_id}
-                                    onChange={(e) => {
-                                        setForm((prev) => ({
-                                            ...prev,
-                                            marca_id: e.target.value,
-                                            sub_marca_id: '',
-                                        }));
-                                        setErrors((prev) => ({ ...prev, marca_id: undefined }));
-                                    }}
+                                    label="Subcategoría"
+                                    value={form.sub_categoria_id}
+                                    onChange={setField('sub_categoria_id')}
                                     options={[
-                                        { value: '', label: 'Seleccione...' },
-                                        ...marcas.map((m) => ({
-                                            value: String(m.id),
-                                            label: m.nombre,
+                                        { value: '', label: 'Seleccionar subcategoría' },
+                                        ...subCategoriasDe(form.categoria_id).map((c) => ({
+                                            value: String(c.id),
+                                            label: c.nombre,
                                         })),
                                     ]}
-                                    error={errors.marca_id}
                                 />
+                            </FieldWithAdd>
+                            <FieldWithAdd onAdd={() => setQuick({ tipo: 'marca' })}>
                                 <Select
-                                    label="Sub-marca (opcional)"
-                                    name="sub_marca_id"
+                                    label="Marca"
+                                    value={form.marca_id}
+                                    onChange={(e) =>
+                                        setForm((p) => ({
+                                            ...p,
+                                            marca_id: e.target.value,
+                                            sub_marca_id: '',
+                                        }))
+                                    }
+                                    options={[
+                                        { value: '', label: 'Seleccionar marca' },
+                                        ...marcas.map((m) => ({ value: String(m.id), label: m.nombre })),
+                                    ]}
+                                />
+                            </FieldWithAdd>
+                            <FieldWithAdd
+                                onAdd={() =>
+                                    form.marca_id
+                                        ? setQuick({ tipo: 'submarca' })
+                                        : toast.error('Elige una marca primero.')
+                                }
+                            >
+                                <Select
+                                    label="Submarca"
                                     value={form.sub_marca_id}
                                     onChange={setField('sub_marca_id')}
                                     options={[
-                                        { value: '', label: 'Sin sub-marca' },
-                                        ...subMarcasDeMarca.map((s) => ({
+                                        { value: '', label: 'Seleccionar submarca' },
+                                        ...subMarcasDe(form.marca_id).map((s) => ({
                                             value: String(s.id),
                                             label: s.nombre,
                                         })),
                                     ]}
-                                    error={errors.sub_marca_id}
                                 />
+                            </FieldWithAdd>
+                        </div>
+                    </section>
+
+                    {/* Unidad base y stock */}
+                    <section>
+                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            Unidad base e inventario
+                        </h3>
+                        <div className="grid gap-4 sm:grid-cols-4">
+                            <FieldWithAdd onAdd={() => setQuick({ tipo: 'unidad' })}>
                                 <Select
-                                    label="Unidad de medida"
-                                    name="unidad_medida_id"
+                                    label="U. de medida (base)"
                                     value={form.unidad_medida_id}
                                     onChange={setField('unidad_medida_id')}
-                                    options={[
-                                        { value: '', label: 'Seleccione...' },
-                                        ...unidadOptions,
-                                    ]}
+                                    options={[{ value: '', label: 'Unidad base' }, ...unidadOptions]}
                                     error={errors.unidad_medida_id}
                                 />
-                            </div>
-                        </section>
+                            </FieldWithAdd>
+                            <Input
+                                label="Unid. contenidas"
+                                type="number"
+                                step="any"
+                                min="0.001"
+                                value={form.factor_compra_base}
+                                onChange={setField('factor_compra_base')}
+                            />
+                            <Input
+                                label="Stock mín."
+                                type="number"
+                                step="any"
+                                min="0"
+                                value={form.stock_minimo}
+                                onChange={setField('stock_minimo')}
+                            />
+                            <Input
+                                label="Stock máx."
+                                type="number"
+                                step="any"
+                                min="0"
+                                value={form.stock_maximo}
+                                onChange={setField('stock_maximo')}
+                            />
+                        </div>
+                    </section>
 
-                        <section>
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                Unidades y conversión
+                    {/* Detalle de precios / unidades derivadas */}
+                    <section>
+                        <div className="mb-2 flex items-center justify-between">
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                Detalle de precios — unidades derivadas
                             </h3>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <Select
-                                    label="Unidad de compra (opcional)"
-                                    name="unidad_compra_id"
-                                    value={form.unidad_compra_id}
-                                    onChange={setField('unidad_compra_id')}
-                                    options={[{ value: '', label: 'Sin unidad' }, ...unidadOptions]}
-                                    error={errors.unidad_compra_id}
-                                />
-                                <Select
-                                    label="Unidad base (inventario)"
-                                    name="unidad_base_id"
-                                    value={form.unidad_base_id}
-                                    onChange={setField('unidad_base_id')}
-                                    options={[{ value: '', label: 'Sin unidad' }, ...unidadOptions]}
-                                    error={errors.unidad_base_id}
-                                />
-                                <Input
-                                    label="1 unidad compra = ? unidad base"
-                                    name="factor_compra_base"
-                                    type="number"
-                                    step="any"
-                                    min="0.01"
-                                    value={form.factor_compra_base}
-                                    onChange={setField('factor_compra_base')}
-                                    error={errors.factor_compra_base}
-                                />
-                            </div>
-                        </section>
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        <section>
-                            <div className="mb-2 flex items-center justify-between">
-                                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                    Presentaciones
-                                </h3>
-                                <Button variant="secondary" size="sm" onClick={addPresentacion}>
-                                    <Plus className="h-4 w-4" />
-                                    Agregar
-                                </Button>
-                            </div>
-                            {presentaciones.length === 0 && (
-                                <p className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">
-                                    Agregue al menos una presentación (ej: 500g, 1kg, 3L)
-                                </p>
-                            )}
-                            <div className="space-y-3">
-                                {presentaciones.map((p, index) => (
-                                    <div
-                                        key={index}
-                                        className="rounded-lg border border-edge bg-gray-50 p-4"
-                                    >
-                                        <div className="mb-3 flex items-center justify-between">
-                                            <p className="text-sm font-semibold text-warm-900">
-                                                Presentación {index + 1}
-                                            </p>
-                                            <button
-                                                type="button"
-                                                aria-label="Quitar presentación"
-                                                onClick={() => removePresentacion(index)}
-                                                className="rounded-md p-1 text-red-600 transition hover:bg-red-50"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                        <div className="grid gap-3 sm:grid-cols-2">
-                                            <Input
-                                                label="Nombre (ej: 500g, 1kg)"
-                                                value={p.nombre}
-                                                onChange={setPresentacionField(index, 'nombre')}
-                                                error={errors[`presentaciones.${index}.nombre`]}
-                                            />
-                                            <Input
-                                                label="Código de barras"
-                                                value={p.codigo_barras}
-                                                onChange={setPresentacionField(index, 'codigo_barras')}
-                                                error={errors[`presentaciones.${index}.codigo_barras`]}
-                                            />
-                                            <Input
-                                                label="Precio venta (S/)"
-                                                type="number"
-                                                step="any"
-                                                min="0"
-                                                value={p.precio_venta}
-                                                onChange={setPresentacionField(index, 'precio_venta')}
-                                                error={errors[`presentaciones.${index}.precio_venta`]}
-                                            />
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <Select
-                                                    label="Unidad"
-                                                    value={p.unidad_base_id}
-                                                    onChange={(e) => setPresentacionUnidad(index, e.target.value)}
-                                                    options={[{ value: '', label: 'Selecciona…' }, ...unidadOptions]}
-                                                    error={errors[`presentaciones.${index}.factor_conversion`]}
+                            <Button variant="secondary" size="sm" onClick={addDerivada}>
+                                <Plus className="h-4 w-4" />
+                                Agregar unidad derivada
+                            </Button>
+                        </div>
+                        {errors.derivadas && (
+                            <Alert variant="warning" className="mb-2">
+                                {errors.derivadas}
+                            </Alert>
+                        )}
+                        <div className="overflow-x-auto rounded-lg border border-edge">
+                            <table className="w-full min-w-[860px] text-sm">
+                                <thead>
+                                    <tr className="bg-primary-600 text-left text-xs text-white">
+                                        <th className="px-2 py-2 font-medium">Formato de venta</th>
+                                        <th className="px-2 py-2 font-medium">Factor ({baseAbrev})</th>
+                                        <th className="px-2 py-2 font-medium">P. compra</th>
+                                        <th className="px-2 py-2 font-medium">% venta</th>
+                                        <th className="px-2 py-2 font-medium">P. venta</th>
+                                        <th className="px-2 py-2 font-medium">Complementario</th>
+                                        <th className="px-2 py-2 font-medium">Cant.</th>
+                                        <th className="w-10 px-2 py-2" />
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {derivadas.map((d, i) => (
+                                        <tr key={i} className="border-t border-edge">
+                                            <td className="px-2 py-1.5">
+                                                <select
+                                                    className="h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-sm"
+                                                    value={d.unidad_base_id}
+                                                    onChange={(e) => setDerivadaUnidad(i, e.target.value)}
+                                                >
+                                                    <option value="">Elegir unidad…</option>
+                                                    {unidadOptions.map((o) => (
+                                                        <option key={o.value} value={o.value}>
+                                                            {o.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <input
+                                                    type="number"
+                                                    step="0.001"
+                                                    min="0.001"
+                                                    className={`h-8 w-24 rounded-md border px-2 text-sm ${
+                                                        errors[`der.${i}.factor`]
+                                                            ? 'border-red-400'
+                                                            : 'border-gray-300'
+                                                    }`}
+                                                    value={d.factor_conversion}
+                                                    onChange={(e) =>
+                                                        setDerivadaField(i, 'factor_conversion', e.target.value)
+                                                    }
                                                 />
-                                                <Input
-                                                    label={`Equivale a (${unidadAbrev(form.unidad_base_id) || 'base'})`}
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <input
                                                     type="number"
                                                     step="any"
-                                                    min="0.0001"
-                                                    value={p.factor_conversion}
-                                                    onChange={setPresentacionField(index, 'factor_conversion')}
-                                                    error={errors[`presentaciones.${index}.factor_conversion`]}
+                                                    min="0"
+                                                    className="h-8 w-24 rounded-md border border-gray-300 px-2 text-sm"
+                                                    value={d.precio_compra}
+                                                    onChange={(e) =>
+                                                        recomputeVenta(i, { precio_compra: e.target.value })
+                                                    }
                                                 />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section>
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                Precio y detalle
-                            </h3>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <Input
-                                    label="Precio base (S/)"
-                                    name="precio_base"
-                                    type="number"
-                                    step="any"
-                                    min="0"
-                                    value={form.precio_base}
-                                    onChange={setField('precio_base')}
-                                    error={errors.precio_base}
-                                />
-                                <Input
-                                    label="Descripción"
-                                    name="descripcion"
-                                    value={form.descripcion}
-                                    onChange={setField('descripcion')}
-                                    error={errors.descripcion}
-                                />
-                            </div>
-                            <div className="mt-4 flex flex-wrap gap-6">
-                                <label className="flex items-center gap-2 text-sm text-gray-700">
-                                    <input
-                                        type="checkbox"
-                                        checked={form.afecto_igv}
-                                        onChange={setField('afecto_igv')}
-                                        className="h-4 w-4 rounded border-gray-300 accent-primary-600"
-                                    />
-                                    Afecto a IGV
-                                </label>
-                                <label className="flex items-center gap-2 text-sm text-gray-700">
-                                    <input
-                                        type="checkbox"
-                                        checked={form.activo}
-                                        onChange={setField('activo')}
-                                        className="h-4 w-4 rounded border-gray-300 accent-primary-600"
-                                    />
-                                    Producto activo
-                                </label>
-                            </div>
-                        </section>
-                    </div>
-                )}
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <input
+                                                    type="number"
+                                                    step="any"
+                                                    className="h-8 w-20 rounded-md border border-gray-300 px-2 text-sm"
+                                                    value={d.margen}
+                                                    onChange={(e) => recomputeVenta(i, { margen: e.target.value })}
+                                                />
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <input
+                                                    type="number"
+                                                    step="any"
+                                                    min="0"
+                                                    className="h-8 w-24 rounded-md border border-gray-300 bg-emerald-50 px-2 text-sm font-medium"
+                                                    value={d.precio_venta}
+                                                    onChange={(e) =>
+                                                        setDerivadaField(i, 'precio_venta', e.target.value)
+                                                    }
+                                                />
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <select
+                                                    className="h-8 w-40 rounded-md border border-gray-300 bg-white px-2 text-sm"
+                                                    value={d.producto_complementario_id}
+                                                    onChange={(e) =>
+                                                        setDerivadaField(
+                                                            i,
+                                                            'producto_complementario_id',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                >
+                                                    {productoOptions.map((o) => (
+                                                        <option key={o.value} value={o.value}>
+                                                            {o.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <input
+                                                    type="number"
+                                                    step="any"
+                                                    min="0"
+                                                    className="h-8 w-20 rounded-md border border-gray-300 px-2 text-sm"
+                                                    value={d.cantidad_complementaria}
+                                                    onChange={(e) =>
+                                                        setDerivadaField(
+                                                            i,
+                                                            'cantidad_complementaria',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                />
+                                            </td>
+                                            <td className="px-2 py-1.5 text-center">
+                                                <button
+                                                    type="button"
+                                                    aria-label="Quitar"
+                                                    disabled={derivadas.length === 1}
+                                                    onClick={() => removeDerivada(i)}
+                                                    className="rounded p-1 text-red-600 transition hover:bg-red-50 disabled:opacity-30"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <p className="mt-2 text-xs text-gray-400">
+                            El <strong>factor</strong> se calcula al elegir la unidad (en {baseAbrev}) y es
+                            editable — para empaques variables (ej. saco de arroz = 49, de azúcar = 50). El
+                            precio de venta = compra × (1 + % venta), editable.
+                        </p>
+                    </section>
+                </div>
             </Modal>
+
+            <QuickCreateModal
+                quick={quick}
+                onClose={() => setQuick(null)}
+                onCreated={handleQuickCreated}
+                marcaId={form.marca_id}
+                categoriaId={form.categoria_id}
+                marcas={marcas}
+                categoriasRaiz={categoriasRaiz}
+            />
 
             <Modal
                 open={Boolean(deleteTarget)}
@@ -785,10 +844,158 @@ export default function Productos() {
                     </>
                 }
             >
-                <Alert variant="warning">
-                    Se eliminarán también sus presentaciones.
-                </Alert>
+                <Alert variant="warning">Se eliminarán también sus unidades derivadas.</Alert>
             </Modal>
         </Layout>
+    );
+}
+
+// Envuelve un Select con un botón "+" a la derecha para creación rápida.
+function FieldWithAdd({ children, onAdd }) {
+    return (
+        <div className="flex items-end gap-2">
+            <div className="flex-1">{children}</div>
+            <button
+                type="button"
+                onClick={onAdd}
+                title="Crear nuevo"
+                className="mb-0.5 rounded-md p-1.5 text-emerald-600 transition hover:bg-emerald-50"
+            >
+                <PlusCircle className="h-5 w-5" />
+            </button>
+        </div>
+    );
+}
+
+// Mini-modal de creación rápida de catálogos.
+function QuickCreateModal({ quick, onClose, onCreated, marcaId, categoriaId, marcas, categoriasRaiz }) {
+    const toast = useToast();
+    const [values, setValues] = useState({});
+    const [saving, setSaving] = useState(false);
+
+    const cfg = useMemo(() => {
+        switch (quick?.tipo) {
+            case 'marca':
+                return {
+                    title: 'Nueva marca',
+                    endpoint: '/marcas',
+                    build: (v) => ({ nombre: v.nombre, activo: true }),
+                    fields: [{ key: 'nombre', label: 'Nombre de marca', required: true }],
+                };
+            case 'submarca':
+                return {
+                    title: 'Nueva submarca',
+                    endpoint: '/sub-marcas',
+                    build: (v) => ({ marca_id: marcaId, nombre: v.nombre, activo: true }),
+                    fields: [{ key: 'nombre', label: 'Nombre de submarca', required: true }],
+                };
+            case 'categoria':
+                return {
+                    title: 'Nueva categoría',
+                    endpoint: '/categorias',
+                    build: (v) => ({ nombre: v.nombre, nivel: 1, activo: true }),
+                    fields: [{ key: 'nombre', label: 'Nombre de categoría', required: true }],
+                };
+            case 'subcategoria':
+                return {
+                    title: 'Nueva subcategoría',
+                    endpoint: '/categorias',
+                    build: (v) => ({
+                        nombre: v.nombre,
+                        categoria_padre_id: categoriaId,
+                        nivel: 2,
+                        activo: true,
+                    }),
+                    fields: [{ key: 'nombre', label: 'Nombre de subcategoría', required: true }],
+                };
+            case 'unidad':
+                return {
+                    title: 'Nueva unidad de medida',
+                    endpoint: '/unidades-medida',
+                    build: (v) => ({
+                        nombre: v.nombre,
+                        abreviatura: v.abreviatura,
+                        factor_base: v.factor_base === '' || v.factor_base == null ? 1 : Number(v.factor_base),
+                    }),
+                    fields: [
+                        { key: 'nombre', label: 'Nombre (ej: SACO)', required: true },
+                        { key: 'abreviatura', label: 'Abreviatura (ej: sc)', required: true },
+                        {
+                            key: 'factor_base',
+                            label: 'Equivale a (en su unidad mínima)',
+                            type: 'number',
+                        },
+                    ],
+                };
+            default:
+                return null;
+        }
+    }, [quick, marcaId, categoriaId]);
+
+    useEffect(() => {
+        setValues({});
+    }, [quick]);
+
+    if (!quick || !cfg) return null;
+
+    const canSave = cfg.fields.every((f) => !f.required || (values[f.key] ?? '').toString().trim());
+
+    const submit = async () => {
+        setSaving(true);
+        try {
+            const res = await api.post(cfg.endpoint, cfg.build(values));
+            const nuevo = res.data?.data ?? res.data;
+            toast.success(`${cfg.title.replace('Nueva ', '').replace('Nuevo ', '')} creada.`);
+            await onCreated(quick.tipo, nuevo);
+            onClose();
+        } catch {
+            toast.error('No se pudo crear. Verifica los datos.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Modal
+            open
+            onClose={onClose}
+            title={cfg.title}
+            size="sm"
+            footer={
+                <>
+                    <Button variant="secondary" onClick={onClose}>
+                        Cancelar
+                    </Button>
+                    <Button loading={saving} disabled={!canSave} onClick={submit}>
+                        Guardar
+                    </Button>
+                </>
+            }
+        >
+            <div className="space-y-3">
+                {quick.tipo === 'submarca' && (
+                    <p className="text-xs text-gray-500">
+                        Marca: <strong>{marcas.find((m) => String(m.id) === String(marcaId))?.nombre}</strong>
+                    </p>
+                )}
+                {quick.tipo === 'subcategoria' && (
+                    <p className="text-xs text-gray-500">
+                        Categoría:{' '}
+                        <strong>
+                            {categoriasRaiz.find((c) => String(c.id) === String(categoriaId))?.nombre}
+                        </strong>
+                    </p>
+                )}
+                {cfg.fields.map((f) => (
+                    <Input
+                        key={f.key}
+                        label={f.label}
+                        type={f.type ?? 'text'}
+                        value={values[f.key] ?? ''}
+                        onChange={(e) => setValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                    />
+                ))}
+            </div>
+        </Modal>
     );
 }

@@ -12,19 +12,42 @@ class UpdateProductoRequest extends FormRequest
     {
         return [
             'codigo' => ['required', 'string', 'max:255', Rule::unique('productos', 'codigo')->ignore($this->route('producto'))],
+            'codigo_barras' => 'nullable|string|max:255',
             'nombre' => 'required|string|max:255',
-            'marca_id' => 'required|exists:marcas,id',
+            'descripcion_ticket' => 'nullable|string|max:255',
+            'marca_id' => 'nullable|exists:marcas,id',
             'sub_marca_id' => 'nullable|exists:sub_marcas,id',
             'categoria_id' => 'nullable|exists:categorias,id',
+            'sub_categoria_id' => 'nullable|exists:categorias,id',
             'unidad_medida_id' => 'required|exists:unidades_medida,id',
             'unidad_compra_id' => 'nullable|exists:unidades_medida,id',
             'unidad_base_id' => 'nullable|exists:unidades_medida,id',
             'factor_compra_base' => 'nullable|numeric|min:0.01',
             'descripcion' => 'nullable|string|max:5000',
             'imagen' => 'nullable|string|max:255',
-            'precio_base' => 'required|numeric|min:0',
-            'afecto_igv' => 'boolean',
+            'ficha_tecnica' => 'nullable|string|max:255',
+            'accion_tecnica' => 'nullable|string|max:5000',
+            'precio_base' => 'nullable|numeric|min:0',
+            'stock_minimo' => 'nullable|numeric|min:0',
+            'stock_maximo' => 'nullable|numeric|min:0',
             'activo' => 'boolean',
+
+            'presentaciones' => 'nullable|array',
+            'presentaciones.*.nombre' => 'required|string|max:255',
+            'presentaciones.*.codigo_barras' => 'nullable|string|max:255',
+            'presentaciones.*.precio_venta' => 'nullable|numeric|min:0',
+            'presentaciones.*.precio_compra' => 'nullable|numeric|min:0',
+            'presentaciones.*.margen' => 'nullable|numeric',
+            'presentaciones.*.factor_conversion' => 'required|numeric|min:0.001',
+            'presentaciones.*.unidad_base_id' => 'nullable|exists:unidades_medida,id',
+            'presentaciones.*.producto_complementario_id' => 'nullable|exists:productos,id',
+            'presentaciones.*.cantidad_complementaria' => 'nullable|numeric|min:0',
+            'presentaciones.*.activo' => 'boolean',
+
+            'lote' => 'nullable|array',
+            'lote.numero_lote' => 'nullable|string|max:255',
+            'lote.fecha_vencimiento' => 'nullable|date',
+            'lote.stock_inicial' => 'nullable|numeric|min:0',
         ];
     }
 
@@ -34,11 +57,9 @@ class UpdateProductoRequest extends FormRequest
             'codigo.required' => 'El código del producto es obligatorio',
             'codigo.unique' => 'El código ya está registrado',
             'nombre.required' => 'El nombre del producto es obligatorio',
-            'marca_id.required' => 'La marca es obligatoria',
-            'marca_id.exists' => 'La marca seleccionada no existe',
             'unidad_medida_id.required' => 'La unidad de medida es obligatoria',
-            'precio_base.required' => 'El precio base es obligatorio',
-            'precio_base.min' => 'El precio base debe ser mayor o igual a 0',
+            'presentaciones.*.nombre.required' => 'El nombre de la unidad derivada es obligatorio',
+            'presentaciones.*.factor_conversion.required' => 'El factor es obligatorio',
         ];
     }
 }

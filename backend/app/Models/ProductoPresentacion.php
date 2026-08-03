@@ -12,10 +12,12 @@ class ProductoPresentacion extends Model
         'nombre',
         'codigo_barras',
         'precio_venta',
+        'precio_compra',
+        'margen',
         'factor_conversion',
-        'es_compra',
-        'es_venta',
         'unidad_base_id',
+        'producto_complementario_id',
+        'cantidad_complementaria',
         'activo',
     ];
 
@@ -23,13 +25,15 @@ class ProductoPresentacion extends Model
     {
         return [
             'precio_venta' => 'decimal:2',
-            'factor_conversion' => 'decimal:2',
-            'es_compra' => 'boolean',
-            'es_venta' => 'boolean',
+            'precio_compra' => 'decimal:2',
+            'margen' => 'decimal:2',
+            'factor_conversion' => 'decimal:3',
+            'cantidad_complementaria' => 'decimal:2',
             'activo' => 'boolean',
         ];
     }
 
     public function producto() { return $this->belongsTo(Producto::class); }
     public function unidadBase() { return $this->belongsTo(UnidadMedida::class, 'unidad_base_id'); }
+    public function complementario() { return $this->belongsTo(Producto::class, 'producto_complementario_id'); }
 }

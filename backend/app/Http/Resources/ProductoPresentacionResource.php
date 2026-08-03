@@ -14,8 +14,13 @@ class ProductoPresentacionResource extends JsonResource
             'nombre' => $this->nombre,
             'codigo_barras' => $this->codigo_barras,
             'precio_venta' => $this->precio_venta,
+            'precio_compra' => $this->precio_compra,
+            'margen' => $this->margen,
             'factor_conversion' => $this->factor_conversion,
             'unidad_base' => new UnidadMedidaResource($this->whenLoaded('unidadBase')),
+            'producto_complementario_id' => $this->producto_complementario_id,
+            'complementario' => new ProductoResource($this->whenLoaded('complementario')),
+            'cantidad_complementaria' => $this->cantidad_complementaria,
             'activo' => $this->activo,
             'created_at' => $this->created_at,
         ];
