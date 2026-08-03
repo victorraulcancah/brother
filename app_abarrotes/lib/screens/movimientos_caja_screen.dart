@@ -108,7 +108,8 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
 }
 
 class RegistrarMovimientoCajaScreen extends StatefulWidget {
-  const RegistrarMovimientoCajaScreen({super.key});
+  final String? tipoInicial;
+  const RegistrarMovimientoCajaScreen({super.key, this.tipoInicial});
 
   @override
   State<RegistrarMovimientoCajaScreen> createState() => _RegistrarMovimientoCajaScreenState();
@@ -125,7 +126,7 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
   bool _esSuperAdmin = false;
 
   // Form
-  String _tipo = 'ingreso'; // ingreso | egreso
+  late String _tipo = widget.tipoInicial ?? 'ingreso'; // ingreso | egreso
   int? _motivoId;
   int? _cajaId;
   String? _metodo; // 'efectivo' | 'transferencia:<id>' | 'billetera:<id>'

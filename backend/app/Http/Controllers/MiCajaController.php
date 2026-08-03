@@ -33,7 +33,20 @@ class MiCajaController extends Controller
             'caja' => $caja,
             'apertura' => $apertura,
             'resumen' => $apertura ? $this->resumen($apertura) : null,
+            'movimientos' => $apertura ? $this->movimientos($apertura) : [],
         ]);
+    }
+
+    private function movimientos(AperturaCaja $apertura)
+    {
+        return MovimientoCaja::with([
+            'motivo:id,nombre',
+            'cuentaBancaria:id,alias,numero_cuenta',
+            'billetera:id,nombre',
+        ])
+            ->where('apertura_caja_id', $apertura->id)
+            ->latest('fecha')->latest('id')
+            ->get();
     }
 
     public function abrir(Request $request)

@@ -7,6 +7,15 @@ import '../widgets/app_button.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
+import 'movimientos_caja_screen.dart';
+
+String _metodoTxt(Map m) {
+  final cuenta = m['cuenta_bancaria'] as Map<String, dynamic>?;
+  final billetera = m['billetera'] as Map<String, dynamic>?;
+  if (cuenta != null) return 'Transf. · ${cuenta['alias'] ?? cuenta['numero_cuenta'] ?? ''}';
+  if (billetera != null) return billetera['nombre'] as String? ?? 'Billetera';
+  return 'Efectivo';
+}
 
 String _money(dynamic v) => 'S/ ${(double.tryParse('${v ?? 0}') ?? 0).toStringAsFixed(2)}';
 double _n(dynamic v) => double.tryParse('${v ?? 0}') ?? 0;
@@ -41,6 +50,16 @@ class _MiCajaScreenState extends State<MiCajaScreen> {
   Map<String, dynamic>? get _caja => _data?['caja'] as Map<String, dynamic>?;
   Map<String, dynamic>? get _apertura => _data?['apertura'] as Map<String, dynamic>?;
   Map<String, dynamic>? get _resumen => _data?['resumen'] as Map<String, dynamic>?;
+  List<Map<String, dynamic>> get _movimientos =>
+      ((_data?['movimientos'] as List?) ?? []).cast<Map<String, dynamic>>();
+
+  Future<void> _registrar(String tipo) async {
+    final ok = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => RegistrarMovimientoCajaScreen(tipoInicial: tipo)),
+    );
+    if (ok == true) _load();
+  }
 
   Future<void> _abrir() async {
     final ctrl = TextEditingController(text: '0');
@@ -186,22 +205,51 @@ class _MiCajaScreenState extends State<MiCajaScreen> {
         ),
         const SizedBox(height: 16),
         if (abierta) ...[
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _registrar('ingreso'),
+                  icon: const Icon(Icons.south_west, size: 18),
+                  label: const Text('Ingreso'),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _registrar('egreso'),
+                  icon: const Icon(Icons.north_east, size: 18),
+                  label: const Text('Gasto'),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger, foregroundColor: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           _stat('Monto inicial', _money(_resumen?['monto_inicial']), AppColors.textStrong),
           _stat('Ingresos', _money(_resumen?['ingresos']), AppColors.success),
-          _stat('Egresos', _money(_resumen?['egresos']), AppColors.danger),
+          _stat('Gastos', _money(_resumen?['egresos']), AppColors.danger),
           _stat('Esperado en caja', _money(_resumen?['esperado']), AppColors.primary),
           const SizedBox(height: 16),
-          SizedBox(
-            height: 48,
-            child: ElevatedButton.icon(
-              onPressed: _cerrar,
-              icon: const Icon(Icons.lock_outline),
-              label: const Text('Cerrar caja (arqueo)'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.danger,
-                foregroundColor: Colors.white,
-              ),
-            ),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text('Movimientos', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textStrong)),
+          ),
+          const SizedBox(height: 8),
+          if (_movimientos.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('Aún no hay movimientos.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textMuted)),
+            )
+          else
+            for (final m in _movimientos) _movTile(m),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: _cerrar,
+            icon: const Icon(Icons.lock_outline),
+            label: const Text('Cerrar caja (arqueo)'),
+            style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
           ),
         ] else ...[
           const Padding(
@@ -212,6 +260,40 @@ class _MiCajaScreenState extends State<MiCajaScreen> {
           PrimaryButton(label: 'Abrir caja', onPressed: _abrir),
         ],
       ],
+    );
+  }
+
+  Widget _movTile(Map<String, dynamic> m) {
+    final esIngreso = m['tipo'] == 'ingreso';
+    final motivo = (m['motivo'] as Map<String, dynamic>?)?['nombre'] as String? ?? '';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(esIngreso ? Icons.south_west : Icons.north_east,
+              color: esIngreso ? AppColors.success : AppColors.danger, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(motivo.isEmpty ? (esIngreso ? 'Ingreso' : 'Gasto') : motivo,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text('${_metodoTxt(m)} · ${m['fecha'] ?? ''}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+              ],
+            ),
+          ),
+          Text('${esIngreso ? '+' : '-'} ${_money(m['monto'])}',
+              style: TextStyle(fontWeight: FontWeight.w800, color: esIngreso ? AppColors.success : AppColors.danger)),
+        ],
+      ),
     );
   }
 
