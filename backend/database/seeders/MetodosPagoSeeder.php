@@ -14,9 +14,9 @@ class MetodosPagoSeeder extends Seeder
             ['nombre' => 'Transferencia', 'tipo' => 'banco', 'es_sistema' => false, 'requiere_cuenta_bancaria' => true, 'requiere_numero_operacion' => true],
             ['nombre' => 'Yape', 'tipo' => 'billetera', 'es_sistema' => false, 'requiere_numero_operacion' => true],
             ['nombre' => 'Plin', 'tipo' => 'billetera', 'es_sistema' => false, 'requiere_numero_operacion' => true],
-            ['nombre' => 'Tarjeta Débito', 'tipo' => 'tarjeta', 'es_sistema' => false, 'requiere_tarjeta' => true],
-            ['nombre' => 'Tarjeta Crédito', 'tipo' => 'tarjeta', 'es_sistema' => false, 'requiere_tarjeta' => true],
         ];
+        // Nota: los 3 tipos de método son efectivo, transferencia (banco) y billetera.
+        // "Tarjeta" no se maneja como método de pago en este sistema.
 
         foreach ($metodos as $m) {
             MetodoPago::updateOrCreate(

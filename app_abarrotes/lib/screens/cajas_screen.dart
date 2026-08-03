@@ -15,6 +15,9 @@ import '../widgets/app_text_field.dart';
 import '../widgets/app_toggle.dart';
 import '../widgets/data_card.dart';
 
+String _cuentaLabel(Map c) =>
+    '${c['alias'] ?? 'Cuenta'}${c['numero_cuenta'] != null ? ' · ${c['numero_cuenta']}' : ''}';
+
 class CajasScreen extends StatefulWidget {
   const CajasScreen({super.key});
 
@@ -25,10 +28,9 @@ class CajasScreen extends StatefulWidget {
 class _CajasScreenState extends State<CajasScreen> {
   final ApiService _api = ApiService();
   late final CrudService _crud;
-  late final CrudService _almacenesCrud;
   List<Map<String, dynamic>> _items = [];
-  List<Map<String, dynamic>> _almacenes = [];
-  List<Map<String, dynamic>> _metodos = [];
+  List<Map<String, dynamic>> _cuentas = [];
+  List<Map<String, dynamic>> _billeteras = [];
   List<Map<String, dynamic>> _usuarios = [];
   bool _loading = true;
 
@@ -36,7 +38,6 @@ class _CajasScreenState extends State<CajasScreen> {
   void initState() {
     super.initState();
     _crud = CrudService(_api, ApiEndpoints.cajas);
-    _almacenesCrud = CrudService(_api, ApiEndpoints.almacenes);
     _load();
   }
 
@@ -45,13 +46,13 @@ class _CajasScreenState extends State<CajasScreen> {
     try {
       final results = await Future.wait([
         _crud.getAll(),
-        _almacenesCrud.getAll(),
-        CrudService(_api, ApiEndpoints.metodosPago).getAll(),
+        CrudService(_api, ApiEndpoints.cuentasBancarias).getAll(),
+        CrudService(_api, ApiEndpoints.billeterasDigitales).getAll(),
         CrudService(_api, ApiEndpoints.usuarios).getAll(),
       ]);
       _items = results[0];
-      _almacenes = results[1];
-      _metodos = results[2];
+      _cuentas = results[1];
+      _billeteras = results[2];
       _usuarios = results[3];
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -63,8 +64,8 @@ class _CajasScreenState extends State<CajasScreen> {
       title: item == null ? 'Nueva caja' : 'Editar caja',
       child: _CajaFormSheet(
         initial: item,
-        almacenes: _almacenes,
-        metodos: _metodos,
+        cuentas: _cuentas,
+        billeteras: _billeteras,
         usuarios: _usuarios,
       ),
     );
@@ -77,11 +78,7 @@ class _CajasScreenState extends State<CajasScreen> {
       }
       await _load();
       if (mounted) {
-        showAppSnackbar(
-          context,
-          item == null ? 'Caja creada' : 'Caja actualizada',
-          type: AppSnackbarType.success,
-        );
+        showAppSnackbar(context, item == null ? 'Caja creada' : 'Caja actualizada', type: AppSnackbarType.success);
       }
     } catch (e) {
       if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
@@ -90,11 +87,7 @@ class _CajasScreenState extends State<CajasScreen> {
 
   Future<void> _delete(int index) async {
     final item = _items[index];
-    final ok = await showAppConfirmDialog(
-      context,
-      title: 'Eliminar caja',
-      message: '¿Eliminar "${item['nombre']}"?',
-    );
+    final ok = await showAppConfirmDialog(context, title: 'Eliminar caja', message: '¿Eliminar "${item['nombre']}"?');
     if (!ok) return;
     try {
       await _crud.delete(item['id']);
@@ -105,14 +98,21 @@ class _CajasScreenState extends State<CajasScreen> {
     }
   }
 
+  String _acepta(Map item) {
+    final partes = <String>[];
+    if (item['acepta_efectivo'] == true) partes.add('Efectivo');
+    final nc = (item['cuentas_bancarias'] as List?)?.length ?? 0;
+    final nb = (item['billeteras'] as List?)?.length ?? 0;
+    if (nc > 0) partes.add('$nc transferencia(s)');
+    if (nb > 0) partes.add('$nb billetera(s)');
+    return partes.isEmpty ? '—' : partes.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Cajas',
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openForm(),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: FloatingActionButton(onPressed: () => _openForm(), child: const Icon(Icons.add)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
@@ -123,41 +123,21 @@ class _CajasScreenState extends State<CajasScreen> {
               itemBuilder: (context, index) {
                 final item = _items[index];
                 final activo = item['activo'] as bool? ?? true;
-                final almacen = item['almacen'] as Map<String, dynamic>?;
                 final usuario = item['usuario'] as Map<String, dynamic>?;
-                final metodos = (item['metodos_pago'] as List?) ?? [];
                 return DataCard(
                   title: item['nombre'] as String? ?? '',
                   rows: [
-                    DataCardRow.text('Almacén', almacen?['nombre'] as String? ?? '—'),
                     DataCardRow.text('Responsable', usuario?['name'] as String? ?? '—'),
-                    DataCardRow.text(
-                      'Métodos',
-                      metodos.isEmpty
-                          ? '—'
-                          : metodos.map((m) => (m as Map)['nombre']).join(', '),
-                    ),
+                    DataCardRow.text('Acepta', _acepta(item)),
                     DataCardRow(
                       label: 'Estado',
-                      value: AppBadge(
-                        activo ? 'Activa' : 'Inactiva',
-                        type: activo ? AppBadgeType.success : AppBadgeType.danger,
-                      ),
+                      value: AppBadge(activo ? 'Activa' : 'Inactiva',
+                          type: activo ? AppBadgeType.success : AppBadgeType.danger),
                     ),
                   ],
                   actions: [
-                    DataCardAction(
-                      icon: Icons.edit_outlined,
-                      color: AppColors.primary,
-                      tooltip: 'Editar',
-                      onTap: () => _openForm(item: item, index: index),
-                    ),
-                    DataCardAction(
-                      icon: Icons.delete_outline,
-                      color: AppColors.danger,
-                      tooltip: 'Eliminar',
-                      onTap: () => _delete(index),
-                    ),
+                    DataCardAction(icon: Icons.edit_outlined, color: AppColors.primary, tooltip: 'Editar', onTap: () => _openForm(item: item, index: index)),
+                    DataCardAction(icon: Icons.delete_outline, color: AppColors.danger, tooltip: 'Eliminar', onTap: () => _delete(index)),
                   ],
                 );
               },
@@ -168,13 +148,13 @@ class _CajasScreenState extends State<CajasScreen> {
 
 class _CajaFormSheet extends StatefulWidget {
   final Map<String, dynamic>? initial;
-  final List<Map<String, dynamic>> almacenes;
-  final List<Map<String, dynamic>> metodos;
+  final List<Map<String, dynamic>> cuentas;
+  final List<Map<String, dynamic>> billeteras;
   final List<Map<String, dynamic>> usuarios;
   const _CajaFormSheet({
     this.initial,
-    required this.almacenes,
-    required this.metodos,
+    required this.cuentas,
+    required this.billeteras,
     required this.usuarios,
   });
 
@@ -185,19 +165,23 @@ class _CajaFormSheet extends StatefulWidget {
 class _CajaFormSheetState extends State<_CajaFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nombre;
-  int? _almacenId;
   int? _usuarioId;
-  final Set<int> _metodosSel = {};
+  bool _aceptaEfectivo = true;
+  final Set<int> _cuentasSel = {};
+  final Set<int> _billeterasSel = {};
   bool _activo = true;
 
   @override
   void initState() {
     super.initState();
     _nombre = TextEditingController(text: widget.initial?['nombre'] ?? '');
-    _almacenId = widget.initial?['almacen_id'] as int?;
     _usuarioId = (widget.initial?['usuario'] as Map<String, dynamic>?)?['id'] as int?;
-    for (final m in (widget.initial?['metodos_pago'] as List?) ?? []) {
-      _metodosSel.add((m as Map)['id'] as int);
+    _aceptaEfectivo = widget.initial?['acepta_efectivo'] as bool? ?? true;
+    for (final c in (widget.initial?['cuentas_bancarias'] as List?) ?? []) {
+      _cuentasSel.add((c as Map)['id'] as int);
+    }
+    for (final b in (widget.initial?['billeteras'] as List?) ?? []) {
+      _billeterasSel.add((b as Map)['id'] as int);
     }
     _activo = widget.initial?['activo'] as bool? ?? true;
   }
@@ -212,9 +196,10 @@ class _CajaFormSheetState extends State<_CajaFormSheet> {
     if (!_formKey.currentState!.validate()) return;
     Navigator.pop(context, {
       'nombre': _nombre.text.trim(),
-      'almacen_id': _almacenId,
       'usuario_id': _usuarioId,
-      'metodos_pago': _metodosSel.toList(),
+      'acepta_efectivo': _aceptaEfectivo,
+      'cuentas_bancarias': _cuentasSel.toList(),
+      'billeteras': _billeterasSel.toList(),
       'activo': _activo,
     });
   }
@@ -236,22 +221,11 @@ class _CajaFormSheetState extends State<_CajaFormSheet> {
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese el nombre' : null,
               ),
               AppSelect<int>(
-                label: 'Almacén',
-                icon: Icons.warehouse_outlined,
-                value: _almacenId,
-                options: [
-                  for (final a in widget.almacenes)
-                    AppSelectOption(a['id'] as int, a['nombre'] as String? ?? ''),
-                ],
-                onChanged: (v) => setState(() => _almacenId = v),
-              ),
-              AppSelect<int>(
                 label: 'Usuario responsable (opcional)',
                 icon: Icons.person_outline,
                 value: _usuarioId,
                 options: [
-                  for (final u in widget.usuarios)
-                    AppSelectOption(u['id'] as int, u['name'] as String? ?? ''),
+                  for (final u in widget.usuarios) AppSelectOption(u['id'] as int, u['name'] as String? ?? ''),
                 ],
                 onChanged: (v) => setState(() => _usuarioId = v),
               ),
@@ -262,24 +236,52 @@ class _CajaFormSheetState extends State<_CajaFormSheet> {
           AppFormSection(
             title: 'Métodos de pago aceptados',
             children: [
-              if (widget.metodos.isEmpty)
-                const Text('No hay métodos de pago disponibles')
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Efectivo'),
+                value: _aceptaEfectivo,
+                onChanged: (v) => setState(() => _aceptaEfectivo = v),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 4, bottom: 4),
+                child: Align(alignment: Alignment.centerLeft, child: Text('Transferencia (cuentas bancarias)', style: TextStyle(fontSize: 12, color: AppColors.textMuted))),
+              ),
+              if (widget.cuentas.isEmpty)
+                const Text('No hay cuentas bancarias', style: TextStyle(fontSize: 12, color: AppColors.textMuted))
               else
                 Wrap(
                   spacing: 8,
                   runSpacing: 4,
                   children: [
-                    for (final m in widget.metodos)
+                    for (final c in widget.cuentas)
                       FilterChip(
-                        label: Text(m['nombre'] as String? ?? ''),
-                        selected: _metodosSel.contains(m['id']),
+                        label: Text(_cuentaLabel(c)),
+                        selected: _cuentasSel.contains(c['id']),
                         onSelected: (sel) => setState(() {
-                          final id = m['id'] as int;
-                          if (sel) {
-                            _metodosSel.add(id);
-                          } else {
-                            _metodosSel.remove(id);
-                          }
+                          final id = c['id'] as int;
+                          sel ? _cuentasSel.add(id) : _cuentasSel.remove(id);
+                        }),
+                      ),
+                  ],
+                ),
+              const Padding(
+                padding: EdgeInsets.only(top: 8, bottom: 4),
+                child: Align(alignment: Alignment.centerLeft, child: Text('Billeteras digitales', style: TextStyle(fontSize: 12, color: AppColors.textMuted))),
+              ),
+              if (widget.billeteras.isEmpty)
+                const Text('No hay billeteras', style: TextStyle(fontSize: 12, color: AppColors.textMuted))
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final b in widget.billeteras)
+                      FilterChip(
+                        label: Text(b['nombre'] as String? ?? ''),
+                        selected: _billeterasSel.contains(b['id']),
+                        onSelected: (sel) => setState(() {
+                          final id = b['id'] as int;
+                          sel ? _billeterasSel.add(id) : _billeterasSel.remove(id);
                         }),
                       ),
                   ],

@@ -95,6 +95,7 @@ class AppMenu {
       icon: Icons.account_balance_wallet_outlined,
       label: 'Tesorería',
       children: [
+        MenuLink(icon: Icons.account_balance_wallet, label: 'Mi Caja', route: AppRoutes.miCaja),
         MenuLink(icon: Icons.credit_card, label: 'Cuentas y medios de pago', route: AppRoutes.cuentasMedios),
         MenuLink(icon: Icons.point_of_sale_outlined, label: 'Cajas', route: AppRoutes.cajas),
         MenuLink(icon: Icons.swap_horiz, label: 'Movimientos de caja', route: AppRoutes.movimientosCaja),

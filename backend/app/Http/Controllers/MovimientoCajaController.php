@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\AperturaCaja;
-use App\Models\MetodoPago;
+use App\Models\Caja;
 use App\Models\MovimientoCaja;
+use App\Models\MotivoMovimiento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -13,9 +14,7 @@ class MovimientoCajaController extends Controller
 {
     private const WITH = [
         'motivo:id,nombre,tipo,es_sistema',
-        'metodoPago:id,nombre,tipo,requiere_cuenta_bancaria,requiere_numero_operacion',
-        'cuentaBancaria:id,nombre,numero',
-        'tarjeta:id,nombre,numero',
+        'cuentaBancaria:id,alias,numero_cuenta',
         'billetera:id,nombre',
         'apertura.caja:id,nombre',
     ];
@@ -27,7 +26,7 @@ class MovimientoCajaController extends Controller
         $query = MovimientoCaja::with(self::WITH)
             ->when($request->filled('caja_id'), fn ($q) => $q->whereHas('apertura', fn ($a) => $a->where('caja_id', $request->integer('caja_id'))))
             ->when(
-                $user?->caja_id && !$user->hasRole('super-admin'),
+                $user?->caja_id && ! $user->hasRole('super-admin'),
                 fn ($q) => $q->whereHas('apertura', fn ($a) => $a->where('caja_id', $user->caja_id))
             )
             ->latest('fecha')
@@ -45,7 +44,7 @@ class MovimientoCajaController extends Controller
             'caja_id' => 'nullable|exists:cajas,id',
             'tipo' => 'required|in:ingreso,egreso',
             'motivo_movimiento_id' => 'required|exists:motivos_movimiento,id',
-            'metodo_pago_id' => 'required|exists:metodos_pago,id',
+            'forma' => 'required|in:efectivo,transferencia,billetera',
             'cuenta_bancaria_id' => 'nullable|exists:cuentas_bancarias,id',
             'billetera_id' => 'nullable|exists:billeteras_digitales,id',
             'numero_operacion' => 'nullable|string|max:100',
@@ -55,61 +54,64 @@ class MovimientoCajaController extends Controller
         ]);
 
         $cajaId = $data['caja_id'] ?? $user?->caja_id;
-        if (!$cajaId) {
+        if (! $cajaId) {
             throw ValidationException::withMessages(['caja_id' => 'No tienes una caja asignada.']);
         }
+
+        $caja = Caja::with(['cuentasBancarias:id', 'billeteras:id'])->findOrFail($cajaId);
 
         $apertura = AperturaCaja::where('caja_id', $cajaId)
             ->where('estado', 'abierta')
             ->latest('fecha_apertura')
             ->first();
 
-        if (!$apertura) {
+        if (! $apertura) {
             throw ValidationException::withMessages(['caja_id' => 'La caja no tiene una apertura abierta.']);
         }
 
-        return DB::transaction(function () use ($data, $apertura) {
-            $motivo = \App\Models\MotivoMovimiento::findOrFail($data['motivo_movimiento_id']);
-            $metodo = MetodoPago::findOrFail($data['metodo_pago_id']);
+        // El motivo debe corresponder al tipo (ingreso→entrada, egreso→salida).
+        $motivo = MotivoMovimiento::findOrFail($data['motivo_movimiento_id']);
+        $tipoMotivo = $data['tipo'] === 'ingreso' ? 'entrada' : 'salida';
+        if ($motivo->tipo !== $tipoMotivo) {
+            throw ValidationException::withMessages([
+                'motivo_movimiento_id' => "El motivo \"{$motivo->nombre}\" no corresponde a un ".($data['tipo'] === 'ingreso' ? 'ingreso' : 'egreso').'.',
+            ]);
+        }
 
-            $tipoMotivo = $data['tipo'] === 'ingreso' ? 'entrada' : 'salida';
-            if ($motivo->tipo !== $tipoMotivo) {
-                throw ValidationException::withMessages([
-                    'motivo_movimiento_id' => "El motivo \"{$motivo->nombre}\" es de tipo {$motivo->tipo} y no corresponde a un " . ($data['tipo'] === 'ingreso' ? 'ingreso' : 'egreso') . '.',
-                ]);
+        // Validar la forma contra lo que la caja acepta.
+        $cuentaId = null;
+        $billeteraId = null;
+        if ($data['forma'] === 'efectivo') {
+            if (! $caja->acepta_efectivo) {
+                throw ValidationException::withMessages(['forma' => 'Esta caja no acepta efectivo.']);
             }
+        } elseif ($data['forma'] === 'transferencia') {
+            $cuentaId = $data['cuenta_bancaria_id'] ?? null;
+            if (! $cuentaId || ! $caja->cuentasBancarias->contains('id', $cuentaId)) {
+                throw ValidationException::withMessages(['cuenta_bancaria_id' => 'Selecciona una cuenta bancaria habilitada para esta caja.']);
+            }
+        } else { // billetera
+            $billeteraId = $data['billetera_id'] ?? null;
+            if (! $billeteraId || ! $caja->billeteras->contains('id', $billeteraId)) {
+                throw ValidationException::withMessages(['billetera_id' => 'Selecciona una billetera habilitada para esta caja.']);
+            }
+        }
 
-            $asignados = $apertura->caja->metodosPago()->pluck('metodos_pago.id');
-            if ($asignados->isNotEmpty() && !$asignados->contains($metodo->id)) {
-                throw ValidationException::withMessages([
-                    'metodo_pago_id' => "La caja no acepta el método de pago \"{$metodo->nombre}\".",
-                ]);
-            }
-
-            if ($metodo->requiere_cuenta_bancaria && empty($data['cuenta_bancaria_id'])) {
-                throw ValidationException::withMessages(['cuenta_bancaria_id' => 'Este método requiere seleccionar una cuenta bancaria.']);
-            }
-            if ($metodo->tipo === 'billetera' && empty($data['billetera_id'])) {
-                throw ValidationException::withMessages(['billetera_id' => 'Este método requiere seleccionar una billetera digital.']);
-            }
-            if ($metodo->requiere_numero_operacion && empty($data['numero_operacion'])) {
-                throw ValidationException::withMessages(['numero_operacion' => 'Este método requiere el número de operación.']);
-            }
-
-            $movimiento = MovimientoCaja::create([
+        $movimiento = DB::transaction(function () use ($apertura, $data, $motivo, $cuentaId, $billeteraId) {
+            return MovimientoCaja::create([
                 'apertura_caja_id' => $apertura->id,
                 'tipo' => $data['tipo'],
                 'motivo_movimiento_id' => $motivo->id,
-                'metodo_pago_id' => $metodo->id,
-                'cuenta_bancaria_id' => $data['cuenta_bancaria_id'] ?? null,
-                'billetera_id' => $data['billetera_id'] ?? null,
+                'metodo_pago_id' => null,
+                'cuenta_bancaria_id' => $cuentaId,
+                'billetera_id' => $billeteraId,
                 'numero_operacion' => $data['numero_operacion'] ?? null,
                 'monto' => $data['monto'],
                 'descripcion' => $data['descripcion'] ?? null,
                 'fecha' => $data['fecha'],
             ]);
-
-            return response()->json($movimiento->load(self::WITH), 201);
         });
+
+        return response()->json($movimiento->load(self::WITH), 201);
     }
 }

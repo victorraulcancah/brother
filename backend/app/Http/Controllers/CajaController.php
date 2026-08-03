@@ -8,7 +8,11 @@ use Illuminate\Http\Request;
 
 class CajaController extends Controller
 {
-    private const WITH = ['almacen:id,nombre', 'metodosPago:id,nombre,tipo,es_sistema', 'usuario:id,name,email,caja_id'];
+    private const WITH = [
+        'cuentasBancarias:id,alias,numero_cuenta',
+        'billeteras:id,nombre',
+        'usuario:id,name,email,caja_id',
+    ];
 
     public function index()
     {
@@ -18,11 +22,8 @@ class CajaController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
-        $metodos = $data['metodos_pago'] ?? [];
-        unset($data['metodos_pago']);
-
-        $caja = Caja::create($data);
-        $caja->metodosPago()->sync($metodos);
+        $caja = Caja::create($this->cajaData($data));
+        $this->syncRelaciones($caja, $data);
         $this->assignUsuario($caja, $data['usuario_id'] ?? null);
 
         return response()->json($caja->load(self::WITH), 201);
@@ -36,11 +37,8 @@ class CajaController extends Controller
     public function update(Request $request, Caja $caja)
     {
         $data = $this->validated($request);
-        $metodos = $data['metodos_pago'] ?? [];
-        unset($data['metodos_pago']);
-
-        $caja->update($data);
-        $caja->metodosPago()->sync($metodos);
+        $caja->update($this->cajaData($data));
+        $this->syncRelaciones($caja, $data);
         $this->assignUsuario($caja, $data['usuario_id'] ?? null);
 
         return response()->json($caja->load(self::WITH));
@@ -51,6 +49,21 @@ class CajaController extends Controller
         User::where('caja_id', $caja->id)->update(['caja_id' => null]);
         $caja->delete();
         return response()->json(['message' => 'Eliminado']);
+    }
+
+    private function cajaData(array $data): array
+    {
+        return [
+            'nombre' => $data['nombre'],
+            'acepta_efectivo' => $data['acepta_efectivo'] ?? false,
+            'activo' => $data['activo'] ?? true,
+        ];
+    }
+
+    private function syncRelaciones(Caja $caja, array $data): void
+    {
+        $caja->cuentasBancarias()->sync($data['cuentas_bancarias'] ?? []);
+        $caja->billeteras()->sync($data['billeteras'] ?? []);
     }
 
     private function assignUsuario(Caja $caja, ?int $usuarioId): void
@@ -65,11 +78,13 @@ class CajaController extends Controller
     {
         return $request->validate([
             'nombre' => 'required|string|max:255',
-            'almacen_id' => 'nullable|exists:almacenes,id',
+            'acepta_efectivo' => 'boolean',
             'activo' => 'boolean',
             'usuario_id' => 'nullable|exists:users,id',
-            'metodos_pago' => 'nullable|array',
-            'metodos_pago.*' => 'exists:metodos_pago,id',
+            'cuentas_bancarias' => 'nullable|array',
+            'cuentas_bancarias.*' => 'exists:cuentas_bancarias,id',
+            'billeteras' => 'nullable|array',
+            'billeteras.*' => 'exists:billeteras_digitales,id',
         ]);
     }
 }

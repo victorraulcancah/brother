@@ -10,25 +10,26 @@ class Caja extends Model
 
     protected $fillable = [
         'nombre',
-        'almacen_id',
+        'acepta_efectivo',
         'activo',
     ];
 
     protected function casts(): array
     {
-        return ['activo' => 'boolean'];
+        return [
+            'acepta_efectivo' => 'boolean',
+            'activo' => 'boolean',
+        ];
     }
 
-    public function almacen()
+    public function cuentasBancarias()
     {
-        return $this->belongsTo(Almacen::class);
+        return $this->belongsToMany(CuentaBancaria::class, 'caja_cuenta_bancaria', 'caja_id', 'cuenta_bancaria_id')->withTimestamps();
     }
 
-    public function metodosPago()
+    public function billeteras()
     {
-        return $this->belongsToMany(MetodoPago::class, 'caja_metodo_pago')
-            ->withTimestamps()
-            ->orderBy('metodos_pago.nombre');
+        return $this->belongsToMany(BilleteraDigital::class, 'caja_billetera', 'caja_id', 'billetera_id')->withTimestamps();
     }
 
     public function aperturas()

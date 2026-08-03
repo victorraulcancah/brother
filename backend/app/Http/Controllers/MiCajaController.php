@@ -1,0 +1,111 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\AperturaCaja;
+use App\Models\Caja;
+use App\Models\CierreCaja;
+use App\Models\MovimientoCaja;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * "Mi Caja": la caja asignada al usuario. Permite ver su estado, abrirla
+ * (apertura con monto inicial) y cerrarla (arqueo: monto contado vs esperado).
+ */
+class MiCajaController extends Controller
+{
+    public function show()
+    {
+        $user = auth('api')->user();
+        if (! $user?->caja_id) {
+            return response()->json(['caja' => null, 'apertura' => null, 'resumen' => null]);
+        }
+
+        $caja = Caja::with(['cuentasBancarias:id,alias,numero_cuenta', 'billeteras:id,nombre'])->find($user->caja_id);
+        $apertura = AperturaCaja::where('caja_id', $user->caja_id)
+            ->where('estado', 'abierta')
+            ->latest('fecha_apertura')
+            ->first();
+
+        return response()->json([
+            'caja' => $caja,
+            'apertura' => $apertura,
+            'resumen' => $apertura ? $this->resumen($apertura) : null,
+        ]);
+    }
+
+    public function abrir(Request $request)
+    {
+        $user = auth('api')->user();
+        if (! $user?->caja_id) {
+            throw ValidationException::withMessages(['caja' => 'No tienes una caja asignada.']);
+        }
+
+        $data = $request->validate(['monto_inicial' => 'required|numeric|min:0']);
+
+        $abierta = AperturaCaja::where('caja_id', $user->caja_id)->where('estado', 'abierta')->exists();
+        if ($abierta) {
+            throw ValidationException::withMessages(['caja' => 'La caja ya está abierta.']);
+        }
+
+        AperturaCaja::create([
+            'caja_id' => $user->caja_id,
+            'usuario_id' => $user->id,
+            'monto_inicial' => $data['monto_inicial'],
+            'fecha_apertura' => now(),
+            'estado' => 'abierta',
+        ]);
+
+        return $this->show();
+    }
+
+    public function cerrar(Request $request)
+    {
+        $user = auth('api')->user();
+        $data = $request->validate(['monto_contado' => 'required|numeric|min:0']);
+
+        $apertura = AperturaCaja::where('caja_id', $user?->caja_id)
+            ->where('estado', 'abierta')
+            ->latest('fecha_apertura')
+            ->first();
+
+        if (! $apertura) {
+            throw ValidationException::withMessages(['caja' => 'No tienes una caja abierta.']);
+        }
+
+        $resumen = $this->resumen($apertura);
+        $sistema = $resumen['esperado'];
+        $contado = (float) $data['monto_contado'];
+
+        DB::transaction(function () use ($apertura, $sistema, $contado) {
+            CierreCaja::create([
+                'apertura_caja_id' => $apertura->id,
+                'monto_sistema' => $sistema,
+                'monto_contado' => $contado,
+                'diferencia' => round($contado - $sistema, 2),
+                'fecha_cierre' => now(),
+            ]);
+            $apertura->update(['estado' => 'cerrada']);
+        });
+
+        return $this->show();
+    }
+
+    /** Resumen del efectivo esperado en la apertura. */
+    private function resumen(AperturaCaja $apertura): array
+    {
+        $ingresos = (float) MovimientoCaja::where('apertura_caja_id', $apertura->id)->where('tipo', 'ingreso')->sum('monto');
+        $egresos = (float) MovimientoCaja::where('apertura_caja_id', $apertura->id)->where('tipo', 'egreso')->sum('monto');
+        $inicial = (float) $apertura->monto_inicial;
+
+        return [
+            'monto_inicial' => round($inicial, 2),
+            'ingresos' => round($ingresos, 2),
+            'egresos' => round($egresos, 2),
+            'esperado' => round($inicial + $ingresos - $egresos, 2),
+            'movimientos' => MovimientoCaja::where('apertura_caja_id', $apertura->id)->count(),
+        ];
+    }
+}

@@ -74,12 +74,14 @@ class DemoSeeder extends Seeder
             'titular' => 'Brother Corp', 'requiere_captura' => false, 'activo' => true,
         ]);
 
-        // ── Cajas ──
-        foreach (Almacen::all() as $almacen) {
-            Caja::create(['nombre' => 'Caja - ' . $almacen->nombre, 'almacen_id' => $almacen->id, 'activo' => true]);
-        }
-        // Una caja general adicional
-        Caja::create(['nombre' => 'Caja Principal', 'almacen_id' => Almacen::first()?->id, 'activo' => true]);
+        // ── Cajas (se asignan a usuarios; aceptan efectivo + cuentas + billeteras) ──
+        $cajaPrincipal = Caja::create(['nombre' => 'Caja Principal', 'acepta_efectivo' => true, 'activo' => true]);
+        $cajaPrincipal->cuentasBancarias()->sync(\App\Models\CuentaBancaria::pluck('id'));
+        $cajaPrincipal->billeteras()->sync(\App\Models\BilleteraDigital::pluck('id'));
+        Caja::create(['nombre' => 'Caja Tienda', 'acepta_efectivo' => true, 'activo' => true]);
+
+        // Asignar la caja principal al admin (para "Mi Caja" y ventas al contado).
+        \App\Models\User::where('email', 'admin@brother.com')->update(['caja_id' => $cajaPrincipal->id]);
 
         // ── Movimientos de inventario demo (para poblar el Kardex valorizado) ──
         $almacen = Almacen::first();

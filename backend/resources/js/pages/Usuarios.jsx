@@ -9,7 +9,6 @@ export default function Usuarios() {
     const [users, setUsers] = useState([]);
     const [roles, setRoles] = useState([]);
     const [empresas, setEmpresas] = useState([]);
-    const [cajas, setCajas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -21,7 +20,6 @@ export default function Usuarios() {
         password: '',
         role: '',
         empresa_id: '',
-        caja_id: '',
     });
     const [errors, setErrors] = useState({});
     const [saving, setSaving] = useState(false);
@@ -36,16 +34,14 @@ export default function Usuarios() {
         setLoading(true);
         setError(null);
         try {
-            const [usersRes, rolesRes, empresasRes, cajasRes] = await Promise.all([
+            const [usersRes, rolesRes, empresasRes] = await Promise.all([
                 api.get('/users'),
                 api.get('/roles'),
                 api.get('/empresas'),
-                api.get('/cajas'),
             ]);
             setUsers(usersRes.data);
             setRoles(rolesRes.data);
             setEmpresas(empresasRes.data);
-            setCajas(cajasRes.data);
         } catch {
             setError('No se pudieron cargar los datos.');
         } finally {
@@ -59,7 +55,7 @@ export default function Usuarios() {
 
     const openCreate = () => {
         setEditing(null);
-        setForm({ name: '', email: '', password: '', role: '', empresa_id: '', caja_id: '' });
+        setForm({ name: '', email: '', password: '', role: '', empresa_id: '' });
         setErrors({});
         setModalOpen(true);
     };
@@ -72,7 +68,6 @@ export default function Usuarios() {
             password: '',
             role: user.roles?.[0]?.name ?? '',
             empresa_id: user.empresa_id ?? '',
-            caja_id: user.caja_id ?? '',
         });
         setErrors({});
         setModalOpen(true);
@@ -88,7 +83,6 @@ export default function Usuarios() {
             email: form.email,
             role: form.role || undefined,
             empresa_id: form.empresa_id || undefined,
-            caja_id: form.caja_id || undefined,
         };
         if (form.password) payload.password = form.password;
 
@@ -322,22 +316,6 @@ export default function Usuarios() {
                             })),
                         ]}
                         error={errors.empresa_id}
-                    />
-                    <Select
-                        label="Caja"
-                        name="caja_id"
-                        value={form.caja_id}
-                        onChange={(e) =>
-                            setForm((prev) => ({ ...prev, caja_id: e.target.value }))
-                        }
-                        options={[
-                            { value: '', label: 'Sin caja' },
-                            ...cajas.map((c) => ({
-                                value: String(c.id),
-                                label: c.nombre,
-                            })),
-                        ]}
-                        error={errors.caja_id}
                     />
                 </form>
             </Modal>

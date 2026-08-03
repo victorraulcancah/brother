@@ -43,6 +43,7 @@ class AppRoutes {
 
   // Tesorería
   static const String cuentasMedios = '/cuentas-medios';
+  static const String miCaja = '/mi-caja';
   static const String cajas = '/cajas';
   static const String movimientosCaja = '/movimientos-caja';
   static const String motivosMovimiento = '/motivos-movimiento';

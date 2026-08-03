@@ -74,6 +74,9 @@ class ApiEndpoints {
   static const String billeterasDigitales = '/billeteras-digitales';
   static const String cajas = '/cajas';
   static String caja(int id) => '/cajas/$id';
+  static const String miCaja = '/mi-caja';
+  static const String miCajaAbrir = '/mi-caja/abrir';
+  static const String miCajaCerrar = '/mi-caja/cerrar';
   static const String movimientosCaja = '/movimientos-caja';
   static const String metodosPago = '/metodos-pago';
   static const String motivosMovimiento = '/motivos-movimiento';

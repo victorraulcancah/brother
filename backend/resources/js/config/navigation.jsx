@@ -83,6 +83,7 @@ export const navigation = [
         label: 'Tesorería',
         icon: Wallet,
         children: [
+            { label: 'Mi Caja', icon: Wallet, to: '/mi-caja' },
             { label: 'Cuentas y Medios de Pago', icon: CreditCard, to: '/metodos-de-pago' },
             { label: 'Cajas', icon: Coins, to: '/cajas' },
             { label: 'Movimientos de Caja', icon: ArrowRightLeft, to: '/movimientos-caja' },

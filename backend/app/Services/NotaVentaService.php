@@ -63,10 +63,14 @@ class NotaVentaService
                 );
             }
 
-            $apertura = AperturaCaja::where('estado', 'abierta')
-                ->whereHas('caja', fn ($q) => $q->where('almacen_id', $data['almacen_id']))
-                ->latest('fecha_apertura')
-                ->first();
+            // El ingreso de caja va a la caja del vendedor (una caja pertenece a un usuario).
+            $cajaId = \App\Models\User::find($data['vendedor_id'])?->caja_id;
+            $apertura = $cajaId
+                ? AperturaCaja::where('estado', 'abierta')
+                    ->where('caja_id', $cajaId)
+                    ->latest('fecha_apertura')
+                    ->first()
+                : null;
 
             if ($apertura && $data['tipo_pago'] === 'contado') {
                 foreach ($data['pagos'] as $pago) {

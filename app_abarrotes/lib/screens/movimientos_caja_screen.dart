@@ -75,7 +75,13 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
                 final esIngreso = item['tipo'] == 'ingreso';
                 final apertura = item['apertura'] as Map<String, dynamic>?;
                 final caja = apertura?['caja'] as Map<String, dynamic>?;
-                final metodo = item['metodo_pago'] as Map<String, dynamic>?;
+                final cuenta = item['cuenta_bancaria'] as Map<String, dynamic>?;
+                final billetera = item['billetera'] as Map<String, dynamic>?;
+                final metodoTxt = cuenta != null
+                    ? 'Transf. · ${cuenta['alias'] ?? cuenta['numero_cuenta'] ?? ''}'
+                    : billetera != null
+                    ? (billetera['nombre'] as String? ?? 'Billetera')
+                    : 'Efectivo';
                 final motivo = item['motivo'] as Map<String, dynamic>?;
                 return DataCard(
                   title: '${item['fecha'] ?? ''}',
@@ -89,7 +95,7 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
                     ),
                     DataCardRow.text('Caja', caja?['nombre'] as String? ?? '—'),
                     DataCardRow.text('Motivo', motivo?['nombre'] as String? ?? '—'),
-                    DataCardRow.text('Método', metodo?['nombre'] as String? ?? '—'),
+                    DataCardRow.text('Método', metodoTxt),
                     if ((item['numero_operacion'] ?? '').toString().isNotEmpty)
                       DataCardRow.text('N° Operación', '${item['numero_operacion']}'),
                     DataCardRow.text('Monto', '${esIngreso ? '+' : '-'} ${_money(item['monto'])}'),
@@ -115,8 +121,6 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
 
   List<Map<String, dynamic>> _motivos = [];
   List<Map<String, dynamic>> _cajas = [];
-  List<Map<String, dynamic>> _cuentas = [];
-  List<Map<String, dynamic>> _billeteras = [];
   int? _miCajaId;
   bool _esSuperAdmin = false;
 
@@ -124,9 +128,7 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
   String _tipo = 'ingreso'; // ingreso | egreso
   int? _motivoId;
   int? _cajaId;
-  int? _metodoId;
-  int? _cuentaBancariaId;
-  int? _billeteraId;
+  String? _metodo; // 'efectivo' | 'transferencia:<id>' | 'billetera:<id>'
   final _numeroOperacion = TextEditingController();
   final _monto = TextEditingController();
   final _descripcion = TextEditingController();
@@ -151,15 +153,11 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
       final results = await Future.wait([
         _api.get('${ApiEndpoints.motivosMovimiento}?ambito=caja'),
         _api.get(ApiEndpoints.cajas),
-        _api.get(ApiEndpoints.cuentasBancarias),
-        _api.get(ApiEndpoints.billeterasDigitales),
         _api.get(ApiEndpoints.me),
       ]);
       _motivos = _asList(results[0]);
       _cajas = _asList(results[1]);
-      _cuentas = _asList(results[2]);
-      _billeteras = _asList(results[3]);
-      final me = results[4] is Map<String, dynamic> ? results[4] as Map<String, dynamic> : <String, dynamic>{};
+      final me = results[2] is Map<String, dynamic> ? results[2] as Map<String, dynamic> : <String, dynamic>{};
       _miCajaId = me['caja_id'] as int?;
       final roles = (me['roles'] as List?)?.map((r) => (r as Map)['name']).toList() ?? [];
       _esSuperAdmin = roles.contains('super-admin');
@@ -183,24 +181,29 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
     return null;
   }
 
-  List<Map<String, dynamic>> get _metodosCaja =>
-      ((_caja?['metodos_pago'] as List?) ?? []).cast<Map<String, dynamic>>();
+  List<Map<String, dynamic>> get _cuentasCaja =>
+      ((_caja?['cuentas_bancarias'] as List?) ?? []).cast<Map<String, dynamic>>();
+  List<Map<String, dynamic>> get _billeterasCaja =>
+      ((_caja?['billeteras'] as List?) ?? []).cast<Map<String, dynamic>>();
 
-  Map<String, dynamic>? get _metodo {
-    for (final m in _metodosCaja) {
-      if (m['id'] == _metodoId) return m;
+  List<AppSelectOption<String>> get _metodoOptions {
+    final opts = <AppSelectOption<String>>[];
+    if (_caja?['acepta_efectivo'] == true) opts.add(const AppSelectOption('efectivo', 'Efectivo'));
+    for (final c in _cuentasCaja) {
+      opts.add(AppSelectOption('transferencia:${c['id']}', 'Transferencia · ${c['alias'] ?? c['numero_cuenta'] ?? ''}'));
     }
-    return null;
+    for (final b in _billeterasCaja) {
+      opts.add(AppSelectOption('billetera:${b['id']}', b['nombre'] as String? ?? ''));
+    }
+    return opts;
   }
+
+  bool get _reqNumOp => _metodo != null && _metodo != 'efectivo';
 
   List<Map<String, dynamic>> get _motivosTipo {
     final t = _tipo == 'ingreso' ? 'entrada' : 'salida';
     return _motivos.where((m) => m['tipo'] == t).toList();
   }
-
-  bool get _reqCuenta => _metodo?['requiere_cuenta_bancaria'] == true;
-  bool get _reqBilletera => _metodo?['tipo'] == 'billetera';
-  bool get _reqNumOp => _metodo?['requiere_numero_operacion'] == true;
 
   Future<void> _guardar() async {
     final cajaId = _esSuperAdmin ? _cajaId : _miCajaId;
@@ -212,13 +215,23 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
       showAppSnackbar(context, 'Selecciona el motivo', type: AppSnackbarType.error);
       return;
     }
-    if (_metodoId == null) {
-      showAppSnackbar(context, 'Selecciona el método de pago', type: AppSnackbarType.error);
+    if (_metodo == null) {
+      showAppSnackbar(context, 'Selecciona el método', type: AppSnackbarType.error);
       return;
     }
     if ((double.tryParse(_monto.text) ?? 0) <= 0) {
       showAppSnackbar(context, 'Ingresa un monto válido', type: AppSnackbarType.error);
       return;
+    }
+    String forma = 'efectivo';
+    int? cuentaId;
+    int? billeteraId;
+    if (_metodo!.startsWith('transferencia:')) {
+      forma = 'transferencia';
+      cuentaId = int.tryParse(_metodo!.split(':')[1]);
+    } else if (_metodo!.startsWith('billetera:')) {
+      forma = 'billetera';
+      billeteraId = int.tryParse(_metodo!.split(':')[1]);
     }
     setState(() => _saving = true);
     try {
@@ -226,9 +239,9 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
         'tipo': _tipo,
         'motivo_movimiento_id': _motivoId,
         'caja_id': cajaId,
-        'metodo_pago_id': _metodoId,
-        'cuenta_bancaria_id': _reqCuenta ? _cuentaBancariaId : null,
-        'billetera_id': _reqBilletera ? _billeteraId : null,
+        'forma': forma,
+        'cuenta_bancaria_id': cuentaId,
+        'billetera_id': billeteraId,
         'numero_operacion': _numeroOperacion.text.trim().isEmpty ? null : _numeroOperacion.text.trim(),
         'monto': double.tryParse(_monto.text) ?? 0,
         'fecha': _fecha,
@@ -287,7 +300,7 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
                             ],
                             onChanged: (v) => setState(() {
                               _cajaId = v;
-                              _metodoId = null; // los métodos dependen de la caja
+                              _metodo = null; // los métodos dependen de la caja
                             }),
                           ),
                         AppSelect<int>(
@@ -299,42 +312,15 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
                           ],
                           onChanged: (v) => setState(() => _motivoId = v),
                         ),
-                        AppSelect<int>(
-                          label: 'Método de pago',
+                        AppSelect<String>(
+                          label: 'Método',
                           icon: Icons.payments_outlined,
-                          value: _metodoId,
-                          options: [
-                            for (final m in _metodosCaja) AppSelectOption(m['id'] as int, m['nombre'] as String? ?? '')
-                          ],
-                          onChanged: (v) => setState(() {
-                            _metodoId = v;
-                            _cuentaBancariaId = null;
-                            _billeteraId = null;
-                          }),
+                          value: _metodo,
+                          options: _metodoOptions,
+                          onChanged: (v) => setState(() => _metodo = v),
                         ),
-                        if (_reqCuenta)
-                          AppSelect<int>(
-                            label: 'Cuenta bancaria',
-                            icon: Icons.account_balance_outlined,
-                            value: _cuentaBancariaId,
-                            options: [
-                              for (final c in _cuentas)
-                                AppSelectOption(c['id'] as int, '${c['nombre'] ?? ''} (${c['numero'] ?? ''})')
-                            ],
-                            onChanged: (v) => setState(() => _cuentaBancariaId = v),
-                          ),
-                        if (_reqBilletera)
-                          AppSelect<int>(
-                            label: 'Billetera digital',
-                            icon: Icons.account_balance_wallet_outlined,
-                            value: _billeteraId,
-                            options: [
-                              for (final b in _billeteras) AppSelectOption(b['id'] as int, b['nombre'] as String? ?? '')
-                            ],
-                            onChanged: (v) => setState(() => _billeteraId = v),
-                          ),
                         if (_reqNumOp)
-                          AppTextField(controller: _numeroOperacion, label: 'Número de operación', icon: Icons.tag),
+                          AppTextField(controller: _numeroOperacion, label: 'Número de operación (opcional)', icon: Icons.tag),
                         AppTextField(
                           controller: _monto,
                           label: 'Monto',

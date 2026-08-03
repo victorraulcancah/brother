@@ -10,6 +10,7 @@ use App\Http\Controllers\CajaController;
 use App\Http\Controllers\CuentaBancariaController;
 use App\Http\Controllers\CuentaPorCobrarController;
 use App\Http\Controllers\CuentaPorPagarController;
+use App\Http\Controllers\MiCajaController;
 use App\Http\Controllers\MovimientoCajaController;
 use App\Http\Controllers\TarjetaBancariaController;
 use App\Http\Controllers\CategoriaController;
@@ -96,6 +97,9 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('tarjetas-bancarias', TarjetaBancariaController::class);
     Route::apiResource('billeteras-digitales', BilleteraDigitalController::class);
     Route::apiResource('cajas', CajaController::class);
+    Route::get('mi-caja', [MiCajaController::class, 'show']);
+    Route::post('mi-caja/abrir', [MiCajaController::class, 'abrir']);
+    Route::post('mi-caja/cerrar', [MiCajaController::class, 'cerrar']);
     Route::get('movimientos-caja', [MovimientoCajaController::class, 'index']);
 Route::post('movimientos-caja', [MovimientoCajaController::class, 'store']);
     Route::get('cuentas-por-cobrar', [CuentaPorCobrarController::class, 'index']);
