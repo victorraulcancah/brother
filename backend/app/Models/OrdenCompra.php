@@ -55,4 +55,10 @@ class OrdenCompra extends Model
     {
         return $this->hasMany(RecepcionCompra::class);
     }
+
+    /** Compras generadas a partir de esta orden. */
+    public function compras()
+    {
+        return $this->hasMany(Compra::class);
+    }
 }

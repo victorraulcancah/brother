@@ -60,6 +60,7 @@ const routes = [
     { path: '/proveedores', element: <Proveedores /> },
     { path: '/ordenes-compra', element: <OrdenesCompra /> },
     { path: '/ordenes-compra/nueva', element: <CrearOrdenCompra /> },
+    { path: '/ordenes-compra/:id/editar', element: <CrearOrdenCompra /> },
     { path: '/compras', element: <Compras /> },
     { path: '/compras/nueva', element: <CrearCompra /> },
     { path: '/recepciones-compra', element: <RecepcionesCompra /> },

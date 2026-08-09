@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Trash2 } from 'lucide-react';
+import { FileDown, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
@@ -49,8 +49,8 @@ export default function OrdenesCompra() {
             toast.success('Orden eliminada.');
             setDeleteTarget(null);
             await load();
-        } catch {
-            toast.error('No se pudo eliminar la orden.');
+        } catch (err) {
+            toast.error(err.response?.data?.message ?? 'No se pudo eliminar la orden.');
         } finally {
             setDeleting(false);
         }
@@ -79,18 +79,55 @@ export default function OrdenesCompra() {
             },
         },
         {
+            key: 'compras_count',
+            label: 'Compra',
+            render: (row) =>
+                row.compras_count > 0 ? (
+                    <Badge variant="green">Transformada</Badge>
+                ) : (
+                    <Badge variant="gray">Sin compra</Badge>
+                ),
+        },
+        {
             type: 'actions',
             key: 'actions',
             label: 'Acciones',
-            actions: (row) => (
-                <button
-                    aria-label="Eliminar"
-                    onClick={() => setDeleteTarget(row)}
-                    className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700"
-                >
-                    <Trash2 className="h-4 w-4" />
-                </button>
-            ),
+            actions: (row) => {
+                // Una orden ya transformada en compra queda congelada.
+                const bloqueada = row.compras_count > 0;
+
+                return (
+                    <>
+                        <button
+                            aria-label="Transformar a compra"
+                            title={bloqueada ? 'Ya se transformó en compra' : 'Transformar a compra'}
+                            disabled={bloqueada}
+                            onClick={() => navigate(`/compras/nueva?orden=${row.id}`)}
+                            className="rounded-md p-1.5 text-green-600 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                        >
+                            <FileDown className="h-4 w-4" />
+                        </button>
+                        <button
+                            aria-label="Editar"
+                            title={bloqueada ? 'No se puede editar: ya tiene compra' : 'Editar'}
+                            disabled={bloqueada}
+                            onClick={() => navigate(`/ordenes-compra/${row.id}/editar`)}
+                            className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                        >
+                            <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                            aria-label="Eliminar"
+                            title={bloqueada ? 'No se puede eliminar: ya tiene compra' : 'Eliminar'}
+                            disabled={bloqueada}
+                            onClick={() => setDeleteTarget(row)}
+                            className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </button>
+                    </>
+                );
+            },
         },
     ];
 

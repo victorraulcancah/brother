@@ -1,26 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Package, Plus, ShoppingBag, Trash2, Wallet } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import MetodoCajaPicker from '../components/MetodoCajaPicker';
-import { Alert, Button, Input, Select, Spinner } from '../components/ui';
+import ProductoPickerModal from '../components/ProductoPickerModal';
+import { Button, Input, SearchSelect, Select, Spinner } from '../components/ui';
 
 const money = (n) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-const emptyLinea = { producto_presentacion_id: '', cantidad: '1', costo_unitario: '0' };
+const panelVacio = { producto_id: '', producto_presentacion_id: '', cantidad: '1', costo_unitario: '0' };
 const emptyPago = () => ({ tipo: 'efectivo', cuentaId: '', billeteraId: '', monto: '' });
 
 export default function CrearCompra() {
     const toast = useToast();
     const navigate = useNavigate();
+    /** ?orden=12 → la compra nace de esa orden de compra y queda ligada a ella. */
+    const [searchParams] = useSearchParams();
+    const ordenCompraId = searchParams.get('orden');
+    const [ordenCodigo, setOrdenCodigo] = useState('');
 
     const [proveedores, setProveedores] = useState([]);
     const [productos, setProductos] = useState([]);
+    const [stockPorProducto, setStockPorProducto] = useState({});
     const [cuentas, setCuentas] = useState([]);
     const [billeteras, setBilleteras] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -32,7 +38,6 @@ export default function CrearCompra() {
         tipo_documento: 'factura',
         serie: '',
         numero: '',
-        guia: '',
         fecha: hoy(),
         forma_pago: 'contado',
         dias_credito: 0,
@@ -40,15 +45,23 @@ export default function CrearCompra() {
         flete: '0',
         observaciones: '',
     });
-    const [lineas, setLineas] = useState([{ ...emptyLinea }]);
+
+    /** Panel superior de búsqueda/alta. */
+    const [panel, setPanel] = useState({ ...panelVacio });
+    /** Productos ya agregados a la compra. */
+    const [items, setItems] = useState([]);
+    /** Buscador avanzado de productos. */
+    const [picker, setPicker] = useState({ open: false, query: '' });
+
     const [pagos, setPagos] = useState([emptyPago()]);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [provRes, prodRes, cuentasRes, billeterasRes] = await Promise.all([
+            const [provRes, prodRes, existRes, cuentasRes, billeterasRes] = await Promise.all([
                 api.get('/proveedores'),
-                api.get('/productos'),
+                api.get('/productos', { params: { per_page: 500 } }),
+                api.get('/existencias'),
                 api.get('/cuentas-bancarias'),
                 api.get('/billeteras-digitales'),
             ]);
@@ -56,88 +69,262 @@ export default function CrearCompra() {
             setProductos(asList(prodRes));
             setCuentas(asList(cuentasRes));
             setBilleteras(asList(billeterasRes));
+
+            // El stock vive por almacén: lo acumulamos por producto (en unidad base).
+            setStockPorProducto(
+                asList(existRes).reduce((acc, fila) => {
+                    const pid = String(fila.producto_id);
+                    acc[pid] = (acc[pid] ?? 0) + (Number(fila.stock_actual) || 0);
+                    return acc;
+                }, {}),
+            );
+
+            if (!ordenCompraId) return;
+
+            // Transformar orden → compra: se copian proveedor y líneas.
+            const { data: orden } = await api.get(`/ordenes-compra/${ordenCompraId}`);
+            setOrdenCodigo(orden.codigo ?? '');
+            setForm((prev) => ({
+                ...prev,
+                proveedor_id: orden.proveedor_id ? String(orden.proveedor_id) : '',
+            }));
+            setItems(
+                (orden.detalles ?? []).map((d) => ({
+                    producto_id: String(d.presentacion?.producto_id ?? d.presentacion?.producto?.id ?? ''),
+                    producto_presentacion_id: String(d.producto_presentacion_id),
+                    cantidad: String(d.cantidad),
+                    costo_unitario: String(d.precio_unitario),
+                })),
+            );
         } catch {
             toast.error('No se pudieron cargar proveedores/productos.');
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, ordenCompraId]);
 
     useEffect(() => {
         load();
     }, [load]);
 
-    const presentacionesOptions = useMemo(
-        () =>
-            productos.flatMap((p) =>
-                (Array.isArray(p.presentaciones) ? p.presentaciones : []).map((pres) => ({
-                    value: String(pres.id),
-                    label: `${p.nombre} — ${pres.nombre}`,
-                })),
-            ),
+    const productoDe = useCallback(
+        (productoId) => productos.find((p) => String(p.id) === String(productoId)) ?? null,
         [productos],
     );
 
-    const setField = (name, value) => setForm((prev) => ({ ...prev, [name]: value }));
+    const presentacionDe = useCallback(
+        (productoId, presentacionId) =>
+            (productoDe(productoId)?.presentaciones ?? []).find(
+                (pres) => String(pres.id) === String(presentacionId),
+            ) ?? null,
+        [productoDe],
+    );
 
-    const setLinea = (i, patch) => setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
-    const addLinea = () => setLineas((prev) => [...prev, { ...emptyLinea }]);
-    const removeLinea = (i) => setLineas((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
+    const productosOptions = useMemo(
+        () =>
+            productos.map((p) => ({
+                value: String(p.id),
+                label: p.nombre,
+                keywords: `${p.codigo ?? ''} ${p.codigo_barras ?? ''}`,
+            })),
+        [productos],
+    );
+
+    /** Unidades (presentaciones activas) del producto elegido. */
+    const unidadesDe = useCallback(
+        (productoId) =>
+            (productoDe(productoId)?.presentaciones ?? [])
+                .filter((pres) => pres.activo !== false)
+                .map((pres) => ({ value: String(pres.id), label: pres.nombre })),
+        [productoDe],
+    );
+
+    const productoPanel = productoDe(panel.producto_id);
+    const unidadesPanel = unidadesDe(panel.producto_id);
+
+    const stockPanel = useMemo(() => {
+        if (!productoPanel) return '';
+        const cantidad = stockPorProducto[String(productoPanel.id)] ?? 0;
+        const abrev = productoPanel.unidad_medida?.abreviatura ?? '';
+        return `${new Intl.NumberFormat('es-PE').format(cantidad)}${abrev ? ` ${abrev}` : ''}`;
+    }, [productoPanel, stockPorProducto]);
+
+    const setField = (name, value) => {
+        setForm((prev) => ({ ...prev, [name]: value }));
+        if (formErrors[name]) setFormErrors((prev) => ({ ...prev, [name]: undefined }));
+    };
+
+    const setPanelCampo = (patch) => setPanel((prev) => ({ ...prev, ...patch }));
+
+    const elegirProducto = (productoId) => {
+        const unidades = unidadesDe(productoId);
+        const presentacionId = unidades.length === 1 ? unidades[0].value : '';
+        setPanel({
+            producto_id: productoId,
+            producto_presentacion_id: presentacionId,
+            cantidad: '1',
+            costo_unitario: presentacionId
+                ? String(Number(presentacionDe(productoId, presentacionId)?.precio_compra) || 0)
+                : '0',
+        });
+    };
+
+    const elegirUnidad = (presentacionId) =>
+        setPanelCampo({
+            producto_presentacion_id: presentacionId,
+            costo_unitario: String(
+                Number(presentacionDe(panel.producto_id, presentacionId)?.precio_compra) || 0,
+            ),
+        });
+
+    const limpiarPanel = () => setPanel({ ...panelVacio });
+
+    /**
+     * Resultado del buscador avanzado: llegan los productos marcados con su unidad y
+     * la cantidad escrita ahí mismo. Van directo a la tabla.
+     */
+    const agregarDesdePicker = (seleccionados) => {
+        const utiles = seleccionados.filter((s) => s.presentacion && s.cantidad > 0);
+        if (utiles.length === 0) return;
+
+        setItems((prev) => {
+            const next = [...prev];
+
+            utiles.forEach(({ producto, presentacion, cantidad }) => {
+                const i = next.findIndex(
+                    (it) => String(it.producto_presentacion_id) === String(presentacion.id),
+                );
+                if (i !== -1) {
+                    next[i] = {
+                        ...next[i],
+                        cantidad: String((Number(next[i].cantidad) || 0) + cantidad),
+                    };
+                } else {
+                    next.push({
+                        producto_id: String(producto.id),
+                        producto_presentacion_id: String(presentacion.id),
+                        cantidad: String(cantidad),
+                        costo_unitario: String(Number(presentacion.precio_compra) || 0),
+                    });
+                }
+            });
+
+            return next;
+        });
+
+        toast.success(
+            utiles.length === 1 ? 'Producto agregado.' : `${utiles.length} productos agregados.`,
+        );
+        limpiarPanel();
+    };
+
+    const agregarProducto = () => {
+        if (!panel.producto_id) return toast.error('Busca y elige un producto.');
+        if (!panel.producto_presentacion_id) return toast.error('Elige la unidad de medida.');
+        if (!(Number(panel.cantidad) > 0)) return toast.error('La cantidad debe ser mayor a 0.');
+
+        const nuevo = {
+            producto_id: panel.producto_id,
+            producto_presentacion_id: panel.producto_presentacion_id,
+            cantidad: panel.cantidad,
+            costo_unitario: panel.costo_unitario || '0',
+        };
+
+        // Si ya existe la misma presentación, se acumula en vez de duplicar la línea.
+        const yaEsta = items.findIndex(
+            (it) => String(it.producto_presentacion_id) === String(nuevo.producto_presentacion_id),
+        );
+        if (yaEsta !== -1) {
+            setItems((prev) =>
+                prev.map((it, i) =>
+                    i === yaEsta
+                        ? {
+                              ...it,
+                              cantidad: String((Number(it.cantidad) || 0) + (Number(nuevo.cantidad) || 0)),
+                              costo_unitario: nuevo.costo_unitario,
+                          }
+                        : it,
+                ),
+            );
+            toast.success('Se sumó la cantidad al producto ya agregado.');
+        } else {
+            setItems((prev) => [...prev, nuevo]);
+        }
+        limpiarPanel();
+    };
+
+    const setItem = (i, patch) =>
+        setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
+
+    /** Cambiar la unidad de una fila trae el precio de compra de esa presentación. */
+    const cambiarUnidadItem = (i, presentacionId) =>
+        setItem(i, {
+            producto_presentacion_id: presentacionId,
+            costo_unitario: String(
+                Number(presentacionDe(items[i].producto_id, presentacionId)?.precio_compra) || 0,
+            ),
+        });
+
+    const quitarItem = (i) => setItems((prev) => prev.filter((_, idx) => idx !== i));
 
     const setPago = (i, patch) => setPagos((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
     const addPago = () => setPagos((prev) => [...prev, emptyPago()]);
     const removePago = (i) => setPagos((prev) => prev.filter((_, idx) => idx !== i));
 
-    const subtotal = lineas.reduce((acc, l) => acc + (Number(l.cantidad) || 0) * (Number(l.costo_unitario) || 0), 0);
+    const subtotal = items.reduce(
+        (acc, it) => acc + (Number(it.cantidad) || 0) * (Number(it.costo_unitario) || 0),
+        0,
+    );
     const flete = Number(form.flete) || 0;
     const total = subtotal + flete;
     const pagado = pagos.reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
     const saldo = total - pagado;
 
     const guardar = async () => {
-        setSaving(true);
-        setFormErrors({});
-
-        const lineasValidas = lineas.filter((l) => l.producto_presentacion_id && Number(l.cantidad) > 0);
-        if (lineasValidas.length === 0) {
+        if (items.length === 0) {
             toast.error('Agrega al menos un producto.');
-            setSaving(false);
             return;
         }
+
+        setSaving(true);
+        setFormErrors({});
 
         try {
             await api.post('/compras', {
                 proveedor_id: form.proveedor_id || null,
+                orden_compra_id: ordenCompraId || null,
                 tipo_documento: form.tipo_documento,
                 serie: form.serie,
                 numero: form.numero,
-                guia: form.guia,
                 fecha: form.fecha,
                 forma_pago: form.forma_pago,
                 dias_credito: form.forma_pago === 'credito' ? Number(form.dias_credito) || 0 : 0,
                 fecha_vencimiento: form.forma_pago === 'credito' ? form.fecha_vencimiento : null,
                 flete,
                 observaciones: form.observaciones,
-                detalles: lineasValidas.map((l) => ({
-                    producto_presentacion_id: l.producto_presentacion_id,
-                    cantidad: l.cantidad,
-                    costo_unitario: l.costo_unitario,
+                detalles: items.map((it) => ({
+                    producto_presentacion_id: it.producto_presentacion_id,
+                    cantidad: it.cantidad,
+                    costo_unitario: it.costo_unitario || 0,
                 })),
-                pagos: pagos.filter((p) => Number(p.monto) > 0).map((p) => ({
-                    metodo: p.tipo,
-                    cuenta_bancaria_id: p.tipo === 'transferencia' ? p.cuentaId || null : null,
-                    billetera_id: p.tipo === 'billetera' ? p.billeteraId || null : null,
-                    monto: p.monto,
-                })),
+                pagos: pagos
+                    .filter((p) => Number(p.monto) > 0)
+                    .map((p) => ({
+                        metodo: p.tipo,
+                        cuenta_bancaria_id: p.tipo === 'transferencia' ? p.cuentaId || null : null,
+                        billetera_id: p.tipo === 'billetera' ? p.billeteraId || null : null,
+                        monto: p.monto,
+                    })),
             });
             toast.success('Compra registrada correctamente.');
             navigate('/compras');
         } catch (err) {
-            if (err.response?.status === 422) {
-                setFormErrors(Object.fromEntries(Object.entries(err.response.data?.errors ?? {}).map(([k, v]) => [k, v[0]])));
+            const errores = err.response?.data?.errors;
+            if (err.response?.status === 422 && errores) {
+                setFormErrors(Object.fromEntries(Object.entries(errores).map(([k, v]) => [k, v[0]])));
                 toast.error('Revisa los datos del formulario.');
             } else {
-                toast.error('No se pudo registrar la compra.');
+                toast.error(err.response?.data?.message ?? 'No se pudo registrar la compra.');
             }
         } finally {
             setSaving(false);
@@ -157,22 +344,24 @@ export default function CrearCompra() {
     return (
         <Layout>
             {/* Encabezado */}
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => navigate('/compras')}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-edge text-gray-500 transition hover:bg-gray-50 hover:text-gray-800"
-                        aria-label="Volver"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                    </button>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
-                        <ShoppingBag className="h-5 w-5" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-bold tracking-tight text-warm-900">Crear Compra</h1>
-                        <p className="text-sm text-warm-500">Comprobante del proveedor y registro de pago</p>
-                    </div>
+            <div className="mb-6 flex items-center gap-3">
+                <button
+                    onClick={() => navigate('/compras')}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-edge text-gray-500 transition hover:bg-gray-50 hover:text-gray-800"
+                    aria-label="Volver"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                </button>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
+                    <ShoppingBag className="h-5 w-5" />
+                </div>
+                <div>
+                    <h1 className="text-xl font-bold tracking-tight text-warm-900">Crear Compra</h1>
+                    <p className="text-sm text-warm-500">
+                        {ordenCodigo
+                            ? `Generada desde la orden ${ordenCodigo}`
+                            : 'Comprobante del proveedor y registro de pago'}
+                    </p>
                 </div>
             </div>
 
@@ -183,13 +372,17 @@ export default function CrearCompra() {
                 </div>
                 <div className="grid grid-cols-2 gap-4 p-5 md:grid-cols-4">
                     <Input label="Fecha" type="date" value={form.fecha} onChange={(e) => setField('fecha', e.target.value)} error={formErrors.fecha} />
-                    <Select
-                        label="Proveedor"
-                        value={form.proveedor_id}
-                        onChange={(e) => setField('proveedor_id', e.target.value)}
-                        options={[{ value: '', label: 'Sin proveedor' }, ...proveedores.map((p) => ({ value: String(p.id), label: p.nombre }))]}
-                        className="col-span-2"
-                    />
+                    <div className="md:col-span-2">
+                        <SearchSelect
+                            label="Proveedor"
+                            value={form.proveedor_id}
+                            onChange={(v) => setField('proveedor_id', v)}
+                            options={proveedores.map((p) => ({ value: String(p.id), label: p.nombre }))}
+                            placeholder="Buscar proveedor…"
+                            emptyText="Sin coincidencias"
+                            error={formErrors.proveedor_id}
+                        />
+                    </div>
                     <Select
                         label="Tipo documento"
                         value={form.tipo_documento}
@@ -197,12 +390,10 @@ export default function CrearCompra() {
                         options={[
                             { value: 'factura', label: 'Factura' },
                             { value: 'boleta', label: 'Boleta' },
-                            { value: 'guia', label: 'Guía de Remisión' },
                         ]}
                     />
-                    <Input label="Serie" placeholder="F001" value={form.serie} onChange={(e) => setField('serie', e.target.value)} />
-                    <Input label="Número" placeholder="00000000" value={form.numero} onChange={(e) => setField('numero', e.target.value)} />
-                    <Input label="Guía" placeholder="T001-00001" value={form.guia} onChange={(e) => setField('guia', e.target.value)} />
+                    <Input label="Serie" placeholder="F001" value={form.serie} onChange={(e) => setField('serie', e.target.value)} error={formErrors.serie} />
+                    <Input label="Número" placeholder="00000000" value={form.numero} onChange={(e) => setField('numero', e.target.value)} error={formErrors.numero} />
                     <Select
                         label="Forma de pago"
                         value={form.forma_pago}
@@ -221,54 +412,164 @@ export default function CrearCompra() {
                 </div>
             </div>
 
-            {/* Productos */}
+            {/* Panel de búsqueda y alta de producto */}
+            <div className="mb-6 rounded-xl border border-edge bg-white p-5 shadow-sm">
+                <h2 className="mb-3 text-sm font-semibold text-warm-900">Buscar Producto</h2>
+
+                <SearchSelect
+                    value={panel.producto_id}
+                    onChange={elegirProducto}
+                    options={productosOptions}
+                    placeholder="Buscar producto por nombre o código…"
+                    emptyText="Sin coincidencias"
+                    searchTitle="Buscador avanzado con filtros"
+                    onSearch={(q) => setPicker({ open: true, query: q })}
+                />
+
+                <div className="mt-4">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Descripción</label>
+                    <input
+                        readOnly
+                        value={productoPanel?.descripcion ?? productoPanel?.nombre ?? ''}
+                        placeholder="—"
+                        className="block w-full rounded-md border-0 bg-white px-3 py-2 text-sm text-warm-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400"
+                    />
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">Stock</label>
+                        <input
+                            readOnly
+                            value={stockPanel}
+                            placeholder="—"
+                            className="block w-full rounded-md border-0 bg-gray-50 px-3 py-2 text-center text-sm text-gray-500 shadow-sm ring-1 ring-inset ring-gray-300"
+                        />
+                    </div>
+                    <Select
+                        label="Unidad"
+                        value={panel.producto_presentacion_id}
+                        disabled={!panel.producto_id}
+                        onChange={(e) => elegirUnidad(e.target.value)}
+                        options={[
+                            { value: '', label: panel.producto_id ? 'Unidad…' : '—' },
+                            ...unidadesPanel,
+                        ]}
+                    />
+                    <Input
+                        label="Cantidad"
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={panel.cantidad}
+                        onChange={(e) => setPanelCampo({ cantidad: e.target.value })}
+                        className="text-center"
+                    />
+                    <Input
+                        label="Costo"
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={panel.costo_unitario}
+                        onChange={(e) => setPanelCampo({ costo_unitario: e.target.value })}
+                        className="text-center"
+                    />
+                </div>
+
+                <Button type="button" onClick={agregarProducto} className="mt-4 w-full justify-center md:w-auto md:min-w-[280px]">
+                    <Plus className="h-4 w-4" /> Agregar Producto
+                </Button>
+            </div>
+
+            {/* Productos agregados */}
             <div className="mb-6 rounded-xl border border-edge bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-edge px-5 py-3">
-                    <h2 className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-warm-500">
-                        <Package className="h-4 w-4" /> Productos de la compra
+                    <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-warm-900">
+                        <Package className="h-4 w-4 text-primary-600" /> Productos
                     </h2>
-                    <Button type="button" variant="ghost" size="sm" onClick={addLinea}>
-                        <Plus className="h-4 w-4" /> Agregar línea
-                    </Button>
+                    <span className="text-xs text-warm-500">
+                        {items.length} {items.length === 1 ? 'ítem agregado' : 'ítems agregados'}
+                    </span>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full min-w-[720px] text-sm">
+                    <table className="w-full min-w-[820px] text-sm">
                         <thead>
                             <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
-                                <th className="px-3 py-2.5">Producto / Presentación</th>
-                                <th className="px-3 py-2.5 text-right">Cantidad</th>
-                                <th className="px-3 py-2.5 text-right">Costo (S/)</th>
+                                <th className="px-3 py-2.5 text-center">#</th>
+                                <th className="px-3 py-2.5">Código</th>
+                                <th className="px-3 py-2.5">Producto</th>
+                                <th className="px-3 py-2.5">Unidad</th>
+                                <th className="px-3 py-2.5 text-right">Cant</th>
+                                <th className="px-3 py-2.5 text-right">Costo</th>
                                 <th className="px-3 py-2.5 text-right">Subtotal</th>
-                                <th className="px-3 py-2.5 text-center">—</th>
+                                <th className="px-3 py-2.5 text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {lineas.map((l, i) => (
-                                <tr key={i}>
-                                    <td className="px-3 py-2">
-                                        <Select
-                                            value={l.producto_presentacion_id}
-                                            onChange={(e) => setLinea(i, { producto_presentacion_id: e.target.value })}
-                                            options={[{ value: '', label: 'Selecciona producto…' }, ...presentacionesOptions]}
-                                        />
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        <Input type="number" min="0" step="any" value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} className="text-right" />
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        <Input type="number" min="0" step="any" value={l.costo_unitario} onChange={(e) => setLinea(i, { costo_unitario: e.target.value })} className="text-right" />
-                                    </td>
-                                    <td className="px-3 py-2 text-right font-medium text-warm-900">
-                                        {money((Number(l.cantidad) || 0) * (Number(l.costo_unitario) || 0))}
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                        <button type="button" onClick={() => removeLinea(i)} disabled={lineas.length === 1}
-                                            className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 disabled:opacity-40" aria-label="Quitar">
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                            {items.length === 0 && (
+                                <tr>
+                                    <td colSpan={8} className="px-3 py-10 text-center text-sm text-warm-500">
+                                        Busca un producto arriba para agregarlo a la compra
                                     </td>
                                 </tr>
-                            ))}
+                            )}
+
+                            {items.map((it, i) => {
+                                const producto = productoDe(it.producto_id);
+                                const sub = (Number(it.cantidad) || 0) * (Number(it.costo_unitario) || 0);
+
+                                return (
+                                    <tr key={i}>
+                                        <td className="px-3 py-2 text-center text-warm-500">{i + 1}</td>
+                                        <td className="px-3 py-2 font-medium text-warm-900">{producto?.codigo ?? '—'}</td>
+                                        <td className="px-3 py-2 font-semibold text-warm-900">{producto?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2">
+                                            <Select
+                                                value={it.producto_presentacion_id}
+                                                onChange={(e) => cambiarUnidadItem(i, e.target.value)}
+                                                options={unidadesDe(it.producto_id)}
+                                                aria-label="Unidad"
+                                                className="min-w-[120px]"
+                                            />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                value={it.cantidad}
+                                                onChange={(e) => setItem(i, { cantidad: e.target.value })}
+                                                aria-label="Cantidad"
+                                                className="text-right"
+                                            />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                value={it.costo_unitario}
+                                                onChange={(e) => setItem(i, { costo_unitario: e.target.value })}
+                                                aria-label="Costo unitario"
+                                                className="text-right"
+                                            />
+                                        </td>
+                                        <td className="px-3 py-2 text-right font-semibold text-primary-600">{money(sub)}</td>
+                                        <td className="px-3 py-2">
+                                            <div className="flex items-center justify-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => quitarItem(i)}
+                                                    aria-label="Quitar"
+                                                    className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -295,7 +596,7 @@ export default function CrearCompra() {
                                         onChange={({ tipo, cuentaId, billeteraId }) => setPago(i, { tipo, cuentaId, billeteraId })}
                                     />
                                     <div className="mt-2 flex items-center gap-2">
-                                        <Input type="number" min="0" step="any" placeholder="Monto" value={p.monto} onChange={(e) => setPago(i, { monto: e.target.value })} className="flex-1 text-right" />
+                                        <Input type="number" min="0" step="any" placeholder="Monto" value={p.monto} onChange={(e) => setPago(i, { monto: e.target.value })} className="text-right" />
                                         <button type="button" onClick={() => removePago(i)}
                                             className="rounded-md p-2 text-red-600 transition hover:bg-red-50" aria-label="Quitar">
                                             <Trash2 className="h-4 w-4" />
@@ -366,6 +667,18 @@ export default function CrearCompra() {
                     </div>
                 </div>
             </div>
+
+            <ProductoPickerModal
+                open={picker.open}
+                onClose={() => setPicker((prev) => ({ ...prev, open: false }))}
+                onSelect={agregarDesdePicker}
+                initialQuery={picker.query}
+                multiple
+                stockFilter
+                productos={productos}
+                stockPorProducto={stockPorProducto}
+                title="Buscar productos"
+            />
         </Layout>
     );
 }

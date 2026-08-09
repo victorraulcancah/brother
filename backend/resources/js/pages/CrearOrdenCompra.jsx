@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, FileText, Package, Plus, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
@@ -17,6 +17,11 @@ const panelVacio = { producto_id: '', producto_presentacion_id: '', cantidad: '1
 export default function CrearOrdenCompra() {
     const toast = useToast();
     const navigate = useNavigate();
+    /** Con :id la pantalla trabaja en modo edición sobre una orden existente. */
+    const { id } = useParams();
+    const editando = Boolean(id);
+
+    const [codigo, setCodigo] = useState('');
 
     const [proveedores, setProveedores] = useState([]);
     const [productos, setProductos] = useState([]);
@@ -26,7 +31,6 @@ export default function CrearOrdenCompra() {
     const [formErrors, setFormErrors] = useState({});
 
     const [form, setForm] = useState({
-        codigo: '',
         proveedor_id: '',
         fecha_emision: hoy(),
         fecha_entrega_estimada: '',
@@ -59,12 +63,32 @@ export default function CrearOrdenCompra() {
                     return acc;
                 }, {}),
             );
+
+            if (!id) return;
+
+            // Modo edición: la orden se vuelca al formulario y a la tabla.
+            const { data: orden } = await api.get(`/ordenes-compra/${id}`);
+            setCodigo(orden.codigo ?? '');
+            setForm({
+                proveedor_id: orden.proveedor_id ? String(orden.proveedor_id) : '',
+                fecha_emision: (orden.fecha_emision ?? '').slice(0, 10),
+                fecha_entrega_estimada: (orden.fecha_entrega_estimada ?? '').slice(0, 10),
+                observaciones: orden.observaciones ?? '',
+            });
+            setItems(
+                (orden.detalles ?? []).map((d) => ({
+                    producto_id: String(d.presentacion?.producto_id ?? d.presentacion?.producto?.id ?? ''),
+                    producto_presentacion_id: String(d.producto_presentacion_id),
+                    cantidad: String(d.cantidad),
+                    precio_unitario: String(d.precio_unitario),
+                })),
+            );
         } catch {
-            toast.error('No se pudieron cargar proveedores/productos.');
+            toast.error('No se pudieron cargar los datos de la orden.');
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, id]);
 
     useEffect(() => {
         load();
@@ -244,32 +268,36 @@ export default function CrearOrdenCompra() {
         setSaving(true);
         setFormErrors({});
 
+        // El código es correlativo interno: lo asigna el backend.
+        const payload = {
+            proveedor_id: form.proveedor_id,
+            fecha_emision: form.fecha_emision,
+            fecha_entrega_estimada: form.fecha_entrega_estimada || null,
+            moneda: 'PEN',
+            observaciones: form.observaciones,
+            detalles: items.map((it) => ({
+                producto_presentacion_id: it.producto_presentacion_id,
+                cantidad: it.cantidad,
+                precio_unitario: it.precio_unitario || 0,
+            })),
+        };
+
         try {
-            await api.post('/ordenes-compra', {
-                codigo: form.codigo,
-                proveedor_id: form.proveedor_id,
-                fecha_emision: form.fecha_emision,
-                fecha_entrega_estimada: form.fecha_entrega_estimada || null,
-                moneda: 'PEN',
-                observaciones: form.observaciones,
-                detalles: items.map((it) => ({
-                    producto_presentacion_id: it.producto_presentacion_id,
-                    cantidad: it.cantidad,
-                    precio_unitario: it.precio_unitario || 0,
-                })),
-            });
-            toast.success('Orden de compra creada correctamente.');
+            if (editando) await api.put(`/ordenes-compra/${id}`, payload);
+            else await api.post('/ordenes-compra', payload);
+
+            toast.success(editando ? 'Orden actualizada correctamente.' : 'Orden de compra creada correctamente.');
             navigate('/ordenes-compra');
         } catch (err) {
-            if (err.response?.status === 422) {
+            const errores = err.response?.data?.errors;
+            if (err.response?.status === 422 && errores) {
                 setFormErrors(
-                    Object.fromEntries(
-                        Object.entries(err.response.data?.errors ?? {}).map(([k, v]) => [k, v[0]]),
-                    ),
+                    Object.fromEntries(Object.entries(errores).map(([k, v]) => [k, v[0]])),
                 );
                 toast.error('Revisa los datos del formulario.');
             } else {
-                toast.error('No se pudo crear la orden.');
+                // El backend bloquea editar una orden ya transformada en compra.
+                toast.error(err.response?.data?.message ?? 'No se pudo guardar la orden.');
             }
         } finally {
             setSaving(false);
@@ -300,7 +328,9 @@ export default function CrearOrdenCompra() {
                     <FileText className="h-5 w-5" />
                 </div>
                 <div>
-                    <h1 className="text-xl font-bold tracking-tight text-warm-900">Crear Orden de Compra</h1>
+                    <h1 className="text-xl font-bold tracking-tight text-warm-900">
+                        {editando ? `Editar Orden ${codigo}` : 'Crear Orden de Compra'}
+                    </h1>
                     <p className="text-sm text-warm-500">Pedido formal de productos al proveedor</p>
                 </div>
             </div>
@@ -311,7 +341,15 @@ export default function CrearOrdenCompra() {
                     <h2 className="text-xs font-bold uppercase tracking-wide text-warm-500">Datos de la orden</h2>
                 </div>
                 <div className="grid grid-cols-2 gap-4 p-5 md:grid-cols-4">
-                    <Input label="Código" placeholder="OC-001" value={form.codigo} onChange={(e) => setField('codigo', e.target.value)} error={formErrors.codigo} />
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">Código</label>
+                        <input
+                            readOnly
+                            value={codigo || 'Se genera automáticamente'}
+                            className="block w-full rounded-md border-0 bg-gray-50 px-3 py-2 text-sm text-gray-500 shadow-sm ring-1 ring-inset ring-gray-300"
+                        />
+                        {formErrors.codigo && <p className="mt-1 text-xs text-red-600">{formErrors.codigo}</p>}
+                    </div>
                     <div className="md:col-span-2">
                         <SearchSelect
                             label="Proveedor"
@@ -513,7 +551,7 @@ export default function CrearOrdenCompra() {
                         </div>
                         <div className="mt-5 flex flex-col gap-2">
                             <Button onClick={guardar} loading={saving} className="w-full justify-center">
-                                Crear orden
+                                {editando ? 'Guardar cambios' : 'Crear orden'}
                             </Button>
                             <Button variant="secondary" onClick={() => navigate('/ordenes-compra')} className="w-full justify-center">
                                 Cancelar
