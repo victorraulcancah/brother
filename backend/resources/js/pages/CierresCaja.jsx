@@ -3,7 +3,7 @@ import { Coins } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
-import { Alert, Badge, Button, DataTable, Select, Spinner } from '../components/ui';
+import { Alert, Badge, Button, DataTable, Select } from '../components/ui';
 
 const money = (n) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
@@ -238,6 +238,64 @@ export default function CierresCaja() {
         },
     ];
 
+    const movColumns = [
+        {
+            key: 'idx',
+            label: '#',
+            width: '56px',
+            searchable: false,
+            render: (row) => <span className="text-warm-500">{movimientos.indexOf(row) + 1}</span>,
+        },
+        {
+            key: 'fecha',
+            label: 'Fecha',
+            width: '176px',
+            getSearchValue: (row) => fechaCorta(row.fecha),
+            render: (row) => <span className="whitespace-nowrap text-warm-500">{fechaHora(row.fecha)}</span>,
+        },
+        {
+            key: 'tipo',
+            label: 'Tipo',
+            width: '110px',
+            getSearchValue: (row) => (row.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'),
+            render: (row) => (
+                <Badge variant={row.tipo === 'ingreso' ? 'green' : 'red'}>
+                    {row.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}
+                </Badge>
+            ),
+        },
+        {
+            key: 'motivo',
+            label: 'Motivo',
+            getSearchValue: (row) => `${row.motivo?.nombre ?? ''} ${row.descripcion ?? ''}`,
+            render: (row) => (
+                <div className="leading-tight">
+                    <div className="text-warm-900">{row.motivo?.nombre ?? '—'}</div>
+                    {row.descripcion && <div className="text-xs text-warm-500">{row.descripcion}</div>}
+                </div>
+            ),
+        },
+        {
+            key: 'metodo',
+            label: 'Método',
+            width: '192px',
+            getSearchValue: (row) => metodoLabel(row),
+            render: (row) => <span className="block truncate text-warm-500">{metodoLabel(row)}</span>,
+        },
+        {
+            key: 'monto',
+            label: 'Monto',
+            width: '144px',
+            align: 'right',
+            searchable: false,
+            render: (row) => (
+                <span className={row.tipo === 'ingreso' ? 'font-semibold text-green-600' : 'font-semibold text-red-600'}>
+                    {row.tipo === 'ingreso' ? '+' : '-'} {money(row.monto)}
+                </span>
+            ),
+        },
+    ];
+
     return (
         <Layout>
             <PageHeader
@@ -262,8 +320,8 @@ export default function CierresCaja() {
             />
 
             {/* Movimientos entre la apertura y el cierre seleccionado */}
-            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-5 py-3">
+            <div className="mt-6">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-sm font-semibold text-warm-900">
                         Movimientos
                         {seleccionado?.apertura?.caja?.nombre ? ` · ${seleccionado.apertura.caja.nombre}` : ''}
@@ -276,7 +334,8 @@ export default function CierresCaja() {
                                 {movimientos.length === 1 ? 'movimiento' : 'movimientos'}
                             </span>
                             <span>
-                                Efectivo: <strong className="text-warm-900">
+                                Efectivo:{' '}
+                                <strong className="text-warm-900">
                                     {money(
                                         Number(seleccionado.apertura?.monto_inicial ?? 0) +
                                             Number(seleccionado.efectivo_ingresos ?? 0) -
@@ -289,75 +348,29 @@ export default function CierresCaja() {
                                 <strong className="text-warm-900">{money(seleccionado.transferencias)}</strong>
                             </span>
                             <span>
-                                Billeteras: <strong className="text-warm-900">{money(seleccionado.billeteras)}</strong>
+                                Billeteras:{' '}
+                                <strong className="text-warm-900">{money(seleccionado.billeteras)}</strong>
                             </span>
                         </span>
                     )}
                 </div>
 
-                {cargandoDetalle ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Spinner size="lg" className="text-primary-600" />
-                    </div>
-                ) : (
-                    // Tope de alto: una jornada puede tener decenas de movimientos.
-                    <div className="h-[350px] overflow-auto">
-                        <table className="w-full min-w-[820px] text-sm">
-                            <thead className="sticky top-0 z-10">
-                                <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
-                                    <th className="w-14 px-3 py-2.5 text-center">#</th>
-                                    <th className="w-44 px-3 py-2.5">Fecha</th>
-                                    <th className="w-28 px-3 py-2.5">Tipo</th>
-                                    <th className="px-3 py-2.5">Motivo</th>
-                                    <th className="w-48 px-3 py-2.5">Método</th>
-                                    <th className="w-36 px-3 py-2.5 text-right">Monto</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {movimientos.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="px-3 py-10 text-center text-sm text-warm-500">
-                                            {seleccionado
-                                                ? 'Esta apertura no tuvo movimientos.'
-                                                : 'Selecciona un cierre arriba para ver sus movimientos.'}
-                                        </td>
-                                    </tr>
-                                )}
-
-                                {movimientos.map((m, i) => (
-                                    <tr key={m.id}>
-                                        <td className="px-3 py-2 text-center text-warm-500">{i + 1}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap text-warm-500">
-                                            {fechaHora(m.fecha)}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <Badge variant={m.tipo === 'ingreso' ? 'green' : 'red'}>
-                                                {m.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <div className="leading-tight">
-                                                <div className="text-warm-900">{m.motivo?.nombre ?? '—'}</div>
-                                                {m.descripcion && (
-                                                    <div className="text-xs text-warm-500">{m.descripcion}</div>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-2 text-warm-500">{metodoLabel(m)}</td>
-                                        <td
-                                            className={`px-3 py-2 text-right font-semibold ${
-                                                m.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'
-                                            }`}
-                                        >
-                                            {m.tipo === 'ingreso' ? '+' : '-'} {money(m.monto)}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                {/* Mismo componente que la tabla de arriba: así en móvil se ven igual. */}
+                <DataTable
+                    columns={movColumns}
+                    rows={movimientos}
+                    loading={cargandoDetalle}
+                    searchable={false}
+                    toggleableColumns={false}
+                    height="350px"
+                    emptyMessage={
+                        seleccionado
+                            ? 'Esta apertura no tuvo movimientos.'
+                            : 'Selecciona un cierre arriba para ver sus movimientos.'
+                    }
+                />
             </div>
+
         </Layout>
     );
 }
