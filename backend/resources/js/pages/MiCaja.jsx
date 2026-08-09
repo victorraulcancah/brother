@@ -25,15 +25,18 @@ const metodoLabel = (row) => {
 
 const emptyMov = () => ({ motivo_movimiento_id: '', metodoTipo: '', cuentaId: '', billeteraId: '', numero_operacion: '', monto: '', descripcion: '' });
 
+/** Tarjeta compacta de resumen. No usa Card porque su padding (p-6) es muy alto. */
 function Stat({ icon: Icon, label, value, accent = 'text-warm-900', bg = 'bg-gray-100' }) {
     return (
-        <Card className="flex items-center gap-3">
-            <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${bg} ${accent}`}><Icon className="h-5 w-5" /></div>
-            <div>
-                <p className="text-xs uppercase tracking-wide text-warm-500">{label}</p>
-                <p className={`text-lg font-extrabold ${accent}`}>{value}</p>
+        <div className="flex items-center gap-2.5 rounded-lg border border-edge bg-white px-3 py-2.5 shadow-sm">
+            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${bg} ${accent}`}>
+                <Icon className="h-4 w-4" />
             </div>
-        </Card>
+            <div className="min-w-0">
+                <p className="truncate text-[11px] uppercase tracking-wide text-warm-500">{label}</p>
+                <p className={`truncate text-base font-bold ${accent}`}>{value}</p>
+            </div>
+        </div>
     );
 }
 
@@ -51,6 +54,13 @@ export default function MiCaja() {
     const [regTipo, setRegTipo] = useState(null); // 'ingreso' | 'egreso'
     const [mov, setMov] = useState(emptyMov());
     const [saving, setSaving] = useState(false);
+
+    // ── Filtros de la tabla de movimientos ──
+    const [filtroTipo, setFiltroTipo] = useState('');
+    const [filtroMotivo, setFiltroMotivo] = useState('');
+    const [filtroMetodo, setFiltroMetodo] = useState('');
+    const [filtrosActivos, setFiltrosActivos] = useState({});
+
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -144,11 +154,103 @@ export default function MiCaja() {
     );
     const requiereOperacion = mov.metodoTipo === 'transferencia' || mov.metodoTipo === 'billetera';
 
+    /** Método real del movimiento, deducido de la cuenta o billetera asociada. */
+    const metodoDe = (r) => (r.cuenta_bancaria ? 'transferencia' : r.billetera ? 'billetera' : 'efectivo');
+
+    const aplicarFiltros = () => {
+        const next = {};
+        if (filtroTipo) next.tipo = filtroTipo;
+        if (filtroMotivo) next.motivo = filtroMotivo;
+        if (filtroMetodo) next.metodo = filtroMetodo;
+        setFiltrosActivos(next);
+    };
+
+    const limpiarFiltros = () => {
+        setFiltroTipo('');
+        setFiltroMotivo('');
+        setFiltroMetodo('');
+        setFiltrosActivos({});
+    };
+
+    const movimientosFiltrados = movimientos.filter((r) => {
+        if (filtrosActivos.tipo && r.tipo !== filtrosActivos.tipo) return false;
+        if (filtrosActivos.motivo && String(r.motivo_movimiento_id) !== filtrosActivos.motivo) return false;
+        if (filtrosActivos.metodo && metodoDe(r) !== filtrosActivos.metodo) return false;
+        return true;
+    });
+
+    const filtrosCount = Object.keys(filtrosActivos).length;
+
+    /** Solo los motivos que aparecen en los movimientos de esta apertura. */
+    const motivosPresentes = [
+        ...new Map(
+            movimientos
+                .filter((r) => r.motivo?.id)
+                .map((r) => [String(r.motivo.id), r.motivo.nombre]),
+        ).entries(),
+    ]
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'es'));
+
+    const filtros = (
+        <div className="flex flex-wrap items-end gap-3">
+            <Select
+                label="Tipo"
+                value={filtroTipo}
+                onChange={(e) => setFiltroTipo(e.target.value)}
+                options={[
+                    { value: '', label: 'Todos' },
+                    { value: 'ingreso', label: 'Ingreso' },
+                    { value: 'egreso', label: 'Gasto' },
+                ]}
+                className="w-40"
+            />
+            <Select
+                label="Motivo"
+                value={filtroMotivo}
+                onChange={(e) => setFiltroMotivo(e.target.value)}
+                options={[{ value: '', label: 'Todos' }, ...motivosPresentes]}
+                className="w-56"
+            />
+            <Select
+                label="Método"
+                value={filtroMetodo}
+                onChange={(e) => setFiltroMetodo(e.target.value)}
+                options={[
+                    { value: '', label: 'Todos' },
+                    { value: 'efectivo', label: 'Efectivo' },
+                    { value: 'transferencia', label: 'Transferencia' },
+                    { value: 'billetera', label: 'Billetera' },
+                ]}
+                className="w-48"
+            />
+            <Button variant="primary" size="sm" onClick={aplicarFiltros}>
+                Aplicar
+            </Button>
+            {filtrosCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={limpiarFiltros}>
+                    Limpiar
+                </Button>
+            )}
+        </div>
+    );
+
     const columns = [
-        { key: 'fecha', label: 'Fecha', render: (r) => fechaCorta(r.fecha) },
-        { key: 'tipo', label: 'Tipo', render: (r) => <Badge variant={r.tipo === 'ingreso' ? 'green' : 'red'}>{r.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}</Badge> },
-        { key: 'motivo', label: 'Motivo', render: (r) => r.motivo?.nombre ?? '—' },
-        { key: 'metodo', label: 'Método', render: (r) => metodoLabel(r) },
+        { key: 'fecha', label: 'Fecha', getSearchValue: (r) => fechaCorta(r.fecha), render: (r) => fechaCorta(r.fecha) },
+        { key: 'tipo', label: 'Tipo', getSearchValue: (r) => (r.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'), render: (r) => <Badge variant={r.tipo === 'ingreso' ? 'green' : 'red'}>{r.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}</Badge> },
+        {
+            key: 'motivo',
+            label: 'Motivo',
+            // Sin esto la búsqueda compararía contra el objeto, no contra el texto.
+            getSearchValue: (r) => `${r.motivo?.nombre ?? ''} ${r.descripcion ?? ''}`,
+            render: (r) => (
+                <div className="leading-tight">
+                    <div className="text-warm-900">{r.motivo?.nombre ?? '—'}</div>
+                    {r.descripcion && <div className="text-xs text-warm-500">{r.descripcion}</div>}
+                </div>
+            ),
+        },
+        { key: 'metodo', label: 'Método', getSearchValue: (r) => metodoLabel(r), render: (r) => metodoLabel(r) },
         { key: 'monto', label: 'Monto', align: 'right', render: (r) => <span className={r.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}>{r.tipo === 'ingreso' ? '+' : '-'} {money(r.monto)}</span> },
     ];
 
@@ -186,7 +288,7 @@ export default function MiCaja() {
                                 <Button variant="secondary" onClick={() => { setCerrarOpen(true); setMontoContado(''); }}><Lock className="h-4 w-4" /> Cerrar caja</Button>
                             </div>
 
-                            <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                            <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
                                 <Stat icon={PiggyBank} label="Monto inicial" value={money(resumen?.monto_inicial)} />
                                 <Stat icon={ArrowUpCircle} label="Ingresos" value={money(resumen?.ingresos)} accent="text-green-600" bg="bg-green-50" />
                                 <Stat icon={ArrowDownCircle} label="Gastos" value={money(resumen?.egresos)} accent="text-red-600" bg="bg-red-50" />
@@ -194,7 +296,21 @@ export default function MiCaja() {
                             </div>
 
                             <h3 className="mb-2 text-sm font-bold text-warm-900">Movimientos de esta apertura</h3>
-                            <DataTable columns={columns} rows={movimientos} searchable={false} toggleableColumns={false} emptyMessage="Aún no hay movimientos. Registra un ingreso o gasto." maxHeight="50vh" />
+                            <DataTable
+                                columns={columns}
+                                rows={movimientosFiltrados}
+                                searchPlaceholder="Buscar movimientos..."
+                                filterable
+                                filters={filtros}
+                                filterCount={filtrosCount}
+                                toggleableColumns={false}
+                                emptyMessage={
+                                    filtrosCount > 0
+                                        ? 'Ningún movimiento coincide con los filtros.'
+                                        : 'Aún no hay movimientos. Registra un ingreso o gasto.'
+                                }
+                                maxHeight="50vh"
+                            />
                         </>
                     ) : (
                         <Card className="flex flex-col items-center gap-3 py-10 text-center">
