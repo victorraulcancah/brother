@@ -143,9 +143,11 @@ class RecepcionCompraController extends Controller
                     $factor = (float) $presentacion->factor_conversion ?: 1;
                     $costoBase = $factor > 0 ? $costoPresentacion / $factor : $costoPresentacion;
 
+                    // El origen del movimiento es la recepción: la compra es el
+                    // documento comercial, no el motivo del ingreso al almacén.
                     $movimiento = $stock->entrada(
                         $presentacion, $almacen, $cantidad, $costoBase,
-                        'compra', 'recepcion_compra', $recepcion->id, auth()->id(),
+                        'recepcion', 'recepcion_compra', $recepcion->id, auth()->id(),
                     );
 
                     $recepcion->detalles()->create([
@@ -193,7 +195,7 @@ class RecepcionCompraController extends Controller
 
                     $stock->salida(
                         $presentacion, $almacen, (float) $detalle->cantidad_recibida, $costoBase,
-                        'devolucion', 'recepcion_compra_deshecha', $recepcionesCompra->id, auth()->id(),
+                        'recepcion_deshecha', 'recepcion_compra', $recepcionesCompra->id, auth()->id(),
                     );
                 }
 

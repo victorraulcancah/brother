@@ -72,7 +72,7 @@ export const navigation = [
         children: [
             { label: 'Almacenes', icon: Store, to: '/almacenes' },
             { label: 'Existencias', icon: Warehouse, to: '/existencias' },
-            { label: 'Movimientos', icon: ArrowLeftRight, to: '/movimientos' },
+            { label: 'Kardex', icon: ArrowLeftRight, to: '/kardex' },
             { label: 'Traslados', icon: Repeat, to: '/transferencias' },
             { label: 'Ajustes', icon: Scale, to: '/ajustes' },
             { label: 'Tomas de inventario', icon: ClipboardCheck, to: '/tomas-inventario' },

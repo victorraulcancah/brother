@@ -52,6 +52,8 @@ const routes = [
     { path: '/unidades-medida', element: <UnidadesMedida /> },
     { path: '/almacenes', element: <Almacenes /> },
     { path: '/existencias', element: <Existencias /> },
+    { path: '/kardex', element: <Movimientos /> },
+    // Alias del nombre anterior, para no romper enlaces guardados.
     { path: '/movimientos', element: <Movimientos /> },
     { path: '/transferencias', element: <Transferencias /> },
     { path: '/ajustes', element: <Ajustes /> },

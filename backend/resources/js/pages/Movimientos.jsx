@@ -28,7 +28,10 @@ const money = (n) =>
 const num = (n) => Number(n ?? 0).toLocaleString('es-PE', { maximumFractionDigits: 2 });
 
 const ORIGEN_LABEL = {
-    compra: 'Compra',
+    recepcion: 'Recepción',
+    recepcion_deshecha: 'Recepción deshecha',
+    // Histórico: antes las recepciones se registraban con origen "compra".
+    compra: 'Recepción',
     venta: 'Venta',
     devolucion: 'Devolución',
     merma: 'Merma',
@@ -272,8 +275,8 @@ export default function Movimientos() {
     return (
         <Layout>
             <PageHeader
-                title="Movimientos"
-                description="Historial de entradas y salidas de inventario"
+                title="Kardex"
+                description="Historial de entradas y salidas de inventario por producto"
             />
 
             {error && <Alert variant="error" className="mb-4">{error}</Alert>}
@@ -282,7 +285,7 @@ export default function Movimientos() {
                 columns={columns}
                 rows={filtered}
                 loading={loading}
-                searchPlaceholder="Buscar movimientos..."
+                searchPlaceholder="Buscar en el kardex..."
                 filterable
                 filters={filters}
                 filterCount={filterCount}

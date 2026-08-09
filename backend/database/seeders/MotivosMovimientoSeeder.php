@@ -19,8 +19,8 @@ class MotivosMovimientoSeeder extends Seeder
         // categoria_gasto solo aplica a egresos de caja (operativo | compra | no_operativo).
         $motivos = [
             // ── Entradas (ingresos) ──
+            // La mercadería entra al almacén por recepción; "compra" no es un motivo.
             ['Recepción', 'entrada', true, 'inventario', null],
-            ['Compra', 'entrada', true, 'inventario', null],
             ['Devolución de cliente', 'entrada', false, 'inventario', null],
             ['Ajuste positivo', 'entrada', false, 'inventario', null],
             ['Carga inicial', 'entrada', false, 'inventario', null],
