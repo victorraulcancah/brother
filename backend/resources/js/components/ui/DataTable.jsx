@@ -120,6 +120,17 @@ export default function DataTable({
     // Ancho por columna (para alinear encabezado y cuerpo con table-fixed).
     const colWidth = (col) => col.width ?? (col.type === 'actions' ? '120px' : col.key === 'id' ? '72px' : undefined);
 
+    /**
+     * Ancho mínimo que necesita la tabla. Sin esto, con muchas columnas el
+     * table-fixed las comprime y las últimas quedan fuera del contenedor.
+     * Las columnas sin ancho declarado reservan un mínimo razonable.
+     */
+    const minTableWidth = visibleColumns.reduce((acc, col) => {
+        const w = colWidth(col);
+        const px = typeof w === 'string' && w.endsWith('px') ? parseFloat(w) : 170;
+        return acc + (Number.isFinite(px) ? px : 170);
+    }, 0);
+
     return (
         <div className="relative rounded-lg border border-edge bg-white shadow-sm">
             {(searchable || filterable || toggleableColumns) && (
@@ -240,9 +251,11 @@ export default function DataTable({
                     </div>
                 ) : (
                     <>
-                        <div className="hidden md:block">
-                            {/* Encabezado fijo (fuera del scroll). Reserva el hueco de la barra
-                                y lo pinta del mismo color para que no quede un espacio en blanco. */}
+                        {/* Scroll horizontal común: encabezado y cuerpo se desplazan juntos. */}
+                        <div className="hidden overflow-x-auto md:block">
+                          <div style={{ minWidth: minTableWidth }}>
+                            {/* Encabezado fijo (fuera del scroll vertical). Reserva el hueco de la
+                                barra y lo pinta del mismo color para que no quede un espacio en blanco. */}
                             <div className="bg-primary-600" style={{ paddingRight: scrollbarW }}>
                                 <table className="w-full table-fixed text-left text-sm">
                                     <colgroup>
@@ -330,6 +343,7 @@ export default function DataTable({
                                     </tbody>
                                 </table>
                             </div>
+                          </div>
                         </div>
 
                     <div className="space-y-3 overflow-y-auto bg-gray-50 p-3 md:hidden" style={{ maxHeight }}>
