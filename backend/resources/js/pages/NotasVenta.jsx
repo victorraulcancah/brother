@@ -92,7 +92,7 @@ export default function NotasVenta() {
             render: (row) => (
                 <span className="inline-flex items-center gap-2 font-medium text-warm-900">
                     <User className="h-4 w-4 text-primary-600" />
-                    {row.cliente?.nombre ?? 'Público general'}
+                    {row.cliente?.nombre ?? 'Clientes varios'}
                 </span>
             ),
         },
@@ -240,7 +240,7 @@ export default function NotasVenta() {
                         <div className="grid grid-cols-2 gap-3 rounded-xl border border-edge bg-gray-50 p-4 text-sm sm:grid-cols-4">
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-warm-500">Cliente</p>
-                                <p className="font-medium text-warm-900">{detalle.cliente?.nombre ?? 'Público general'}</p>
+                                <p className="font-medium text-warm-900">{detalle.cliente?.nombre ?? 'Clientes varios'}</p>
                             </div>
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-warm-500">Fecha</p>

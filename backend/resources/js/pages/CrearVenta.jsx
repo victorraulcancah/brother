@@ -16,6 +16,9 @@ const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
+/** Venta al paso: no se identifica al comprador. */
+const CLIENTE_GENERICO = 'Clientes varios';
+
 const panelVacio = { producto_id: '', producto_presentacion_id: '', cantidad: '1', precio_unitario: '0' };
 const emptyPago = () => ({ tipo: 'efectivo', cuentaId: '', billeteraId: '', monto: '' });
 
@@ -420,7 +423,7 @@ export default function CrearVenta() {
                     />
                     <div className="md:col-span-2">
                         <SearchSelect
-                            label="Cliente"
+                            label={esContado ? 'Cliente (opcional)' : 'Cliente'}
                             value={form.cliente_id}
                             onChange={(v) => setField('cliente_id', v)}
                             options={clientes.map((c) => ({
@@ -428,9 +431,19 @@ export default function CrearVenta() {
                                 label: c.nombre ?? c.razon_social ?? `#${c.id}`,
                                 keywords: c.numero_documento ?? '',
                             }))}
-                            placeholder="Buscar cliente…"
+                            placeholder={CLIENTE_GENERICO}
                             emptyText="Sin coincidencias"
                         />
+                        {/* Sin cliente la venta va al genérico; a crédito no se puede. */}
+                        {!form.cliente_id && (
+                            <p
+                                className={`mt-1 text-xs ${esContado ? 'text-warm-500' : 'text-red-600'}`}
+                            >
+                                {esContado
+                                    ? `Sin cliente se registra como "${CLIENTE_GENERICO}".`
+                                    : 'Una venta al crédito necesita un cliente identificado.'}
+                            </p>
+                        )}
                     </div>
                     <Select
                         label="Almacén"
@@ -767,6 +780,13 @@ export default function CrearVenta() {
                 <div className="lg:sticky lg:top-6 lg:self-start">
                     <div className="rounded-xl border border-edge bg-white p-5 shadow-sm">
                         <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-warm-500">Resumen</h2>
+                        <div className="flex items-center justify-between border-b border-dashed border-edge pb-2 text-sm">
+                            <span className="text-warm-500">Cliente</span>
+                            <span className="max-w-[180px] truncate font-medium text-warm-900">
+                                {clientes.find((c) => String(c.id) === String(form.cliente_id))?.nombre ??
+                                    CLIENTE_GENERICO}
+                            </span>
+                        </div>
                         <div className="mt-1 flex items-center justify-between border-t border-edge pt-3">
                             <span className="text-sm font-bold uppercase tracking-wide text-primary-700">Total</span>
                             <span className="text-2xl font-extrabold text-warm-900">{money(total)}</span>

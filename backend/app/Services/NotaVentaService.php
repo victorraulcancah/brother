@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\AperturaCaja;
 use App\Models\CuentaPorCobrar;
+use App\Models\MotivoMovimiento;
 use App\Models\MovimientoCaja;
 use App\Models\NotaVenta;
 use App\Models\SerieDocumento;
@@ -73,10 +74,17 @@ class NotaVentaService
                 : null;
 
             if ($apertura && $data['tipo_pago'] === 'contado') {
+                // Sin motivo, el movimiento aparece con "—" en Mi Caja.
+                $motivoVentaId = MotivoMovimiento::where('tipo', 'entrada')
+                    ->where('nombre', 'Ingreso por venta')
+                    ->value('id');
+
                 foreach ($data['pagos'] as $pago) {
                     MovimientoCaja::create([
                         'apertura_caja_id' => $apertura->id,
                         'tipo' => 'ingreso',
+                        'motivo_movimiento_id' => $motivoVentaId,
+                        'descripcion' => "Venta {$nota->serie}-{$nota->numero}",
                         'cuenta_bancaria_id' => ($pago['forma_pago'] ?? null) === 'transferencia' ? ($pago['cuenta_bancaria_id'] ?? null) : null,
                         'billetera_id' => ($pago['forma_pago'] ?? null) === 'billetera' ? ($pago['billetera_id'] ?? null) : null,
                         'monto' => $pago['monto'],
