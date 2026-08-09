@@ -5,16 +5,15 @@ import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
 import { Alert, Badge, Button, DataTable, Select } from '../components/ui';
 
-const fmtFecha = (value) =>
-    value
-        ? new Date(value).toLocaleString('es-PE', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-          })
-        : '—';
+/** Fecha y hora en dos líneas: cabe en una columna estrecha sin desbordarse. */
+const fmtFecha = (value) => {
+    if (!value) return null;
+    const d = new Date(value);
+    return {
+        dia: d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+        hora: d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
+    };
+};
 
 const tipoInfo = (tipo) => {
     if (tipo === 'entrada') return { label: 'Entrada', variant: 'green', icon: ArrowDownLeft };
@@ -143,17 +142,32 @@ export default function Movimientos() {
     const cantAbs = (row) => Math.abs(Number(row.cantidad ?? 0));
 
     const columns = [
-        { key: 'id', label: '#', render: (row) => <span className="text-gray-500">{row.id}</span> },
+        { key: 'id', label: '#', width: '56px', render: (row) => <span className="text-gray-500">{row.id}</span> },
         {
             key: 'fecha',
             label: 'Fecha',
-            render: (row) => <span className="whitespace-nowrap text-gray-700">{fmtFecha(row.fecha)}</span>,
+            width: '110px',
+            render: (row) => {
+                const f = fmtFecha(row.fecha);
+                if (!f) return <span className="text-gray-400">—</span>;
+                return (
+                    <div className="leading-tight">
+                        <div className="whitespace-nowrap text-gray-700">{f.dia}</div>
+                        <div className="whitespace-nowrap text-xs text-gray-400">{f.hora}</div>
+                    </div>
+                );
+            },
         },
         {
             key: 'codigo',
             label: 'Código',
+            width: '110px',
             getSearchValue: (row) => row.producto?.codigo,
-            render: (row) => row.producto?.codigo ?? <span className="text-gray-400">—</span>,
+            render: (row) => (
+                <span className="block truncate">
+                    {row.producto?.codigo ?? <span className="text-gray-400">—</span>}
+                </span>
+            ),
         },
         {
             key: 'producto',
@@ -169,12 +183,18 @@ export default function Movimientos() {
         {
             key: 'proveedor',
             label: 'Proveedor',
+            width: '150px',
             getSearchValue: (row) => row.proveedor_nombre,
-            render: (row) => row.proveedor_nombre ?? <span className="text-gray-400">—</span>,
+            render: (row) => (
+                <span className="block truncate" title={row.proveedor_nombre ?? ''}>
+                    {row.proveedor_nombre ?? <span className="text-gray-400">—</span>}
+                </span>
+            ),
         },
         {
             key: 'tipo_movimiento',
             label: 'Tipo',
+            width: '110px',
             render: (row) => {
                 const { label, variant, icon: Icon } = tipoInfo(row.tipo_movimiento);
                 return (
@@ -188,11 +208,13 @@ export default function Movimientos() {
         {
             key: 'origen',
             label: 'Mov.',
+            width: '120px',
             render: (row) => <Badge variant="gray">{ORIGEN_LABEL[row.origen] ?? row.origen ?? '—'}</Badge>,
         },
         {
             key: 'documento',
-            label: 'Documento',
+            label: 'Doc.',
+            width: '130px',
             searchable: false,
             render: (row) =>
                 row.documento_referencia_tipo ? (
@@ -206,7 +228,8 @@ export default function Movimientos() {
         },
         {
             key: 'unidad',
-            label: 'Unidad',
+            label: 'Und.',
+            width: '70px',
             searchable: false,
             render: (row) =>
                 row.producto?.unidad_base?.abreviatura ??
@@ -214,34 +237,39 @@ export default function Movimientos() {
         },
         {
             key: 'cantidad',
-            label: 'Cantidad',
+            label: 'Cant.',
+            width: '80px',
             align: 'right',
             render: (row) => <span className="text-gray-700">{num(cantAbs(row))}</span>,
         },
         {
             key: 'costo_anterior',
-            label: 'Costo Anterior',
+            label: 'C. Ant.',
+            width: '95px',
             align: 'right',
             searchable: false,
             render: (row) => <span className="text-gray-600">{money(row.costo_anterior)}</span>,
         },
         {
             key: 'costo_actual',
-            label: 'Costo Actual',
+            label: 'C. Act.',
+            width: '95px',
             align: 'right',
             searchable: false,
             render: (row) => <span className="text-gray-700">{money(row.costo_actual)}</span>,
         },
         {
             key: 'stock_anterior',
-            label: 'Stock Anterior',
+            label: 'St. Ant.',
+            width: '85px',
             align: 'right',
             searchable: false,
             render: (row) => <span className="text-gray-600">{num(row.stock_anterior)}</span>,
         },
         {
             key: 'ingreso',
-            label: 'Cant. Ingreso',
+            label: 'Ing.',
+            width: '80px',
             align: 'right',
             searchable: false,
             render: (row) =>
@@ -253,7 +281,8 @@ export default function Movimientos() {
         },
         {
             key: 'salida',
-            label: 'Cant. Salida',
+            label: 'Sal.',
+            width: '80px',
             align: 'right',
             searchable: false,
             render: (row) =>
@@ -265,7 +294,8 @@ export default function Movimientos() {
         },
         {
             key: 'saldo_stock',
-            label: 'Stock Actual',
+            label: 'St. Act.',
+            width: '90px',
             align: 'right',
             searchable: false,
             render: (row) => <span className="font-medium text-gray-900">{num(row.saldo_stock)}</span>,

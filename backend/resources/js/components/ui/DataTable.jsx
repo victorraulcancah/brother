@@ -304,7 +304,9 @@ export default function DataTable({
                                                     <td
                                                         key={col.key}
                                                         className={cn(
-                                                            'px-4 py-3 align-middle text-gray-700',
+                                                            // overflow-hidden: con table-fixed, un contenido largo
+                                                            // se montaba sobre la columna siguiente.
+                                                            'overflow-hidden px-4 py-3 align-middle text-gray-700',
                                                             col.align === 'right' && 'text-right',
                                                         )}
                                                     >
