@@ -79,6 +79,9 @@ class ApiEndpoints {
   static const String cuentasBancarias = '/cuentas-bancarias';
   static const String tarjetasBancarias = '/tarjetas-bancarias';
   static const String billeterasDigitales = '/billeteras-digitales';
+  static const String cierresCaja = '/cierres-caja';
+  static String cierreCaja(int id) => '/cierres-caja/$id';
+
   static const String cajas = '/cajas';
   static String caja(int id) => '/cajas/$id';
   static const String miCaja = '/mi-caja';

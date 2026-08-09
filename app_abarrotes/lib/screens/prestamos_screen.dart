@@ -7,6 +7,7 @@ import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_form_section.dart';
 import '../widgets/app_modal.dart';
+import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_list_header.dart';
 import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
@@ -102,6 +103,26 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
     }).toList();
   }
 
+  Future<void> _eliminar(Map<String, dynamic> item) async {
+    final ok = await showAppConfirmDialog(
+      context,
+      title: 'Eliminar préstamo',
+      message: '¿Eliminar el préstamo de ${item['tercero'] ?? ''}?',
+    );
+    if (!ok) return;
+    try {
+      await CrudService(_api, ApiEndpoints.prestamos).delete(item['id']);
+      await _load();
+      if (mounted) {
+        showAppSnackbar(context, 'Préstamo eliminado', type: AppSnackbarType.error);
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -178,16 +199,22 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
                     DataCardRow.text('Productos', '${(item['detalles'] as List?)?.length ?? 0}'),
                     DataCardRow(label: 'Estado', value: AppBadge(_estadoLabel[estado] ?? estado ?? '—', type: _estadoBadge(estado))),
                   ],
-                  actions: estado == 'devuelto'
-                      ? []
-                      : [
+                  actions: [
+                    DataCardAction(
+                      icon: Icons.delete_outline,
+                      color: AppColors.danger,
+                      tooltip: 'Eliminar',
+                      onTap: () => _eliminar(item),
+                    ),
+                    if (estado != 'devuelto') ...[
                           DataCardAction(
                             icon: Icons.assignment_return_outlined,
                             color: AppColors.primary,
                             tooltip: 'Devolución',
                             onTap: () => _devolver(item),
                           ),
-                        ],
+                    ],
+                  ],
                 );
               },
             ),

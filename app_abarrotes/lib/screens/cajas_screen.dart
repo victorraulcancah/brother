@@ -8,6 +8,8 @@ import '../widgets/app_button.dart';
 import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_form_section.dart';
 import '../widgets/app_modal.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
@@ -33,6 +35,8 @@ class _CajasScreenState extends State<CajasScreen> {
   List<Map<String, dynamic>> _billeteras = [];
   List<Map<String, dynamic>> _usuarios = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
 
   @override
   void initState() {
@@ -42,7 +46,10 @@ class _CajasScreenState extends State<CajasScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final results = await Future.wait([
         _crud.getAll(),
@@ -54,7 +61,9 @@ class _CajasScreenState extends State<CajasScreen> {
       _cuentas = results[1];
       _billeteras = results[2];
       _usuarios = results[3];
-    } catch (_) {}
+    } catch (_) {
+      _error = 'No se pudieron cargar las cajas.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -108,6 +117,16 @@ class _CajasScreenState extends State<CajasScreen> {
     return partes.isEmpty ? '—' : partes.join(' · ');
   }
 
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    if (q.isEmpty) return _items;
+    return _items
+        .where(
+          (x) => '${x['nombre']} ${x['codigo'] ?? ''}'.toLowerCase().contains(q),
+        )
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -115,13 +134,27 @@ class _CajasScreenState extends State<CajasScreen> {
       floatingActionButton: FloatingActionButton(onPressed: () => _openForm(), child: const Icon(Icons.add)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay cajas'))
-          : ListView.builder(
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar cajas...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(child: Text(_items.isEmpty ? 'No hay cajas' : 'Ninguna caja coincide con la busqueda'))
+                      : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
+              itemCount: _visibles.length,
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = _visibles[index];
                 final activo = item['activo'] as bool? ?? true;
                 final usuario = item['usuario'] as Map<String, dynamic>?;
                 return DataCard(
@@ -141,6 +174,9 @@ class _CajasScreenState extends State<CajasScreen> {
                   ],
                 );
               },
+            ),
+                ),
+              ],
             ),
     );
   }

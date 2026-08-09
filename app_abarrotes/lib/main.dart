@@ -20,6 +20,7 @@ import 'screens/mi_caja_screen.dart';
 import 'screens/motivos_movimiento_screen.dart';
 import 'screens/movimientos_screen.dart';
 import 'screens/movimientos_caja_screen.dart';
+import 'screens/cierres_caja_screen.dart';
 import 'screens/notas_venta_screen.dart';
 import 'screens/prestamos_screen.dart';
 import 'screens/traslados_screen.dart';
@@ -84,6 +85,7 @@ class MyApp extends StatelessWidget {
           AppRoutes.cuentasMedios: (_) => const CuentasMediosScreen(),
           AppRoutes.cajas: (_) => const CajasScreen(),
           AppRoutes.movimientosCaja: (_) => const MovimientosCajaScreen(),
+          AppRoutes.cierresCaja: (_) => const CierresCajaScreen(),
           AppRoutes.motivosMovimiento: (_) => const MotivosMovimientoScreen(),
           AppRoutes.reportesUtilidades: (_) => const UtilidadesScreen(),
           AppRoutes.miCaja: (_) => const MiCajaScreen(),

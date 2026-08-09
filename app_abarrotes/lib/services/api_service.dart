@@ -127,6 +127,21 @@ class ApiException implements Exception {
 
   ApiException({required this.statusCode, required this.message, this.errors});
 
+  /// Mensaje legible. En un 422 el `message` de Laravel es genérico
+  /// ("validation.required"), así que se prefiere el primer error de campo,
+  /// que sí dice qué está mal.
+  String get detalle {
+    final campos = errors?['errors'];
+    if (campos is Map && campos.isNotEmpty) {
+      final primero = campos.values.first;
+      if (primero is List && primero.isNotEmpty) {
+        return primero.first.toString();
+      }
+      if (primero is String) return primero;
+    }
+    return message;
+  }
+
   @override
-  String toString() => message;
+  String toString() => detalle;
 }

@@ -11,6 +11,7 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/data_card.dart';
+import 'crear_compra_screen.dart';
 import '../widgets/product_lines_editor.dart';
 
 String _money(dynamic v) => 'S/ ${(double.tryParse('${v ?? 0}') ?? 0).toStringAsFixed(2)}';
@@ -76,6 +77,17 @@ class _OrdenesCompraScreenState extends State<OrdenesCompraScreen> {
     if (ok == true) _load();
   }
 
+  /// La compra nace de la orden: se copian proveedor y lineas.
+  Future<void> _transformar(Map<String, dynamic> item) async {
+    final ok = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CrearCompraScreen(ordenId: item['id'] as int),
+      ),
+    );
+    if (ok == true) _load();
+  }
+
   Future<void> _delete(Map<String, dynamic> item) async {
     final ok = await showAppConfirmDialog(context, title: 'Eliminar orden', message: '¿Eliminar la orden ${item['codigo']}?');
     if (!ok) return;
@@ -129,6 +141,13 @@ class _OrdenesCompraScreenState extends State<OrdenesCompraScreen> {
                     ),
                   ],
                   actions: [
+                    if ((item['compras_count'] ?? 0) == 0)
+                      DataCardAction(
+                        icon: Icons.shopping_bag_outlined,
+                        color: AppColors.success,
+                        tooltip: 'Transformar a compra',
+                        onTap: () => _transformar(item),
+                      ),
                     if ((item['compras_count'] ?? 0) == 0)
                       DataCardAction(
                         icon: Icons.delete_outline,

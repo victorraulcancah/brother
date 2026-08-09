@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_form_section.dart';
+import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_list_header.dart';
 import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
@@ -107,6 +108,26 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     }).toList();
   }
 
+  Future<void> _eliminar(Map<String, dynamic> item) async {
+    final ok = await showAppConfirmDialog(
+      context,
+      title: 'Eliminar traslado',
+      message: '¿Eliminar el traslado ${item['codigo'] ?? item['id']}?',
+    );
+    if (!ok) return;
+    try {
+      await _crud.delete(item['id']);
+      await _load();
+      if (mounted) {
+        showAppSnackbar(context, 'Traslado eliminado', type: AppSnackbarType.error);
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -165,6 +186,12 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                     DataCardRow(label: 'Estado', value: AppBadge(_estadoLabel[estado] ?? estado ?? '—', type: _estadoBadge(estado))),
                   ],
                   actions: [
+                    DataCardAction(
+                      icon: Icons.delete_outline,
+                      color: AppColors.danger,
+                      tooltip: 'Eliminar',
+                      onTap: () => _eliminar(item),
+                    ),
                     if (estado == 'pendiente')
                       DataCardAction(
                         icon: Icons.send_outlined,

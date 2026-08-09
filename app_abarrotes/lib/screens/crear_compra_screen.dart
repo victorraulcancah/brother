@@ -5,6 +5,7 @@ import '../services/crud_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_form_section.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
@@ -22,7 +23,11 @@ class _Pago {
 }
 
 class CrearCompraScreen extends StatefulWidget {
-  const CrearCompraScreen({super.key});
+  /// Con compraId la pantalla edita; con ordenId nace de una orden de compra.
+  final int? compraId;
+  final int? ordenId;
+
+  const CrearCompraScreen({super.key, this.compraId, this.ordenId});
 
   @override
   State<CrearCompraScreen> createState() => _CrearCompraScreenState();
@@ -32,6 +37,11 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
   final ApiService _api = ApiService();
   bool _loading = true;
   bool _saving = false;
+  String? _error;
+  String? _ordenCodigo;
+  String? _numeroCompra;
+
+  bool get _editando => widget.compraId != null;
 
   List<Map<String, dynamic>> _proveedores = [];
   List<Map<String, dynamic>> _cuentas = [];
@@ -43,6 +53,11 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
   String _formaPago = 'contado';
   final _serie = TextEditingController();
   final _numero = TextEditingController();
+  final _flete = TextEditingController(text: '0');
+  final _diasCredito = TextEditingController(text: '0');
+  final _observaciones = TextEditingController();
+  DateTime _fecha = DateTime.now();
+  DateTime _vencimiento = DateTime.now();  // ignore: prefer_final_fields
 
   final List<ProductLine> _lineas = [ProductLine(precio: '0')];
   final List<_Pago> _pagos = [_Pago()];
@@ -57,6 +72,9 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
   void dispose() {
     _serie.dispose();
     _numero.dispose();
+    _flete.dispose();
+    _diasCredito.dispose();
+    _observaciones.dispose();
     for (final l in _lineas) {
       l.dispose();
     }
@@ -70,7 +88,9 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
     try {
       final results = await Future.wait([
         CrudService(_api, ApiEndpoints.proveedores).getAll(),
-        CrudService(_api, ApiEndpoints.productos).getAll(),
+        // Sin per_page el backend pagina a 15 y el resto del catalogo
+        // no se puede comprar desde la app.
+        CrudService(_api, '${ApiEndpoints.productos}?per_page=500').getAll(),
         CrudService(_api, ApiEndpoints.cuentasBancarias).getAll(),
         CrudService(_api, ApiEndpoints.billeterasDigitales).getAll(),
       ]);
@@ -79,11 +99,84 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
       _billeteras = results[3];
       for (final p in results[1]) {
         for (final pres in (p['presentaciones'] as List? ?? [])) {
+          if (pres['activo'] == false) continue;
           _presOptions.add(AppSelectOption(pres['id'] as int, '${p['nombre']} — ${pres['nombre']}'));
         }
       }
-    } catch (_) {}
+
+      if (widget.ordenId != null) await _cargarDesdeOrden();
+      if (widget.compraId != null) await _cargarCompra();
+    } catch (_) {
+      _error = 'No se pudieron cargar los datos.';
+    }
     if (mounted) setState(() => _loading = false);
+  }
+
+  /// Transformar orden -> compra: se copian proveedor y lineas.
+  Future<void> _cargarDesdeOrden() async {
+    final orden = await _api.get(ApiEndpoints.orden(widget.ordenId!));
+    _ordenCodigo = orden['codigo']?.toString();
+    _proveedorId = orden['proveedor_id'] as int?;
+
+    for (final l in _lineas) {
+      l.dispose();
+    }
+    _lineas.clear();
+    for (final d in (orden['detalles'] as List? ?? [])) {
+      _lineas.add(
+        ProductLine(
+          presentacionId: d['producto_presentacion_id'] as int?,
+          cantidad: '${d['cantidad']}',
+          precio: '${d['precio_unitario']}',
+        ),
+      );
+    }
+    if (_lineas.isEmpty) _lineas.add(ProductLine(precio: '0'));
+  }
+
+  Future<void> _cargarCompra() async {
+    final compra = await _api.get(ApiEndpoints.compra(widget.compraId!));
+    _numeroCompra = compra['numero_compra']?.toString();
+    _proveedorId = compra['proveedor_id'] as int?;
+    _tipoDoc = compra['tipo_documento']?.toString() ?? 'factura';
+    _formaPago = compra['forma_pago']?.toString() ?? 'contado';
+    _serie.text = compra['serie']?.toString() ?? '';
+    _numero.text = compra['numero']?.toString() ?? '';
+    _flete.text = '${compra['flete'] ?? 0}';
+    _diasCredito.text = '${compra['dias_credito'] ?? 0}';
+    _observaciones.text = compra['observaciones']?.toString() ?? '';
+    _fecha = DateTime.tryParse('${compra['fecha']}') ?? DateTime.now();
+
+    for (final l in _lineas) {
+      l.dispose();
+    }
+    _lineas.clear();
+    for (final d in (compra['detalles'] as List? ?? [])) {
+      _lineas.add(
+        ProductLine(
+          presentacionId: d['producto_presentacion_id'] as int?,
+          cantidad: '${d['cantidad']}',
+          precio: '${d['costo_unitario']}',
+        ),
+      );
+    }
+    if (_lineas.isEmpty) _lineas.add(ProductLine(precio: '0'));
+
+    final pagos = (compra['pagos'] as List? ?? []);
+    if (pagos.isNotEmpty) {
+      for (final p in _pagos) {
+        p.dispose();
+      }
+      _pagos.clear();
+      for (final pg in pagos) {
+        final nuevo = _Pago()
+          ..tipo = pg['metodo']?.toString() ?? 'efectivo'
+          ..cuentaId = pg['cuenta_bancaria_id'] as int?
+          ..billeteraId = pg['billetera_id'] as int?;
+        nuevo.monto.text = '${pg['monto']}';
+        _pagos.add(nuevo);
+      }
+    }
   }
 
   double get _total => _lineas.fold(0, (a, l) => a + l.subtotal);
@@ -94,19 +187,27 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
       showAppSnackbar(context, 'Agrega al menos un producto', type: AppSnackbarType.error);
       return;
     }
-    final fecha = DateTime.now().toIso8601String().substring(0, 10);
+    final fecha = _fecha.toIso8601String().substring(0, 10);
     setState(() => _saving = true);
     try {
-      await _api.post(ApiEndpoints.compras, body: {
+      final payload = {
         'proveedor_id': _proveedorId,
+        if (widget.ordenId != null) 'orden_compra_id': widget.ordenId,
         'tipo_documento': _tipoDoc,
         'serie': _serie.text.trim(),
         'numero': _numero.text.trim(),
         'fecha': fecha,
         'forma_pago': _formaPago,
-        'dias_credito': 0,
-        'fecha_vencimiento': _formaPago == 'credito' ? fecha : null,
-        'flete': 0,
+        'dias_credito': _formaPago == 'credito'
+            ? (int.tryParse(_diasCredito.text.trim()) ?? 0)
+            : 0,
+        'fecha_vencimiento': _formaPago == 'credito'
+            ? _vencimiento.toIso8601String().substring(0, 10)
+            : null,
+        'observaciones': _observaciones.text.trim().isEmpty
+            ? null
+            : _observaciones.text.trim(),
+        'flete': double.tryParse(_flete.text.trim()) ?? 0,
         'detalles': lineasValidas
             .map((l) => {'producto_presentacion_id': l.presentacionId, 'cantidad': l.cant, 'costo_unitario': l.precioVal})
             .toList(),
@@ -116,9 +217,19 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
               'billetera_id': p.tipo == 'billetera' ? p.billeteraId : null,
               'monto': p.valor,
             }).toList(),
-      });
+      };
+
+      if (_editando) {
+        await _api.put(ApiEndpoints.compra(widget.compraId!), body: payload);
+      } else {
+        await _api.post(ApiEndpoints.compras, body: payload);
+      }
       if (mounted) {
-        showAppSnackbar(context, 'Compra registrada.', type: AppSnackbarType.success);
+        showAppSnackbar(
+          context,
+          _editando ? 'Compra actualizada.' : 'Compra registrada.',
+          type: AppSnackbarType.success,
+        );
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -131,7 +242,11 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Nueva Compra',
+      title: _editando
+          ? 'Editar Compra ${_numeroCompra ?? ''}'
+          : _ordenCodigo != null
+          ? 'Compra desde ${_ordenCodigo!}'
+          : 'Nueva Compra',
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -139,6 +254,10 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_error != null) ...[
+                    AppMessage(text: _error!),
+                    const SizedBox(height: 12),
+                  ],
                   AppFormSection(
                     title: 'Datos del comprobante',
                     children: [
@@ -156,7 +275,6 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
                         options: const [
                           AppSelectOption('factura', 'Factura'),
                           AppSelectOption('boleta', 'Boleta'),
-                          AppSelectOption('guia', 'Guía de remisión'),
                         ],
                         onChanged: (v) => setState(() => _tipoDoc = v ?? 'factura'),
                       ),
@@ -173,6 +291,60 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
                         value: _formaPago,
                         options: const [AppSelectOption('contado', 'Contado'), AppSelectOption('credito', 'Crédito')],
                         onChanged: (v) => setState(() => _formaPago = v ?? 'contado'),
+                      ),
+                      if (_formaPago == 'credito') ...[
+                        AppTextField(
+                          controller: _diasCredito,
+                          label: 'N° días de crédito',
+                          icon: Icons.event_outlined,
+                          keyboardType: TextInputType.number,
+                        ),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.calendar_today_outlined),
+                          title: const Text('Vencimiento'),
+                          subtitle: Text(
+                            _vencimiento.toIso8601String().substring(0, 10),
+                          ),
+                          onTap: () async {
+                            final d = await showDatePicker(
+                              context: context,
+                              initialDate: _vencimiento,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2100),
+                            );
+                            if (d != null) setState(() => _vencimiento = d);
+                          },
+                        ),
+                      ],
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.today_outlined),
+                        title: const Text('Fecha'),
+                        subtitle: Text(_fecha.toIso8601String().substring(0, 10)),
+                        onTap: () async {
+                          final d = await showDatePicker(
+                            context: context,
+                            initialDate: _fecha,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2100),
+                          );
+                          if (d != null) setState(() => _fecha = d);
+                        },
+                      ),
+                      AppTextField(
+                        controller: _flete,
+                        label: 'Flete (S/)',
+                        icon: Icons.local_shipping_outlined,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      AppTextField(
+                        controller: _observaciones,
+                        label: 'Observaciones',
+                        icon: Icons.notes_outlined,
                       ),
                     ],
                   ),
@@ -260,7 +432,7 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  PrimaryButton(label: 'Registrar compra', loading: _saving, onPressed: _guardar),
+                  PrimaryButton(label: _editando ? 'Guardar cambios' : 'Registrar compra', loading: _saving, onPressed: _guardar),
                 ],
               ),
             ),

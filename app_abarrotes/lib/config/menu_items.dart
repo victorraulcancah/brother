@@ -100,6 +100,7 @@ class AppMenu {
         MenuLink(icon: Icons.credit_card, label: 'Cuentas y medios de pago', route: AppRoutes.cuentasMedios),
         MenuLink(icon: Icons.point_of_sale_outlined, label: 'Cajas', route: AppRoutes.cajas),
         MenuLink(icon: Icons.swap_horiz, label: 'Movimientos de caja', route: AppRoutes.movimientosCaja),
+        MenuLink(icon: Icons.lock_outline, label: 'Cierres de caja', route: AppRoutes.cierresCaja),
         MenuLink(icon: Icons.label_outline, label: 'Motivos de movimiento', route: AppRoutes.motivosMovimiento),
         MenuLink(icon: Icons.call_received, label: 'Cuentas por cobrar', route: AppRoutes.cuentasPorCobrar),
         MenuLink(icon: Icons.call_made, label: 'Cuentas por pagar', route: AppRoutes.cuentasPorPagar),

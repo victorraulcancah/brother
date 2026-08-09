@@ -91,6 +91,16 @@ class _ComprasScreenState extends State<ComprasScreen> {
     if (ok == true) _load();
   }
 
+  Future<void> _editar(Map<String, dynamic> item) async {
+    final ok = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CrearCompraScreen(compraId: item['id'] as int),
+      ),
+    );
+    if (ok == true) _load();
+  }
+
   Future<void> _anular(Map<String, dynamic> item) async {
     final confirmado = await showAppConfirmDialog(
       context,
@@ -389,6 +399,13 @@ class _ComprasScreenState extends State<ComprasScreen> {
                                     color: AppColors.info,
                                     tooltip: 'Finalizar',
                                     onTap: () => _finalizar(item),
+                                  ),
+                                if (!anulada)
+                                  DataCardAction(
+                                    icon: Icons.edit_outlined,
+                                    color: AppColors.primary,
+                                    tooltip: 'Editar',
+                                    onTap: () => _editar(item),
                                   ),
                                 if (!anulada)
                                   DataCardAction(

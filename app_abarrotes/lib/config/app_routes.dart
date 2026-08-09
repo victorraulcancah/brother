@@ -47,6 +47,7 @@ class AppRoutes {
   static const String miCaja = '/mi-caja';
   static const String cajas = '/cajas';
   static const String movimientosCaja = '/movimientos-caja';
+  static const String cierresCaja = '/cierres-caja';
   static const String motivosMovimiento = '/motivos-movimiento';
   static const String cuentasPorCobrar = '/cuentas-por-cobrar';
   static const String reportesUtilidades = '/reportes/utilidades';

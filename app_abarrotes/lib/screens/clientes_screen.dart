@@ -8,6 +8,8 @@ import '../widgets/app_button.dart';
 import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_form_section.dart';
 import '../widgets/app_modal.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
@@ -27,6 +29,10 @@ class _ClientesScreenState extends State<ClientesScreen> {
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
+  String? _filtroEstado;
+  String? _filtroTipoDoc;
 
   @override
   void initState() {
@@ -36,10 +42,15 @@ class _ClientesScreenState extends State<ClientesScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _items = await _crud.getAll();
-    } catch (_) {}
+    } catch (_) {
+      _error = 'No se pudieron cargar los clientes.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -86,6 +97,21 @@ class _ClientesScreenState extends State<ClientesScreen> {
     }
   }
 
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    return _items.where((c) {
+      if (_filtroTipoDoc != null && c['tipo_documento'] != _filtroTipoDoc) {
+        return false;
+      }
+      if (_filtroEstado == 'activos' && c['activo'] != true) return false;
+      if (_filtroEstado == 'inactivos' && c['activo'] == true) return false;
+      if (q.isEmpty) return true;
+      return '${c['nombre']} ${c['numero_documento'] ?? ''} ${c['telefono'] ?? ''}'
+          .toLowerCase()
+          .contains(q);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -96,13 +122,58 @@ class _ClientesScreenState extends State<ClientesScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay clientes'))
-          : ListView.builder(
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar clientes...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  filters: [
+                    AppListFilter(
+                      label: 'Tipo doc.',
+                      value: _filtroTipoDoc,
+                      options: const [
+                        AppListFilterOption(null, 'Todos'),
+                        AppListFilterOption('DNI', 'DNI'),
+                        AppListFilterOption('RUC', 'RUC'),
+                        AppListFilterOption('CE', 'CE'),
+                        AppListFilterOption('SIN', 'Sin documento'),
+                      ],
+                      onChanged: (v) => setState(() => _filtroTipoDoc = v),
+                    ),
+                    AppListFilter(
+                      label: 'Estado',
+                      value: _filtroEstado,
+                      options: const [
+                        AppListFilterOption(null, 'Todos'),
+                        AppListFilterOption('activos', 'Activos'),
+                        AppListFilterOption('inactivos', 'Inactivos'),
+                      ],
+                      onChanged: (v) => setState(() => _filtroEstado = v),
+                    ),
+                  ],
+                  activeFilters:
+                      (_filtroTipoDoc != null ? 1 : 0) +
+                      (_filtroEstado != null ? 1 : 0),
+                  onClearFilters: () => setState(() {
+                    _filtroTipoDoc = null;
+                    _filtroEstado = null;
+                  }),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(child: Text(_items.isEmpty ? 'No hay clientes' : 'Ningun cliente coincide con la busqueda'))
+                      : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
+              itemCount: _visibles.length,
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = _visibles[index];
                 final activo = item['activo'] as bool? ?? true;
                 final doc = [item['tipo_documento'], item['numero_documento']]
                     .where((e) => e != null && '$e'.isNotEmpty)
@@ -138,6 +209,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
                   ],
                 );
               },
+            ),
+                ),
+              ],
             ),
     );
   }

@@ -135,6 +135,33 @@ class _AjustesScreenState extends State<AjustesScreen> {
     }
   }
 
+  /// El ajuste ya movió stock: solo se editan los datos descriptivos.
+  /// Para cambiar almacén, tipo o cantidades hay que eliminarlo y rehacerlo.
+  Future<void> _editar(Map<String, dynamic> item) async {
+    final data = await showAppModal<Map<String, dynamic>>(
+      context,
+      title: 'Editar ${item['documento'] ?? 'ajuste'}',
+      child: _EditarAjusteSheet(initial: item),
+    );
+    if (data == null) return;
+
+    try {
+      await _crud.update(item['id'], data);
+      await _load();
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          'Ajuste actualizado',
+          type: AppSnackbarType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
+  }
+
   Future<void> _eliminar(Map<String, dynamic> item) async {
     final ok = await showAppConfirmDialog(
       context,
@@ -366,6 +393,12 @@ class _AjustesScreenState extends State<AjustesScreen> {
                                 DataCardRow.text('Total', _money(item['total'])),
                               ],
                               actions: [
+                                DataCardAction(
+                                  icon: Icons.edit_outlined,
+                                  color: AppColors.primary,
+                                  tooltip: 'Editar',
+                                  onTap: () => _editar(item),
+                                ),
                                 DataCardAction(
                                   icon: Icons.delete_outline,
                                   color: AppColors.danger,
@@ -767,6 +800,89 @@ class _AjusteFormSheetState extends State<_AjusteFormSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Solo estado y observaciones: el resto ya afectó el inventario.
+class _EditarAjusteSheet extends StatefulWidget {
+  final Map<String, dynamic> initial;
+
+  const _EditarAjusteSheet({required this.initial});
+
+  @override
+  State<_EditarAjusteSheet> createState() => _EditarAjusteSheetState();
+}
+
+class _EditarAjusteSheetState extends State<_EditarAjusteSheet> {
+  late String _estado;
+  late final TextEditingController _observaciones;
+
+  @override
+  void initState() {
+    super.initState();
+    _estado = widget.initial['estado']?.toString() ?? 'pendiente';
+    _observaciones = TextEditingController(
+      text: widget.initial['observaciones']?.toString() ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _observaciones.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppFormSection(
+          title: 'Datos editables',
+          children: [
+            AppSelect<String>(
+              label: 'Estado',
+              icon: Icons.flag_outlined,
+              value: _estado,
+              options: const [
+                AppSelectOption('pendiente', 'Pendiente'),
+                AppSelectOption('aprobado', 'Aprobado'),
+                AppSelectOption('rechazado', 'Rechazado'),
+              ],
+              onChanged: (v) => setState(() => _estado = v ?? 'pendiente'),
+            ),
+            AppTextField(
+              controller: _observaciones,
+              label: 'Observaciones',
+              icon: Icons.notes_outlined,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: SecondaryButton(
+                label: 'Cancelar',
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: PrimaryButton(
+                label: 'Guardar',
+                onPressed: () => Navigator.pop(context, {
+                  'estado': _estado,
+                  'observaciones': _observaciones.text.trim().isEmpty
+                      ? null
+                      : _observaciones.text.trim(),
+                }),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

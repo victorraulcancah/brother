@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_form_section.dart';
+import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_list_header.dart';
 import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
@@ -77,6 +78,26 @@ class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
     }).toList();
   }
 
+  Future<void> _eliminar(Map<String, dynamic> item) async {
+    final ok = await showAppConfirmDialog(
+      context,
+      title: 'Eliminar toma',
+      message: '¿Eliminar la toma #${item['id']}?',
+    );
+    if (!ok) return;
+    try {
+      await _crud.delete(item['id']);
+      await _load();
+      if (mounted) {
+        showAppSnackbar(context, 'Toma eliminada', type: AppSnackbarType.error);
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -137,16 +158,22 @@ class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
                           type: cerrado ? AppBadgeType.success : AppBadgeType.warning),
                     ),
                   ],
-                  actions: cerrado
-                      ? []
-                      : [
+                  actions: [
+                    DataCardAction(
+                      icon: Icons.delete_outline,
+                      color: AppColors.danger,
+                      tooltip: 'Eliminar',
+                      onTap: () => _eliminar(item),
+                    ),
+                    if (!cerrado) ...[
                           DataCardAction(
                             icon: Icons.lock_outline,
                             color: AppColors.primary,
                             tooltip: 'Cerrar y ajustar stock',
                             onTap: () => _cerrar(item),
                           ),
-                        ],
+                    ],
+                  ],
                 );
               },
             ),

@@ -5,6 +5,8 @@ import '../services/crud_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
@@ -23,6 +25,8 @@ class _MotivosMovimientoScreenState extends State<MotivosMovimientoScreen> {
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
 
   @override
   void initState() {
@@ -32,10 +36,15 @@ class _MotivosMovimientoScreenState extends State<MotivosMovimientoScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _items = await _crud.getAll();
-    } catch (_) {}
+    } catch (_) {
+      _error = 'No se pudieron cargar los motivos.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -69,6 +78,16 @@ class _MotivosMovimientoScreenState extends State<MotivosMovimientoScreen> {
     }
   }
 
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    if (q.isEmpty) return _items;
+    return _items
+        .where(
+          (x) => '${x['nombre']} ${x['tipo'] ?? ''}'.toLowerCase().contains(q),
+        )
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -76,13 +95,27 @@ class _MotivosMovimientoScreenState extends State<MotivosMovimientoScreen> {
       floatingActionButton: FloatingActionButton(onPressed: () => _editar(), child: const Icon(Icons.add)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay motivos'))
-          : ListView.builder(
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar motivos...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(child: Text(_items.isEmpty ? 'No hay motivos' : 'Ningun motivo coincide con la busqueda'))
+                      : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
+              itemCount: _visibles.length,
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = _visibles[index];
                 final esEntrada = item['tipo'] == 'entrada';
                 final esSistema = item['es_sistema'] == true;
                 final activo = item['activo'] == true;
@@ -121,6 +154,9 @@ class _MotivosMovimientoScreenState extends State<MotivosMovimientoScreen> {
                         ],
                 );
               },
+            ),
+                ),
+              ],
             ),
     );
   }
