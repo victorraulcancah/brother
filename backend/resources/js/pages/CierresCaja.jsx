@@ -256,7 +256,7 @@ export default function CierresCaja() {
                 filters={filtros}
                 filterCount={filtrosCount}
                 emptyMessage="Todavía no hay cierres de caja registrados."
-                height="260px"
+                height="350px"
                 onRowClick={(row) => setSeleccionado(row)}
                 rowClassName={(row) => (row.id === seleccionado?.id ? 'bg-primary-50' : undefined)}
             />
@@ -301,7 +301,7 @@ export default function CierresCaja() {
                     </div>
                 ) : (
                     // Tope de alto: una jornada puede tener decenas de movimientos.
-                    <div className="h-[260px] overflow-auto">
+                    <div className="h-[350px] overflow-auto">
                         <table className="w-full min-w-[820px] text-sm">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
