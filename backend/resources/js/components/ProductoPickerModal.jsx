@@ -490,7 +490,6 @@ export default function ProductoPickerModal({
                                                 value: String(pres.id),
                                                 label: pres.nombre,
                                             }))}
-                                            className="py-1 text-xs"
                                         />
                                     </div>
                                 )}

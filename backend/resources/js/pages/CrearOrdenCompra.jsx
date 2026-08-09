@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Package, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, FileText, Package, Plus, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
@@ -35,8 +35,6 @@ export default function CrearOrdenCompra() {
 
     /** Panel superior de búsqueda/alta. */
     const [panel, setPanel] = useState({ ...panelVacio });
-    /** Índice del ítem que se está editando desde el panel (null = alta nueva). */
-    const [editando, setEditando] = useState(null);
     /** Productos ya agregados a la orden. */
     const [items, setItems] = useState([]);
     /** Buscador avanzado de productos. */
@@ -181,10 +179,7 @@ export default function CrearOrdenCompra() {
         limpiarPanel();
     };
 
-    const limpiarPanel = () => {
-        setPanel({ ...panelVacio });
-        setEditando(null);
-    };
+    const limpiarPanel = () => setPanel({ ...panelVacio });
 
     const agregarProducto = () => {
         if (!panel.producto_id) return toast.error('Busca y elige un producto.');
@@ -197,12 +192,6 @@ export default function CrearOrdenCompra() {
             cantidad: panel.cantidad,
             precio_unitario: panel.precio_unitario || '0',
         };
-
-        if (editando !== null) {
-            setItems((prev) => prev.map((it, i) => (i === editando ? nuevo : it)));
-            limpiarPanel();
-            return;
-        }
 
         // Si ya existe la misma presentación, se acumula en vez de duplicar la línea.
         const yaEsta = items.findIndex(
@@ -227,16 +216,19 @@ export default function CrearOrdenCompra() {
         limpiarPanel();
     };
 
-    const editarItem = (i) => {
-        setPanel({ ...items[i] });
-        setEditando(i);
-    };
+    const setItem = (i, patch) =>
+        setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
 
-    const quitarItem = (i) => {
-        setItems((prev) => prev.filter((_, idx) => idx !== i));
-        if (editando === i) limpiarPanel();
-        else if (editando !== null && i < editando) setEditando((prev) => prev - 1);
-    };
+    /** Cambiar la unidad de una fila trae el precio de compra de esa presentación. */
+    const cambiarUnidadItem = (i, presentacionId) =>
+        setItem(i, {
+            producto_presentacion_id: presentacionId,
+            precio_unitario: String(
+                Number(presentacionDe(items[i].producto_id, presentacionId)?.precio_compra) || 0,
+            ),
+        });
+
+    const quitarItem = (i) => setItems((prev) => prev.filter((_, idx) => idx !== i));
 
     const total = items.reduce(
         (acc, it) => acc + (Number(it.cantidad) || 0) * (Number(it.precio_unitario) || 0),
@@ -338,18 +330,7 @@ export default function CrearOrdenCompra() {
 
             {/* Panel de búsqueda y alta de producto */}
             <div className="mb-6 rounded-xl border border-edge bg-white p-5 shadow-sm">
-                <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-warm-900">Buscar Producto</h2>
-                    {editando !== null && (
-                        <button
-                            type="button"
-                            onClick={limpiarPanel}
-                            className="inline-flex items-center gap-1 rounded-lg border border-edge px-2.5 py-1 text-xs font-semibold text-warm-500 transition hover:bg-gray-50 hover:text-warm-900"
-                        >
-                            <X className="h-3.5 w-3.5" /> Cancelar edición
-                        </button>
-                    )}
-                </div>
+                <h2 className="mb-3 text-sm font-semibold text-warm-900">Buscar Producto</h2>
 
                 <SearchSelect
                     value={panel.producto_id}
@@ -412,7 +393,7 @@ export default function CrearOrdenCompra() {
                 </div>
 
                 <Button type="button" onClick={agregarProducto} className="mt-4 w-full justify-center md:w-auto md:min-w-[280px]">
-                    <Plus className="h-4 w-4" /> {editando !== null ? 'Actualizar Producto' : 'Agregar Producto'}
+                    <Plus className="h-4 w-4" /> Agregar Producto
                 </Button>
             </div>
 
@@ -451,30 +432,47 @@ export default function CrearOrdenCompra() {
 
                             {items.map((it, i) => {
                                 const producto = productoDe(it.producto_id);
-                                const presentacion = presentacionDe(it.producto_id, it.producto_presentacion_id);
                                 const subtotal = (Number(it.cantidad) || 0) * (Number(it.precio_unitario) || 0);
 
                                 return (
-                                    <tr key={`${it.producto_presentacion_id}-${i}`} className={editando === i ? 'bg-primary-50' : undefined}>
-                                        <td className="px-3 py-2.5 text-center text-warm-500">{i + 1}</td>
-                                        <td className="px-3 py-2.5 font-medium text-warm-900">{producto?.codigo ?? '—'}</td>
-                                        <td className="px-3 py-2.5 font-semibold text-warm-900">{producto?.nombre ?? '—'}</td>
-                                        <td className="px-3 py-2.5 text-warm-500">{presentacion?.nombre ?? '—'}</td>
-                                        <td className="px-3 py-2.5 text-right font-medium text-warm-900">
-                                            {Number(it.cantidad).toFixed(2)}
+                                    <tr key={i}>
+                                        <td className="px-3 py-2 text-center text-warm-500">{i + 1}</td>
+                                        <td className="px-3 py-2 font-medium text-warm-900">{producto?.codigo ?? '—'}</td>
+                                        <td className="px-3 py-2 font-semibold text-warm-900">{producto?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2">
+                                            <Select
+                                                value={it.producto_presentacion_id}
+                                                onChange={(e) => cambiarUnidadItem(i, e.target.value)}
+                                                options={unidadesDe(it.producto_id)}
+                                                aria-label="Unidad"
+                                                className="min-w-[120px]"
+                                            />
                                         </td>
-                                        <td className="px-3 py-2.5 text-right text-warm-900">{money(it.precio_unitario)}</td>
-                                        <td className="px-3 py-2.5 text-right font-semibold text-primary-600">{money(subtotal)}</td>
-                                        <td className="px-3 py-2.5">
-                                            <div className="flex items-center justify-center gap-1">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => editarItem(i)}
-                                                    aria-label="Editar"
-                                                    className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50"
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </button>
+                                        <td className="px-3 py-2">
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                value={it.cantidad}
+                                                onChange={(e) => setItem(i, { cantidad: e.target.value })}
+                                                aria-label="Cantidad"
+                                                className="text-right"
+                                            />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                value={it.precio_unitario}
+                                                onChange={(e) => setItem(i, { precio_unitario: e.target.value })}
+                                                aria-label="Precio unitario"
+                                                className="text-right"
+                                            />
+                                        </td>
+                                        <td className="px-3 py-2 text-right font-semibold text-primary-600">{money(subtotal)}</td>
+                                        <td className="px-3 py-2">
+                                            <div className="flex items-center justify-center">
                                                 <button
                                                     type="button"
                                                     onClick={() => quitarItem(i)}
