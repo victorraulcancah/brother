@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink } from 'react-router-dom';
 import { ChevronDown, ChevronsLeft, ChevronsRight, Menu, X } from 'lucide-react';
 import { navigation } from '../config/navigation';
@@ -44,6 +45,49 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }) {
 
     // El sidebar se contrae a iconos solo en escritorio; en móvil siempre es el drawer completo.
     const rail = collapsed && isDesktop;
+
+    /** Submenú flotante del modo rail: { label, top, children }. */
+    const [flyout, setFlyout] = useState(null);
+    const flyoutRef = useRef(null);
+
+    const cerrarFlyout = useCallback(() => setFlyout(null), []);
+
+    // Al desplegar el sidebar el flyout deja de tener sentido.
+    useEffect(() => {
+        if (!rail) cerrarFlyout();
+    }, [rail, cerrarFlyout]);
+
+    // Se cierra al hacer clic fuera, con Escape o si cambia el tamaño de la ventana.
+    useEffect(() => {
+        if (!flyout) return undefined;
+
+        const alClic = (e) => {
+            if (flyoutRef.current?.contains(e.target)) return;
+            if (e.target.closest?.('[data-rail-group]')) return;
+            cerrarFlyout();
+        };
+        const alTeclado = (e) => e.key === 'Escape' && cerrarFlyout();
+
+        document.addEventListener('mousedown', alClic);
+        document.addEventListener('keydown', alTeclado);
+        window.addEventListener('resize', cerrarFlyout);
+        return () => {
+            document.removeEventListener('mousedown', alClic);
+            document.removeEventListener('keydown', alTeclado);
+            window.removeEventListener('resize', cerrarFlyout);
+        };
+    }, [flyout, cerrarFlyout]);
+
+    /** Abre el submenú junto al icono, sin salirse de la pantalla. */
+    const abrirFlyout = (item, e) => {
+        if (flyout?.label === item.label) return cerrarFlyout();
+
+        const r = e.currentTarget.getBoundingClientRect();
+        const alto = 52 + item.children.length * 40;
+        const top = Math.max(8, Math.min(r.top, window.innerHeight - alto - 8));
+
+        setFlyout({ label: item.label, top, children: item.children, icon: item.icon });
+    };
 
     const toggleGroup = (label) => {
         setCollapsedGroups((prev) => {
@@ -143,13 +187,21 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }) {
                                     </NavLink>
                                 );
                             }
-                            // Grupo en modo rail: al hacer clic se despliega el sidebar completo.
+                            // Grupo en modo rail: despliega sus submódulos al costado.
+                            const activo = flyout?.label === item.label;
                             return (
                                 <button
                                     key={item.label}
-                                    onClick={onToggleCollapse}
+                                    data-rail-group
+                                    onClick={(e) => abrirFlyout(item, e)}
                                     title={item.label}
-                                    className="mb-1 flex w-full items-center justify-center rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+                                    aria-expanded={activo}
+                                    className={cn(
+                                        'mb-1 flex w-full items-center justify-center rounded-lg p-2.5 transition',
+                                        activo
+                                            ? 'bg-primary-50 text-primary-700'
+                                            : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900',
+                                    )}
                                 >
                                     <Icon className="h-5 w-5" />
                                 </button>
@@ -199,7 +251,10 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }) {
                                             />
                                         </button>
                                         {open && (
-                                            <div className="mb-1 ml-3 border-l border-edge pl-2">
+                                            <div
+                                                className="mb-1 ml-3 border-l border-edge pl-2"
+                                                style={{ animation: 'accordion-in 0.18s ease-out' }}
+                                            >
                                                 {item.children.map((child) => (
                                                     <NavLink
                                                         key={child.to}
@@ -231,6 +286,49 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }) {
                     <UserMenu compact={rail} />
                 </div>
             </aside>
+
+            {/* Submenú del modo contraído. Va en un portal porque el nav recorta
+                su contenido con overflow-y-auto. */}
+            {rail &&
+                flyout &&
+                createPortal(
+                    <div
+                        ref={flyoutRef}
+                        role="menu"
+                        style={{
+                            position: 'fixed',
+                            top: flyout.top,
+                            left: '4.25rem',
+                            zIndex: 60,
+                            animation: 'flyout-in 0.15s ease-out',
+                        }}
+                        className="w-60 rounded-xl border border-edge bg-white py-2 shadow-xl"
+                    >
+                        <div className="mb-1 flex items-center gap-2 px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                            <flyout.icon className="h-4 w-4" />
+                            {flyout.label}
+                        </div>
+                        {flyout.children.map((child) => (
+                            <NavLink
+                                key={child.to}
+                                to={child.to}
+                                onClick={cerrarFlyout}
+                                className={({ isActive }) =>
+                                    cn(
+                                        'mx-1 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition',
+                                        isActive
+                                            ? 'bg-primary-50 font-medium text-primary-700'
+                                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                                    )
+                                }
+                            >
+                                <child.icon className="h-4 w-4 shrink-0 text-gray-400" />
+                                {child.label}
+                            </NavLink>
+                        ))}
+                    </div>,
+                    document.body,
+                )}
         </>
     );
 }

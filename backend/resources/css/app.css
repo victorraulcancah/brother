@@ -47,3 +47,27 @@
         transform: translateY(0);
     }
 }
+
+/* Submenú que sale del sidebar contraído. */
+@keyframes flyout-in {
+    from {
+        opacity: 0;
+        transform: translateX(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Apertura de un grupo del sidebar desplegado. */
+@keyframes accordion-in {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
