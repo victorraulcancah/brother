@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ban, Pencil, ShoppingBag, Trash2 } from 'lucide-react';
+import { Ban, PackageCheck, Pencil, ShoppingBag, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
+import RecepcionarCompraModal from '../components/RecepcionarCompraModal';
 import { Alert, Badge, Button, DataTable, Modal } from '../components/ui';
+
+const estadoCompra = {
+    registrada: { label: 'Registrada', variant: 'green' },
+    parcial: { label: 'Recepción parcial', variant: 'amber' },
+    recepcionada: { label: 'Recepcionada', variant: 'blue' },
+    anulada: { label: 'Anulada', variant: 'red' },
+};
 
 const money = (n) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
@@ -22,6 +30,7 @@ export default function Compras() {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
     const [actionId, setActionId] = useState(null);
+    const [recepcionarId, setRecepcionarId] = useState(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -107,8 +116,10 @@ export default function Compras() {
         {
             key: 'estado',
             label: 'Estado',
-            render: (row) =>
-                row.estado === 'anulada' ? <Badge variant="red">Anulada</Badge> : <Badge variant="green">Registrada</Badge>,
+            render: (row) => {
+                const info = estadoCompra[row.estado] ?? { label: row.estado ?? '—', variant: 'gray' };
+                return <Badge variant={info.variant}>{info.label}</Badge>;
+            },
         },
         {
             type: 'actions',
@@ -116,6 +127,21 @@ export default function Compras() {
             label: 'Acciones',
             actions: (row) => (
                 <>
+                    <button
+                        aria-label="Recepcionar"
+                        title={
+                            row.estado === 'anulada'
+                                ? 'No se puede recepcionar: está anulada'
+                                : row.estado === 'recepcionada'
+                                  ? 'Ya está totalmente recepcionada'
+                                  : 'Recepcionar (admite parciales)'
+                        }
+                        disabled={row.estado === 'anulada' || row.estado === 'recepcionada'}
+                        onClick={() => setRecepcionarId(row.id)}
+                        className="rounded-md p-1.5 text-green-600 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                    >
+                        <PackageCheck className="h-4 w-4" />
+                    </button>
                     <button
                         aria-label="Editar"
                         title={row.estado === 'anulada' ? 'No se puede editar: está anulada' : 'Editar'}
@@ -180,6 +206,13 @@ export default function Compras() {
             >
                 <Alert variant="warning">La compra y sus pagos se eliminarán permanentemente.</Alert>
             </Modal>
+
+            <RecepcionarCompraModal
+                open={Boolean(recepcionarId)}
+                compraId={recepcionarId}
+                onClose={() => setRecepcionarId(null)}
+                onDone={load}
+            />
         </Layout>
     );
 }

@@ -77,4 +77,10 @@ class Compra extends Model
     {
         return $this->hasMany(CompraPago::class);
     }
+
+    /** Recepciones vigentes de esta compra (las deshechas no cuentan). */
+    public function recepciones()
+    {
+        return $this->hasMany(RecepcionCompra::class);
+    }
 }

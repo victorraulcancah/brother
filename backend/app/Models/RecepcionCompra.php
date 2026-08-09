@@ -8,8 +8,12 @@ class RecepcionCompra extends Model
 {
     protected $table = 'recepciones_compra';
 
+    /** Serie del documento formal de recepción. */
+    public const SERIE = 'RC01';
+
     protected $fillable = [
         'orden_compra_id',
+        'compra_id',
         'proveedor_id',
         'almacen_id',
         'serie',
@@ -18,6 +22,10 @@ class RecepcionCompra extends Model
         'tipo_documento',
         'fecha_recepcion',
         'estado',
+        'activo',
+        'finalizado',
+        'motivo_finalizacion',
+        'fecha_finalizacion',
         'stock_aplicado',
         'usuario_recibe_id',
         'observaciones',
@@ -29,11 +37,14 @@ class RecepcionCompra extends Model
     {
         return [
             'fecha_recepcion' => 'datetime',
+            'fecha_finalizacion' => 'datetime',
             'stock_aplicado' => 'boolean',
+            'activo' => 'boolean',
+            'finalizado' => 'boolean',
         ];
     }
 
-    /** Número formal del documento de recepción, ej. "RA0001-00000019". */
+    /** Número formal del documento de recepción, ej. "RC01-0024". */
     public function getDocumentoAttribute(): ?string
     {
         if (! $this->serie || ! $this->numero) {
@@ -46,6 +57,11 @@ class RecepcionCompra extends Model
     public function ordenCompra()
     {
         return $this->belongsTo(OrdenCompra::class);
+    }
+
+    public function compra()
+    {
+        return $this->belongsTo(Compra::class);
     }
 
     public function proveedor()

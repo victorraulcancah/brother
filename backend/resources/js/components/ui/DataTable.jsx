@@ -61,6 +61,8 @@ export default function DataTable({
     loading = false,
     emptyMessage = 'No hay registros para mostrar',
     onRowClick = null,
+    /** (row) => string — clases extra por fila, p. ej. para marcar la seleccionada. */
+    rowClassName = null,
     maxHeight = '60vh',
 }) {
     const [search, setSearch] = useState('');
@@ -295,6 +297,7 @@ export default function DataTable({
                                                     onRowClick
                                                         ? 'cursor-pointer hover:bg-primary-50/50'
                                                         : 'hover:bg-gray-50',
+                                                    rowClassName?.(row),
                                                 )}
                                             >
                                                 {visibleColumns.map((col) => (
@@ -354,6 +357,7 @@ export default function DataTable({
                                     className={cn(
                                         'rounded-xl border border-edge bg-white p-4 shadow-sm',
                                         onRowClick && 'cursor-pointer',
+                                        rowClassName?.(row),
                                     )}
                                 >
                                     <div className="flex items-start justify-between gap-3">
