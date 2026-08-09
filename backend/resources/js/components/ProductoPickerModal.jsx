@@ -21,9 +21,16 @@ const filtrosVacios = {
     subCategoria: '',
     marca: '',
     subMarca: '',
-    stockMin: '',
-    stockMax: '',
+    stockEstado: '',
+    stockHasta: '',
 };
+
+const ESTADO_STOCK_OPTIONS = [
+    { value: 'sin', label: 'Sin stock (0)' },
+    { value: 'con', label: 'Con stock' },
+    { value: 'bajo', label: 'Bajo el mínimo' },
+    { value: 'sobre', label: 'Sobre el máximo' },
+];
 
 /** Opciones únicas para un filtro, a partir de una relación de los productos. */
 const opcionesDe = (productos, clave) => {
@@ -147,10 +154,19 @@ export default function ProductoPickerModal({
             if (filtros.marca && String(p.marca?.id) !== filtros.marca) return false;
             if (filtros.subMarca && String(p.sub_marca?.id) !== filtros.subMarca) return false;
 
-            if (stockFilter && (filtros.stockMin !== '' || filtros.stockMax !== '')) {
+            if (stockFilter && (filtros.stockEstado || filtros.stockHasta !== '')) {
                 const stock = Number(stockPorProducto[String(p.id)] ?? 0);
-                if (filtros.stockMin !== '' && stock < Number(filtros.stockMin)) return false;
-                if (filtros.stockMax !== '' && stock > Number(filtros.stockMax)) return false;
+                const minimo = Number(p.stock_minimo) || 0;
+                const maximo = Number(p.stock_maximo) || 0;
+
+                // "Bajo/sobre" solo aplican si el producto tiene ese umbral definido.
+                if (filtros.stockEstado === 'sin' && stock > 0) return false;
+                if (filtros.stockEstado === 'con' && stock <= 0) return false;
+                if (filtros.stockEstado === 'bajo' && !(minimo > 0 && stock < minimo)) return false;
+                if (filtros.stockEstado === 'sobre' && !(maximo > 0 && stock > maximo)) return false;
+
+                // "Stock hasta 10" = de 10 hacia abajo, incluyendo 0.
+                if (filtros.stockHasta !== '' && stock > Number(filtros.stockHasta)) return false;
             }
 
             if (!q) return true;
@@ -231,11 +247,22 @@ export default function ProductoPickerModal({
         }
     };
 
+    /** Texto y color del badge de stock según los umbrales del producto. */
     const stockDe = (producto) => {
         const cantidad = stockPorProducto[String(producto.id)];
         if (cantidad == null) return null;
+
+        const valor = Number(cantidad) || 0;
+        const minimo = Number(producto.stock_minimo) || 0;
+        const maximo = Number(producto.stock_maximo) || 0;
         const abrev = producto.unidad_medida?.abreviatura ?? '';
-        return `${numero(cantidad)}${abrev ? ` ${abrev}` : ''}`;
+
+        let tono = 'bg-green-50 text-green-700';
+        if (valor <= 0) tono = 'bg-red-50 text-red-700';
+        else if (minimo > 0 && valor < minimo) tono = 'bg-amber-50 text-amber-700';
+        else if (maximo > 0 && valor > maximo) tono = 'bg-blue-50 text-blue-700';
+
+        return { texto: `${numero(valor)}${abrev ? ` ${abrev}` : ''}`, tono };
     };
 
     return (
@@ -285,24 +312,23 @@ export default function ProductoPickerModal({
                     {stockFilter && (
                         <>
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-gray-700">Stock mín.</label>
-                                <input
-                                    type="number"
-                                    step="any"
-                                    value={filtros.stockMin}
-                                    onChange={(e) => setFiltro({ stockMin: e.target.value })}
-                                    placeholder="Sin mínimo"
-                                    className="block w-full rounded-md border-0 px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary-600"
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Stock</label>
+                                <SearchSelect
+                                    value={filtros.stockEstado}
+                                    onChange={(v) => setFiltro({ stockEstado: v })}
+                                    options={ESTADO_STOCK_OPTIONS}
+                                    placeholder="Todo el stock"
+                                    emptyText="Sin coincidencias"
                                 />
                             </div>
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-gray-700">Stock máx.</label>
+                                <label className="mb-1 block text-xs font-medium text-gray-700">Stock hasta</label>
                                 <input
                                     type="number"
                                     step="any"
-                                    value={filtros.stockMax}
-                                    onChange={(e) => setFiltro({ stockMax: e.target.value })}
-                                    placeholder="Sin máximo"
+                                    value={filtros.stockHasta}
+                                    onChange={(e) => setFiltro({ stockHasta: e.target.value })}
+                                    placeholder="Ej. 10 (de 10 a 0)"
                                     className="block w-full rounded-md border-0 px-3 py-2 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary-600"
                                 />
                             </div>
@@ -442,9 +468,11 @@ export default function ProductoPickerModal({
                                         {producto.categoria?.nombre && ` · ${producto.categoria.nombre}`}
                                     </p>
                                     <div className="mt-1 flex flex-wrap items-center gap-2">
-                                        {stock !== null && (
-                                            <span className="rounded bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
-                                                Stock: {stock}
+                                        {stock && (
+                                            <span
+                                                className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${stock.tono}`}
+                                            >
+                                                Stock: {stock.texto}
                                             </span>
                                         )}
                                         <span className="text-sm font-semibold text-primary-600">
