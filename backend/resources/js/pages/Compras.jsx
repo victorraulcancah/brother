@@ -18,6 +18,8 @@ const estadoCompra = {
 const money = (n) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
 
+const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(Number(n) || 0);
+
 const docLabel = { factura: 'Factura', boleta: 'Boleta', guia: 'Guía' };
 
 export default function Compras() {
@@ -33,12 +35,17 @@ export default function Compras() {
     const [recepcionarId, setRecepcionarId] = useState(null);
     const [finalizarTarget, setFinalizarTarget] = useState(null);
     const [motivo, setMotivo] = useState('');
+    /** Compra cuyo detalle se muestra en la segunda tabla. */
+    const [seleccionada, setSeleccionada] = useState(null);
 
     const load = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setCompras(asList(await api.get('/compras')));
+            const lista = asList(await api.get('/compras'));
+            setCompras(lista);
+            // Se mantiene la selección tras recargar; si no hay, se toma la primera.
+            setSeleccionada((prev) => lista.find((c) => c.id === prev?.id) ?? lista[0] ?? null);
         } catch {
             setError('No se pudieron cargar las compras.');
         } finally {
@@ -211,6 +218,8 @@ export default function Compras() {
         },
     ];
 
+    const detalles = seleccionada?.detalles ?? [];
+
     return (
         <Layout>
             <PageHeader
@@ -226,7 +235,74 @@ export default function Compras() {
                 rows={compras}
                 loading={loading}
                 searchPlaceholder="Buscar compras..."
+                onRowClick={(row) => setSeleccionada(row)}
+                rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
             />
+
+            {/* Detalle de la compra seleccionada */}
+            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+                <div className="flex items-center justify-between border-b border-edge px-5 py-3">
+                    <h2 className="text-sm font-semibold text-warm-900">
+                        Detalle {seleccionada?.numero_compra ? `de ${seleccionada.numero_compra}` : ''}
+                    </h2>
+                    <span className="text-xs text-warm-500">
+                        {detalles.length} {detalles.length === 1 ? 'producto' : 'productos'}
+                    </span>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[900px] text-sm">
+                        <thead>
+                            <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                                <th className="w-12 px-3 py-2.5 text-center">#</th>
+                                <th className="w-28 px-3 py-2.5">Código</th>
+                                <th className="px-3 py-2.5">Producto</th>
+                                <th className="w-32 px-3 py-2.5">Marca</th>
+                                <th className="w-28 px-3 py-2.5">Unidad</th>
+                                <th className="w-20 px-3 py-2.5 text-right">Cant.</th>
+                                <th className="w-24 px-3 py-2.5 text-right">Costo</th>
+                                <th className="w-28 px-3 py-2.5 text-right">Subtotal</th>
+                                <th className="w-24 px-3 py-2.5 text-right" title="Cantidad recepcionada">Recib.</th>
+                                <th className="w-24 px-3 py-2.5 text-right">Pend.</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {detalles.length === 0 && (
+                                <tr>
+                                    <td colSpan={10} className="px-3 py-10 text-center text-sm text-warm-500">
+                                        {seleccionada
+                                            ? 'Esta compra no tiene productos.'
+                                            : 'Selecciona una compra arriba para ver su detalle.'}
+                                    </td>
+                                </tr>
+                            )}
+
+                            {detalles.map((d, i) => {
+                                const producto = d.presentacion?.producto;
+                                return (
+                                    <tr key={d.id}>
+                                        <td className="px-3 py-2 text-center text-warm-500">{i + 1}</td>
+                                        <td className="px-3 py-2 text-warm-500">{producto?.codigo ?? '—'}</td>
+                                        <td className="px-3 py-2 font-semibold text-warm-900">{producto?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2 text-warm-500">{producto?.marca?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2 text-warm-500">{d.presentacion?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2 text-right text-warm-900">{num(d.cantidad)}</td>
+                                        <td className="px-3 py-2 text-right text-warm-900">{money(d.costo_unitario)}</td>
+                                        <td className="px-3 py-2 text-right font-semibold text-primary-600">{money(d.subtotal)}</td>
+                                        <td className="px-3 py-2 text-right text-green-600">{num(d.recibido)}</td>
+                                        <td
+                                            className={`px-3 py-2 text-right font-medium ${
+                                                Number(d.pendiente) > 0 ? 'text-amber-600' : 'text-warm-500'
+                                            }`}
+                                        >
+                                            {num(d.pendiente)}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
             <Modal
                 open={Boolean(deleteTarget)}

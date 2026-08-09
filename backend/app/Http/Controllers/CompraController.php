@@ -11,9 +11,32 @@ class CompraController extends Controller
 {
     public function index()
     {
-        return response()->json(
-            Compra::with('proveedor:id,nombre')->withCount('detalles')->latest('id')->get()
-        );
+        $compras = Compra::with([
+            'proveedor:id,nombre',
+            'detalles.presentacion.producto.marca',
+            // Solo las vigentes: una recepción deshecha devolvió su mercadería.
+            'recepciones' => fn ($q) => $q->where('activo', true)->with('detalles'),
+        ])->withCount('detalles')->latest('id')->get();
+
+        // Cada línea lleva cuánto se recibió y cuánto sigue pendiente.
+        $compras->each(function (Compra $compra) {
+            $recibido = $compra->recepciones
+                ->flatMap->detalles
+                ->groupBy('compra_detalle_id')
+                ->map(fn ($lineas) => (float) $lineas->sum('cantidad_recibida'));
+
+            $compra->detalles->each(function ($d) use ($recibido) {
+                $d->recibido = (float) ($recibido[$d->id] ?? 0);
+                $d->pendiente = max(0, round(
+                    (float) $d->cantidad - $d->recibido - (float) $d->cantidad_finalizada,
+                    2,
+                ));
+            });
+
+            $compra->unsetRelation('recepciones');
+        });
+
+        return response()->json($compras);
     }
 
     public function store(Request $request)
