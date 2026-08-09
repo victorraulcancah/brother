@@ -79,8 +79,15 @@ class StockService
             $anterior = (float) $stock->stock_actual;
 
             if ($cantidadBase > $anterior) {
+                // El disponible se guarda en unidad base; el usuario pide en unidades
+                // de la presentación. Se informan las dos para que no se confundan.
+                $abrev = $presentacion->producto?->unidadMedida?->abreviatura ?? 'u. base';
+                $disponiblePresentacion = $factor > 0 ? round($anterior / $factor, 2) : $anterior;
+
                 throw new \RuntimeException(
-                    "Stock insuficiente para \"{$presentacion->nombre}\" en \"{$almacen->nombre}\". Disponible: {$anterior}."
+                    "Stock insuficiente para \"{$presentacion->nombre}\" en \"{$almacen->nombre}\". "
+                    . "Disponible: {$disponiblePresentacion} x {$presentacion->nombre} "
+                    . "({$anterior} {$abrev}). Pediste {$cantidadPresentacion}."
                 );
             }
 

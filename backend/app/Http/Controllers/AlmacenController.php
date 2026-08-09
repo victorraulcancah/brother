@@ -29,6 +29,8 @@ class AlmacenController extends Controller
             'producto.marca:id,nombre',
             'producto.unidadBase:id,nombre,abreviatura',
             'producto.unidadMedida:id,nombre,abreviatura',
+            // Para poder expresar el stock en cada unidad derivada.
+            'producto.presentaciones:id,producto_id,nombre,factor_conversion,precio_venta,precio_compra,activo',
             'almacen:id,nombre',
         ]);
 

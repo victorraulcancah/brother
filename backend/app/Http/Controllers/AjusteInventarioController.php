@@ -79,16 +79,45 @@ class AjusteInventarioController extends Controller
 
     public function update(Request $request, AjusteInventario $ajuste)
     {
+        // El ajuste ya movió stock al crearse, así que solo se editan los datos
+        // descriptivos. Cambiar almacén, tipo o cantidades exigiría revertir y
+        // volver a aplicar: para eso se elimina y se crea de nuevo.
         $data = $request->validate([
+            'estado' => 'nullable|in:pendiente,aprobado,rechazado',
             'observaciones' => 'nullable|string',
         ]);
         $ajuste->update($data);
         return response()->json($ajuste);
     }
 
+    /**
+     * Eliminar revierte el stock que el ajuste movió: si no, la mercadería
+     * quedaría sumada o restada sin ningún documento que lo respalde.
+     */
     public function destroy(AjusteInventario $ajuste)
     {
-        $ajuste->delete();
+        try {
+            DB::transaction(function () use ($ajuste) {
+                $ajuste->load('detalles');
+                $almacen = Almacen::findOrFail($ajuste->almacen_id);
+                $stock = app(StockService::class);
+
+                foreach ($ajuste->detalles as $detalle) {
+                    $presentacion = ProductoPresentacion::findOrFail($detalle->producto_presentacion_id);
+                    $cantidad = (float) $detalle->cantidad;
+
+                    // Movimiento inverso al que hizo el ajuste.
+                    $args = [$presentacion, $almacen, $cantidad, 0, 'ajuste_manual', 'ajuste_inventario', $ajuste->id, auth()->id()];
+                    $ajuste->tipo === 'salida' ? $stock->entrada(...$args) : $stock->salida(...$args);
+                }
+
+                $ajuste->detalles()->delete();
+                $ajuste->delete();
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
         return response()->json(['message' => 'Eliminado']);
     }
 }

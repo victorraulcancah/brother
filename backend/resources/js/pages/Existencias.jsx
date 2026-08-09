@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Package, Store } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import Layout from '../components/Layout';
@@ -21,6 +21,9 @@ export default function Existencias() {
     const [filterStock, setFilterStock] = useState('');
     const [activeFilters, setActiveFilters] = useState({});
 
+    /** Fila cuyo desglose por unidad derivada se muestra abajo. */
+    const [seleccionada, setSeleccionada] = useState(null);
+
     const load = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -30,7 +33,10 @@ export default function Existencias() {
                 api.get('/existencias'),
             ]);
             setAlmacenes(asList(almacenesRes));
-            setExistencias(asList(existenciasRes));
+            const filas = asList(existenciasRes);
+            setExistencias(filas);
+            // Se conserva la selección tras recargar.
+            setSeleccionada((prev) => filas.find((f) => f.id === prev?.id) ?? filas[0] ?? null);
         } catch {
             setError('No se pudieron cargar las existencias.');
         } finally {
@@ -276,6 +282,37 @@ export default function Existencias() {
         { items: 0, sinStock: 0, bajoMinimo: 0, valorizado: 0 },
     );
 
+    /**
+     * Stock de la fila elegida expresado en cada unidad derivada. El stock vive en
+     * unidad base: "1000 kg" no dice cuántos paquetes de 500g hay realmente.
+     */
+    const derivadas = useMemo(() => {
+        if (!seleccionada) return [];
+
+        const stockBase = Number(seleccionada.stock_actual) || 0;
+        const abrev = seleccionada.producto?.unidad_base?.abreviatura ?? '';
+
+        return (seleccionada.producto?.presentaciones ?? [])
+            .filter((pres) => pres.activo !== false)
+            .map((pres) => {
+                const factor = Number(pres.factor_conversion) || 1;
+                const completas = Math.floor(stockBase / factor);
+
+                return {
+                    id: pres.id,
+                    nombre: pres.nombre,
+                    factor,
+                    abrev,
+                    completas,
+                    // Lo que sobra sin llegar a completar otra unidad derivada.
+                    sobrante: Math.round((stockBase - completas * factor) * 100) / 100,
+                    precio_compra: pres.precio_compra,
+                    precio_venta: pres.precio_venta,
+                };
+            })
+            .sort((a, b) => a.factor - b.factor);
+    }, [seleccionada]);
+
     const tabItems = [
         { key: 'todos', label: 'Todos', icon: Store },
         ...almacenes.map((a) => ({
@@ -322,7 +359,70 @@ export default function Existencias() {
                 filters={filters}
                 filterCount={filterCount}
                 emptyMessage="Sin existencias en este almacén"
+                onRowClick={(row) => setSeleccionada(row)}
+                rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
             />
+
+            {/* Desglose del stock en cada unidad derivada del producto */}
+            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+                <div className="flex items-center justify-between border-b border-edge px-5 py-3">
+                    <h2 className="text-sm font-semibold text-warm-900">
+                        Unidades derivadas
+                        {seleccionada?.producto?.nombre ? ` de ${seleccionada.producto.nombre}` : ''}
+                    </h2>
+                    {seleccionada && (
+                        <span className="text-xs text-warm-500">
+                            Stock base: {num(seleccionada.stock_actual)}{' '}
+                            {seleccionada.producto?.unidad_base?.abreviatura ?? ''}
+                            {seleccionada.almacen?.nombre ? ` · ${seleccionada.almacen.nombre}` : ''}
+                        </span>
+                    )}
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[720px] text-sm">
+                        <thead>
+                            <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                                <th className="w-12 px-3 py-2.5 text-center">#</th>
+                                <th className="px-3 py-2.5">Unidad derivada</th>
+                                <th className="w-32 px-3 py-2.5 text-right">Factor</th>
+                                <th className="w-36 px-3 py-2.5 text-right">Stock en esa unidad</th>
+                                <th className="w-28 px-3 py-2.5 text-right">Sobrante</th>
+                                <th className="w-28 px-3 py-2.5 text-right">P. Compra</th>
+                                <th className="w-28 px-3 py-2.5 text-right">P. Venta</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {derivadas.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} className="px-3 py-10 text-center text-sm text-warm-500">
+                                        {seleccionada
+                                            ? 'Este producto no tiene unidades derivadas activas.'
+                                            : 'Selecciona un producto arriba para ver su desglose.'}
+                                    </td>
+                                </tr>
+                            )}
+
+                            {derivadas.map((u, i) => (
+                                <tr key={u.id}>
+                                    <td className="px-3 py-2 text-center text-warm-500">{i + 1}</td>
+                                    <td className="px-3 py-2 font-semibold text-warm-900">{u.nombre}</td>
+                                    <td className="px-3 py-2 text-right text-warm-500">
+                                        x{num(u.factor)} {u.abrev}
+                                    </td>
+                                    <td className="px-3 py-2 text-right">
+                                        <span className="font-bold text-primary-600">{num(u.completas)}</span>
+                                    </td>
+                                    <td className="px-3 py-2 text-right text-warm-500">
+                                        {u.sobrante > 0 ? `${num(u.sobrante)} ${u.abrev}` : '—'}
+                                    </td>
+                                    <td className="px-3 py-2 text-right text-warm-500">{money(u.precio_compra)}</td>
+                                    <td className="px-3 py-2 text-right text-warm-900">{money(u.precio_venta)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </Layout>
     );
 }
