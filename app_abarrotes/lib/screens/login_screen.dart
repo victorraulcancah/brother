@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../utils/responsive.dart';
 import '../widgets/app_logo.dart';
@@ -16,10 +17,22 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  /// Solo se recuerda el correo: guardar la contraseña en el dispositivo
+  /// la dejaría legible para cualquiera que abra el almacenamiento de la app.
+  static const _recordarKey = 'login_recordar';
+  static const _correoKey = 'login_correo';
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _recordar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarCorreoRecordado();
+  }
 
   @override
   void dispose() {
@@ -28,19 +41,42 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _cargarCorreoRecordado() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!prefs.getBool(_recordarKey).isTrue) return;
+
+    final correo = prefs.getString(_correoKey);
+    if (!mounted || correo == null || correo.isEmpty) return;
+
+    setState(() {
+      _recordar = true;
+      _emailController.text = correo;
+    });
+  }
+
+  Future<void> _guardarPreferencia(String correo) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_recordarKey, _recordar);
+
+    if (_recordar) {
+      await prefs.setString(_correoKey, correo);
+    } else {
+      await prefs.remove(_correoKey);
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final correo = _emailController.text.trim();
     final auth = context.read<AuthProvider>();
-    final success = await auth.login(
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
+    final success = await auth.login(correo, _passwordController.text);
+
+    if (!success) return;
+    await _guardarPreferencia(correo);
 
     if (!mounted) return;
-    if (success) {
-      Navigator.pushReplacementNamed(context, '/home');
-    }
+    Navigator.pushReplacementNamed(context, '/home');
   }
 
   @override
@@ -117,7 +153,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
+
+                InkWell(
+                  onTap: () => setState(() => _recordar = !_recordar),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: _recordar,
+                          onChanged: (v) =>
+                              setState(() => _recordar = v ?? false),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        const SizedBox(width: 4),
+                        Text('Recordar mi correo', style: textTheme.bodyMedium),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
 
                 Consumer<AuthProvider>(
                   builder: (context, auth, _) => PrimaryButton(
@@ -139,4 +198,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+}
+
+extension _BoolOrFalse on bool? {
+  bool get isTrue => this ?? false;
 }
