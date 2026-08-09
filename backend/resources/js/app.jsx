@@ -34,6 +34,7 @@ import MetodosDePago from './pages/MetodosDePago';
 import MiCaja from './pages/MiCaja';
 import Cajas from './pages/Cajas';
 import MovimientosCaja from './pages/MovimientosCaja';
+import CierresCaja from './pages/CierresCaja';
 import MotivosMovimiento from './pages/MotivosMovimiento';
 import CuentasPorCobrar from './pages/CuentasPorCobrar';
 import CuentasPorPagar from './pages/CuentasPorPagar';
@@ -74,6 +75,7 @@ const routes = [
     { path: '/mi-caja', element: <MiCaja /> },
     { path: '/cajas', element: <Cajas /> },
     { path: '/movimientos-caja', element: <MovimientosCaja /> },
+    { path: '/cierres-caja', element: <CierresCaja /> },
     { path: '/motivos-movimiento', element: <MotivosMovimiento /> },
     { path: '/cuentas-por-cobrar', element: <CuentasPorCobrar /> },
     { path: '/cuentas-por-pagar', element: <CuentasPorPagar /> },

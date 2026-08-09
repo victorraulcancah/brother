@@ -64,6 +64,8 @@ export default function DataTable({
     /** (row) => string — clases extra por fila, p. ej. para marcar la seleccionada. */
     rowClassName = null,
     maxHeight = '60vh',
+    /** Alto fijo: la tabla lo mantiene aunque haya pocas filas. */
+    height = null,
 }) {
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search, 300);
@@ -283,7 +285,10 @@ export default function DataTable({
                                 </table>
                             </div>
                             {/* Cuerpo desplazable: la barra de scroll aparece solo aquí. */}
-                            <div className="overflow-y-auto" style={{ maxHeight, scrollbarGutter: 'stable' }}>
+                            <div
+                                className="overflow-y-auto"
+                                style={{ height: height ?? undefined, maxHeight: height ?? maxHeight, scrollbarGutter: 'stable' }}
+                            >
                                 <table className="w-full table-fixed text-left text-sm">
                                     <colgroup>
                                         {visibleColumns.map((col) => (
@@ -346,7 +351,10 @@ export default function DataTable({
                           </div>
                         </div>
 
-                    <div className="space-y-3 overflow-y-auto bg-gray-50 p-3 md:hidden" style={{ maxHeight }}>
+                    <div
+                        className="space-y-3 overflow-y-auto bg-gray-50 p-3 md:hidden"
+                        style={{ height: height ?? undefined, maxHeight: height ?? maxHeight }}
+                    >
                         {filteredRows.length === 0 && (
                             <p className="px-4 py-12 text-center text-sm text-gray-400">
                                 {emptyMessage}

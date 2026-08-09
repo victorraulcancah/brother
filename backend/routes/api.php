@@ -7,6 +7,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BancoController;
 use App\Http\Controllers\BilleteraDigitalController;
 use App\Http\Controllers\CajaController;
+use App\Http\Controllers\CierreCajaController;
 use App\Http\Controllers\CuentaBancariaController;
 use App\Http\Controllers\CuentaPorCobrarController;
 use App\Http\Controllers\CuentaPorPagarController;
@@ -83,6 +84,8 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('tomas-inventario', TomaInventarioController::class);
     Route::post('tomas-inventario/{toma}/cerrar', [TomaInventarioController::class, 'cerrar']);
     Route::apiResource('motivos-movimiento', MotivoMovimientoController::class);
+    Route::get('cierres-caja', [CierreCajaController::class, 'index']);
+    Route::get('cierres-caja/{cierresCaja}', [CierreCajaController::class, 'show']);
     Route::apiResource('prestamos', PrestamoController::class);
     Route::post('prestamos/{prestamo}/devoluciones', [PrestamoController::class, 'devolucion']);
     // Facturación
