@@ -63,6 +63,7 @@ const routes = [
     { path: '/ordenes-compra/:id/editar', element: <CrearOrdenCompra /> },
     { path: '/compras', element: <Compras /> },
     { path: '/compras/nueva', element: <CrearCompra /> },
+    { path: '/compras/:id/editar', element: <CrearCompra /> },
     { path: '/recepciones-compra', element: <RecepcionesCompra /> },
     { path: '/clientes', element: <Clientes /> },
     { path: '/notas-venta', element: <NotasVenta /> },

@@ -42,10 +42,15 @@ class Compra extends Model
         ];
     }
 
-    /** Número interno propio de la compra, ej. "000001". */
+    /** Serie del correlativo interno (no es la serie del documento del proveedor). */
+    public const SERIE_INTERNA = 'C001';
+
+    /** Número interno propio de la compra, ej. "C001-00000001". */
     public function getNumeroCompraAttribute(): ?string
     {
-        return $this->correlativo ? str_pad((string) $this->correlativo, 6, '0', STR_PAD_LEFT) : null;
+        return $this->correlativo
+            ? self::SERIE_INTERNA . '-' . str_pad((string) $this->correlativo, 8, '0', STR_PAD_LEFT)
+            : null;
     }
 
     public function proveedor()

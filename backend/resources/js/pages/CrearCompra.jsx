@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Package, Plus, ShoppingBag, Trash2, Wallet } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
@@ -23,6 +23,10 @@ export default function CrearCompra() {
     const [searchParams] = useSearchParams();
     const ordenCompraId = searchParams.get('orden');
     const [ordenCodigo, setOrdenCodigo] = useState('');
+    /** Con :id la pantalla trabaja en modo edición sobre una compra existente. */
+    const { id } = useParams();
+    const editando = Boolean(id);
+    const [numeroCompra, setNumeroCompra] = useState('');
 
     const [proveedores, setProveedores] = useState([]);
     const [productos, setProductos] = useState([]);
@@ -54,6 +58,8 @@ export default function CrearCompra() {
     const [picker, setPicker] = useState({ open: false, query: '' });
 
     const [pagos, setPagos] = useState([emptyPago()]);
+    /** Off = un solo método de pago (el caso normal). On = varios métodos. */
+    const [mixto, setMixto] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -79,6 +85,45 @@ export default function CrearCompra() {
                 }, {}),
             );
 
+            if (id) {
+                // Modo edición: la compra se vuelca al formulario, la tabla y los pagos.
+                const { data: compra } = await api.get(`/compras/${id}`);
+                setNumeroCompra(compra.numero_compra ?? '');
+                setForm({
+                    proveedor_id: compra.proveedor_id ? String(compra.proveedor_id) : '',
+                    tipo_documento: compra.tipo_documento ?? 'factura',
+                    serie: compra.serie ?? '',
+                    numero: compra.numero ?? '',
+                    fecha: (compra.fecha ?? '').slice(0, 10),
+                    forma_pago: compra.forma_pago ?? 'contado',
+                    dias_credito: compra.dias_credito ?? 0,
+                    fecha_vencimiento: (compra.fecha_vencimiento ?? hoy()).slice(0, 10),
+                    flete: String(compra.flete ?? '0'),
+                    observaciones: compra.observaciones ?? '',
+                });
+                setItems(
+                    (compra.detalles ?? []).map((d) => ({
+                        producto_id: String(d.presentacion?.producto_id ?? d.presentacion?.producto?.id ?? ''),
+                        producto_presentacion_id: String(d.producto_presentacion_id),
+                        cantidad: String(d.cantidad),
+                        costo_unitario: String(d.costo_unitario),
+                    })),
+                );
+
+                const pagosCompra = (compra.pagos ?? []).map((p) => ({
+                    tipo: p.metodo,
+                    cuentaId: p.cuenta_bancaria_id ? String(p.cuenta_bancaria_id) : '',
+                    billeteraId: p.billetera_id ? String(p.billetera_id) : '',
+                    monto: String(p.monto),
+                }));
+                if (pagosCompra.length) {
+                    setPagos(pagosCompra);
+                    // Con más de un pago la pantalla arranca en modo mixto.
+                    setMixto(pagosCompra.length > 1);
+                }
+                return;
+            }
+
             if (!ordenCompraId) return;
 
             // Transformar orden → compra: se copian proveedor y líneas.
@@ -101,7 +146,7 @@ export default function CrearCompra() {
         } finally {
             setLoading(false);
         }
-    }, [toast, ordenCompraId]);
+    }, [toast, ordenCompraId, id]);
 
     useEffect(() => {
         load();
@@ -269,7 +314,7 @@ export default function CrearCompra() {
 
     const setPago = (i, patch) => setPagos((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
     const addPago = () => setPagos((prev) => [...prev, emptyPago()]);
-    const removePago = (i) => setPagos((prev) => prev.filter((_, idx) => idx !== i));
+    const removePago = (i) => setPagos((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
 
     const subtotal = items.reduce(
         (acc, it) => acc + (Number(it.cantidad) || 0) * (Number(it.costo_unitario) || 0),
@@ -277,8 +322,30 @@ export default function CrearCompra() {
     );
     const flete = Number(form.flete) || 0;
     const total = subtotal + flete;
-    const pagado = pagos.reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
+    const esContado = form.forma_pago === 'contado';
+
+    /**
+     * En modo simple hay un solo pago: al contado cubre el total automáticamente,
+     * y a crédito es un adelanto opcional. El modo mixto abre la lista completa.
+     */
+    const pagosEfectivos = mixto
+        ? pagos
+        : [{ ...pagos[0], monto: esContado ? String(total) : pagos[0].monto }];
+
+    const pagado = pagosEfectivos.reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
     const saldo = total - pagado;
+
+    const alternarMixto = () => {
+        setMixto((prev) => {
+            // Al abrir el modo mixto, el primer pago arranca con el total pendiente.
+            if (!prev && !Number(pagos[0].monto)) {
+                setPagos((ps) => ps.map((p, i) => (i === 0 ? { ...p, monto: String(total) } : p)));
+            }
+            // Al volver a simple se conserva solo el primer pago.
+            if (prev) setPagos((ps) => ps.slice(0, 1));
+            return !prev;
+        });
+    };
 
     const guardar = async () => {
         if (items.length === 0) {
@@ -289,34 +356,38 @@ export default function CrearCompra() {
         setSaving(true);
         setFormErrors({});
 
-        try {
-            await api.post('/compras', {
-                proveedor_id: form.proveedor_id || null,
-                orden_compra_id: ordenCompraId || null,
-                tipo_documento: form.tipo_documento,
-                serie: form.serie,
-                numero: form.numero,
-                fecha: form.fecha,
-                forma_pago: form.forma_pago,
-                dias_credito: form.forma_pago === 'credito' ? Number(form.dias_credito) || 0 : 0,
-                fecha_vencimiento: form.forma_pago === 'credito' ? form.fecha_vencimiento : null,
-                flete,
-                observaciones: form.observaciones,
-                detalles: items.map((it) => ({
-                    producto_presentacion_id: it.producto_presentacion_id,
-                    cantidad: it.cantidad,
-                    costo_unitario: it.costo_unitario || 0,
+        const payload = {
+            proveedor_id: form.proveedor_id || null,
+            ...(ordenCompraId ? { orden_compra_id: ordenCompraId } : {}),
+            tipo_documento: form.tipo_documento,
+            serie: form.serie,
+            numero: form.numero,
+            fecha: form.fecha,
+            forma_pago: form.forma_pago,
+            dias_credito: form.forma_pago === 'credito' ? Number(form.dias_credito) || 0 : 0,
+            fecha_vencimiento: form.forma_pago === 'credito' ? form.fecha_vencimiento : null,
+            flete,
+            observaciones: form.observaciones,
+            detalles: items.map((it) => ({
+                producto_presentacion_id: it.producto_presentacion_id,
+                cantidad: it.cantidad,
+                costo_unitario: it.costo_unitario || 0,
+            })),
+            pagos: pagosEfectivos
+                .filter((p) => p.tipo && Number(p.monto) > 0)
+                .map((p) => ({
+                    metodo: p.tipo,
+                    cuenta_bancaria_id: p.tipo === 'transferencia' ? p.cuentaId || null : null,
+                    billetera_id: p.tipo === 'billetera' ? p.billeteraId || null : null,
+                    monto: p.monto,
                 })),
-                pagos: pagos
-                    .filter((p) => Number(p.monto) > 0)
-                    .map((p) => ({
-                        metodo: p.tipo,
-                        cuenta_bancaria_id: p.tipo === 'transferencia' ? p.cuentaId || null : null,
-                        billetera_id: p.tipo === 'billetera' ? p.billeteraId || null : null,
-                        monto: p.monto,
-                    })),
-            });
-            toast.success('Compra registrada correctamente.');
+        };
+
+        try {
+            if (editando) await api.put(`/compras/${id}`, payload);
+            else await api.post('/compras', payload);
+
+            toast.success(editando ? 'Compra actualizada correctamente.' : 'Compra registrada correctamente.');
             navigate('/compras');
         } catch (err) {
             const errores = err.response?.data?.errors;
@@ -324,7 +395,7 @@ export default function CrearCompra() {
                 setFormErrors(Object.fromEntries(Object.entries(errores).map(([k, v]) => [k, v[0]])));
                 toast.error('Revisa los datos del formulario.');
             } else {
-                toast.error(err.response?.data?.message ?? 'No se pudo registrar la compra.');
+                toast.error(err.response?.data?.message ?? 'No se pudo guardar la compra.');
             }
         } finally {
             setSaving(false);
@@ -356,7 +427,9 @@ export default function CrearCompra() {
                     <ShoppingBag className="h-5 w-5" />
                 </div>
                 <div>
-                    <h1 className="text-xl font-bold tracking-tight text-warm-900">Crear Compra</h1>
+                    <h1 className="text-xl font-bold tracking-tight text-warm-900">
+                        {editando ? `Editar Compra ${numeroCompra}` : 'Crear Compra'}
+                    </h1>
                     <p className="text-sm text-warm-500">
                         {ordenCodigo
                             ? `Generada desde la orden ${ordenCodigo}`
@@ -579,41 +652,97 @@ export default function CrearCompra() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
                 <div className="space-y-6">
                     <div className="rounded-xl border border-edge bg-white p-5 shadow-sm">
-                        <div className="mb-3 flex items-center justify-between">
+                        <div className="mb-4 flex items-center justify-between">
                             <h2 className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-warm-500">
-                                <Wallet className="h-4 w-4" /> Pagos (mixto)
+                                <Wallet className="h-4 w-4" /> Pago
                             </h2>
-                            <Button type="button" variant="ghost" size="sm" onClick={addPago}>
-                                <Plus className="h-4 w-4" /> Agregar pago
-                            </Button>
-                        </div>
-                        <div className="space-y-3">
-                            {pagos.map((p, i) => (
-                                <div key={i} className="rounded-lg border border-edge p-3">
-                                    <MetodoCajaPicker
-                                        cuentas={cuentas} billeteras={billeteras}
-                                        tipo={p.tipo} cuentaId={p.cuentaId} billeteraId={p.billeteraId}
-                                        onChange={({ tipo, cuentaId, billeteraId }) => setPago(i, { tipo, cuentaId, billeteraId })}
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={mixto}
+                                onClick={alternarMixto}
+                                className="inline-flex items-center gap-2 text-xs font-semibold text-warm-500 transition hover:text-warm-900"
+                            >
+                                Pago mixto
+                                <span
+                                    className={`relative block h-5 w-9 rounded-full transition ${mixto ? 'bg-primary-600' : 'bg-gray-300'}`}
+                                >
+                                    <span
+                                        className={`absolute top-0.5 block h-4 w-4 rounded-full bg-white shadow transition-all ${mixto ? 'left-[1.125rem]' : 'left-0.5'}`}
                                     />
-                                    <div className="mt-2 flex items-center gap-2">
-                                        <Input type="number" min="0" step="any" placeholder="Monto" value={p.monto} onChange={(e) => setPago(i, { monto: e.target.value })} className="text-right" />
-                                        <button type="button" onClick={() => removePago(i)}
-                                            className="rounded-md p-2 text-red-600 transition hover:bg-red-50" aria-label="Quitar">
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* Modo simple: un método y listo. */}
+                        {!mixto && (
+                            <div className="space-y-3">
+                                <MetodoCajaPicker
+                                    cuentas={cuentas}
+                                    billeteras={billeteras}
+                                    tipo={pagos[0].tipo}
+                                    cuentaId={pagos[0].cuentaId}
+                                    billeteraId={pagos[0].billeteraId}
+                                    onChange={({ tipo, cuentaId, billeteraId }) => setPago(0, { tipo, cuentaId, billeteraId })}
+                                />
+
+                                {esContado ? (
+                                    <div className="flex items-center justify-between rounded-lg bg-primary-50 px-3 py-2.5 text-sm">
+                                        <span className="text-warm-500">Se paga el total</span>
+                                        <span className="font-bold text-primary-700">{money(total)}</span>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="mt-3 flex justify-between border-t border-dashed border-edge pt-2 text-sm">
-                            <span className="text-warm-500">Pagado</span>
-                            <span className="font-semibold text-green-600">{money(pagado)}</span>
-                        </div>
-                        {Math.abs(saldo) > 0.001 && (
-                            <div className="flex justify-between text-sm">
-                                <span className="text-warm-500">{saldo > 0 ? 'Saldo por pagar' : 'Exceso'}</span>
-                                <span className={saldo > 0 ? 'font-semibold text-amber-600' : 'font-semibold text-red-600'}>{money(Math.abs(saldo))}</span>
+                                ) : (
+                                    <Input
+                                        label="Adelanto (opcional)"
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        placeholder="0.00"
+                                        value={pagos[0].monto}
+                                        onChange={(e) => setPago(0, { monto: e.target.value })}
+                                        className="text-right"
+                                    />
+                                )}
                             </div>
+                        )}
+
+                        {/* Modo mixto: varios métodos con su monto. */}
+                        {mixto && (
+                            <>
+                                <div className="space-y-3">
+                                    {pagos.map((p, i) => (
+                                        <div key={i} className="rounded-lg border border-edge p-3">
+                                            <MetodoCajaPicker
+                                                cuentas={cuentas} billeteras={billeteras}
+                                                tipo={p.tipo} cuentaId={p.cuentaId} billeteraId={p.billeteraId}
+                                                onChange={({ tipo, cuentaId, billeteraId }) => setPago(i, { tipo, cuentaId, billeteraId })}
+                                            />
+                                            <div className="mt-2 flex items-center gap-2">
+                                                <Input type="number" min="0" step="any" placeholder="Monto" value={p.monto} onChange={(e) => setPago(i, { monto: e.target.value })} className="text-right" />
+                                                <button type="button" onClick={() => removePago(i)} disabled={pagos.length === 1}
+                                                    className="rounded-md p-2 text-red-600 transition hover:bg-red-50 disabled:opacity-40" aria-label="Quitar">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <Button type="button" variant="ghost" size="sm" onClick={addPago} className="mt-3">
+                                    <Plus className="h-4 w-4" /> Agregar pago
+                                </Button>
+
+                                <div className="mt-3 flex justify-between border-t border-dashed border-edge pt-2 text-sm">
+                                    <span className="text-warm-500">Pagado</span>
+                                    <span className="font-semibold text-green-600">{money(pagado)}</span>
+                                </div>
+                                {Math.abs(saldo) > 0.001 && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-warm-500">{saldo > 0 ? 'Saldo por pagar' : 'Exceso'}</span>
+                                        <span className={saldo > 0 ? 'font-semibold text-amber-600' : 'font-semibold text-red-600'}>{money(Math.abs(saldo))}</span>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
 
@@ -655,7 +784,7 @@ export default function CrearCompra() {
 
                         <div className="mt-5 flex flex-col gap-2">
                             <Button onClick={guardar} loading={saving} className="w-full justify-center">
-                                Registrar compra
+                                {editando ? 'Guardar cambios' : 'Registrar compra'}
                             </Button>
                             <Button variant="secondary" onClick={() => navigate('/compras')} className="w-full justify-center">
                                 Cancelar

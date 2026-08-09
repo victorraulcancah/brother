@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ban, ShoppingBag, Trash2 } from 'lucide-react';
+import { Ban, Pencil, ShoppingBag, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
@@ -116,6 +116,15 @@ export default function Compras() {
             label: 'Acciones',
             actions: (row) => (
                 <>
+                    <button
+                        aria-label="Editar"
+                        title={row.estado === 'anulada' ? 'No se puede editar: está anulada' : 'Editar'}
+                        disabled={row.estado === 'anulada'}
+                        onClick={() => navigate(`/compras/${row.id}/editar`)}
+                        className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                    >
+                        <Pencil className="h-4 w-4" />
+                    </button>
                     {row.estado !== 'anulada' && (
                         <button
                             aria-label="Anular"
@@ -160,7 +169,7 @@ export default function Compras() {
                 open={Boolean(deleteTarget)}
                 onClose={() => setDeleteTarget(null)}
                 title="Eliminar compra"
-                description={`¿Eliminar la compra #${deleteTarget?.id}?`}
+                description={`¿Eliminar la compra ${deleteTarget?.numero_compra ?? `#${deleteTarget?.id}`}?`}
                 size="sm"
                 footer={
                     <>

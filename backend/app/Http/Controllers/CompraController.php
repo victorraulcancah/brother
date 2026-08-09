@@ -51,10 +51,10 @@ class CompraController extends Controller
 
             // Correlativo interno propio de la compra (automático, desde 1). El usuario no lo ingresa.
             $serieDoc = SerieDocumento::where('tipo_documento', 'compra')
-                ->where('serie', 'C001')
+                ->where('serie', Compra::SERIE_INTERNA)
                 ->lockForUpdate()
                 ->firstOrCreate(
-                    ['tipo_documento' => 'compra', 'serie' => 'C001'],
+                    ['tipo_documento' => 'compra', 'serie' => Compra::SERIE_INTERNA],
                     ['numero_actual' => 0, 'activo' => true]
                 );
             $serieDoc->increment('numero_actual');
@@ -80,28 +80,8 @@ class CompraController extends Controller
                 'usuario_id' => auth()->id(),
             ]);
 
-            foreach ($data['detalles'] as $d) {
-                $cantidad = (float) $d['cantidad'];
-                $costo = (float) $d['costo_unitario'];
-                $compra->detalles()->create([
-                    'producto_presentacion_id' => $d['producto_presentacion_id'],
-                    'cantidad' => $cantidad,
-                    'costo_unitario' => $costo,
-                    'subtotal' => round($cantidad * $costo, 2),
-                ]);
-            }
-
-            foreach ($data['pagos'] ?? [] as $pago) {
-                if ((float) $pago['monto'] <= 0) {
-                    continue;
-                }
-                $compra->pagos()->create([
-                    'metodo' => $pago['metodo'],
-                    'cuenta_bancaria_id' => $pago['metodo'] === 'transferencia' ? ($pago['cuenta_bancaria_id'] ?? null) : null,
-                    'billetera_id' => $pago['metodo'] === 'billetera' ? ($pago['billetera_id'] ?? null) : null,
-                    'monto' => (float) $pago['monto'],
-                ]);
-            }
+            $this->crearDetalles($compra, $data['detalles']);
+            $this->crearPagos($compra, $data['pagos'] ?? []);
 
             return $compra;
         });
@@ -119,11 +99,66 @@ class CompraController extends Controller
         );
     }
 
+    /**
+     * Edición de la compra. Una compra anulada queda congelada: reabrirla dejaría
+     * el histórico sin correspondencia con lo que se anuló.
+     */
     public function update(Request $request, Compra $compra)
     {
-        $data = $request->validate(['observaciones' => 'nullable|string']);
-        $compra->update($data);
-        return response()->json($compra);
+        if ($compra->estado === 'anulada') {
+            return response()->json(['message' => 'La compra está anulada y no se puede editar.'], 422);
+        }
+
+        $data = $request->validate([
+            'proveedor_id' => 'nullable|exists:proveedores,id',
+            'orden_compra_id' => 'nullable|exists:ordenes_compra,id',
+            'tipo_documento' => 'sometimes|required|string|max:30',
+            'serie' => 'nullable|string|max:20',
+            'numero' => 'nullable|string|max:30',
+            'fecha' => 'sometimes|required|date',
+            'forma_pago' => 'sometimes|required|in:contado,credito',
+            'dias_credito' => 'nullable|integer|min:0',
+            'fecha_vencimiento' => 'nullable|date',
+            'flete' => 'nullable|numeric|min:0',
+            'observaciones' => 'nullable|string',
+            'detalles' => 'sometimes|required|array|min:1',
+            'detalles.*.producto_presentacion_id' => 'required|exists:producto_presentaciones,id',
+            'detalles.*.cantidad' => 'required|numeric|min:0.01',
+            'detalles.*.costo_unitario' => 'required|numeric|min:0',
+            'pagos' => 'nullable|array',
+            'pagos.*.metodo' => 'required_with:pagos|in:efectivo,transferencia,billetera',
+            'pagos.*.cuenta_bancaria_id' => 'nullable|exists:cuentas_bancarias,id',
+            'pagos.*.billetera_id' => 'nullable|exists:billeteras_digitales,id',
+            'pagos.*.monto' => 'required_with:pagos|numeric|min:0',
+        ]);
+
+        DB::transaction(function () use ($data, $compra) {
+            $compra->update(collect($data)->except(['detalles', 'pagos'])->all());
+
+            // Detalles y pagos se reemplazan completos: más simple y sin huérfanos.
+            if (array_key_exists('detalles', $data)) {
+                $compra->detalles()->delete();
+                $this->crearDetalles($compra, $data['detalles']);
+
+                $subtotal = collect($data['detalles'])
+                    ->sum(fn ($d) => round((float) $d['cantidad'] * (float) $d['costo_unitario'], 2));
+                $flete = (float) ($data['flete'] ?? $compra->flete);
+
+                $compra->update([
+                    'subtotal' => $subtotal,
+                    'total' => round($subtotal + $flete, 2),
+                ]);
+            }
+
+            if (array_key_exists('pagos', $data)) {
+                $compra->pagos()->delete();
+                $this->crearPagos($compra, $data['pagos'] ?? []);
+            }
+        });
+
+        return response()->json(
+            $compra->fresh()->load(['proveedor:id,nombre', 'detalles.presentacion.producto', 'pagos'])
+        );
     }
 
     public function anular(Compra $compra)
@@ -134,7 +169,40 @@ class CompraController extends Controller
 
     public function destroy(Compra $compra)
     {
+        $compra->detalles()->delete();
+        $compra->pagos()->delete();
         $compra->delete();
         return response()->json(['message' => 'Eliminado']);
+    }
+
+    /** Crea las líneas calculando el subtotal de cada una. */
+    private function crearDetalles(Compra $compra, array $detalles): void
+    {
+        foreach ($detalles as $d) {
+            $cantidad = (float) $d['cantidad'];
+            $costo = (float) $d['costo_unitario'];
+            $compra->detalles()->create([
+                'producto_presentacion_id' => $d['producto_presentacion_id'],
+                'cantidad' => $cantidad,
+                'costo_unitario' => $costo,
+                'subtotal' => round($cantidad * $costo, 2),
+            ]);
+        }
+    }
+
+    /** Registra los pagos, ignorando los de monto cero. */
+    private function crearPagos(Compra $compra, array $pagos): void
+    {
+        foreach ($pagos as $pago) {
+            if ((float) $pago['monto'] <= 0) {
+                continue;
+            }
+            $compra->pagos()->create([
+                'metodo' => $pago['metodo'],
+                'cuenta_bancaria_id' => $pago['metodo'] === 'transferencia' ? ($pago['cuenta_bancaria_id'] ?? null) : null,
+                'billetera_id' => $pago['metodo'] === 'billetera' ? ($pago['billetera_id'] ?? null) : null,
+                'monto' => (float) $pago['monto'],
+            ]);
+        }
     }
 }
