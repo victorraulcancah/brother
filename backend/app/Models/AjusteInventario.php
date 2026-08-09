@@ -8,8 +8,14 @@ class AjusteInventario extends Model
 {
     protected $table = 'ajustes_inventario';
 
+    /** Serie del correlativo formal de ajustes. */
+    public const SERIE = 'AJ01';
+
     protected $fillable = [
+        'serie',
+        'numero',
         'almacen_id',
+        'proveedor_id',
         'tipo',
         'motivo',
         'estado',
@@ -17,7 +23,10 @@ class AjusteInventario extends Model
         'usuario_aprueba_id',
         'fecha',
         'observaciones',
+        'total',
     ];
+
+    protected $appends = ['documento'];
 
     protected static function booted(): void
     {
@@ -32,7 +41,19 @@ class AjusteInventario extends Model
     {
         return [
             'fecha' => 'datetime',
+            'total' => 'decimal:2',
         ];
+    }
+
+    /** Número formal del ajuste, ej. "AJ01-0001". */
+    public function getDocumentoAttribute(): ?string
+    {
+        return $this->serie && $this->numero ? "{$this->serie}-{$this->numero}" : null;
+    }
+
+    public function proveedor()
+    {
+        return $this->belongsTo(Proveedor::class);
     }
 
     public function almacen()

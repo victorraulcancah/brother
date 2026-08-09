@@ -17,7 +17,10 @@ import { Alert, Badge, Button, DataTable, Input, Modal, SearchSelect, Select, Ta
 
 const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
-const emptyForm = { almacen_id: '', tipo: 'entrada', motivo: '', observaciones: '' };
+const money = (n) =>
+    new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
+
+const emptyForm = { almacen_id: '', proveedor_id: '', tipo: 'entrada', motivo: '', observaciones: '' };
 const emptyMotivoForm = { nombre: '', tipo: 'entrada', activo: true };
 const emptyDetalle = { producto_id: '', producto_presentacion_id: '', cantidad: '' };
 
@@ -38,6 +41,9 @@ export default function Ajustes() {
     const [almacenes, setAlmacenes] = useState([]);
     const [productos, setProductos] = useState([]);
     const [existencias, setExistencias] = useState([]);
+    const [proveedores, setProveedores] = useState([]);
+    /** Ajuste cuyo detalle se muestra en la segunda tabla. */
+    const [seleccionado, setSeleccionado] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -75,14 +81,19 @@ export default function Ajustes() {
         setLoading(true);
         setError(null);
         try {
-            const [ajustesRes, almRes, prodRes, existRes, motivosRes] = await Promise.all([
+            const [ajustesRes, almRes, prodRes, existRes, motivosRes, provRes] = await Promise.all([
                 api.get('/ajustes'),
                 api.get('/almacenes'),
                 api.get('/productos', { params: { per_page: 500 } }),
                 api.get('/existencias'),
                 api.get('/motivos-movimiento'),
+                api.get('/proveedores'),
             ]);
-            setAjustes(asList(ajustesRes));
+            const listaAjustes = asList(ajustesRes);
+            setAjustes(listaAjustes);
+            setProveedores(asList(provRes));
+            // Se conserva la selección tras recargar.
+            setSeleccionado((prev) => listaAjustes.find((a) => a.id === prev?.id) ?? listaAjustes[0] ?? null);
             setAlmacenes(asList(almRes));
             setProductos(asList(prodRes));
             setExistencias(asList(existRes));
@@ -265,6 +276,7 @@ export default function Ajustes() {
                 }
                 await api.post('/ajustes', {
                     almacen_id: form.almacen_id,
+                    proveedor_id: form.proveedor_id || null,
                     tipo: form.tipo,
                     motivo: form.motivo,
                     observaciones: form.observaciones,
@@ -484,25 +496,100 @@ export default function Ajustes() {
         </div>
     );
 
+    const detalleSeleccionado = seleccionado?.detalles ?? [];
+
     const columns = [
         {
-            key: 'id',
+            key: 'idx',
             label: '#',
-            render: (row) => <Badge variant="blue">#{String(row.id).padStart(3, '0')}</Badge>,
+            width: '56px',
+            render: (row) => <span className="text-warm-500">{ajustes.indexOf(row) + 1}</span>,
+        },
+        {
+            key: 'fecha',
+            label: 'Fecha',
+            width: '100px',
+            render: (row) =>
+                row.fecha ? (
+                    <span className="text-gray-700">{new Date(row.fecha).toLocaleDateString('es-PE')}</span>
+                ) : (
+                    <span className="text-gray-400">—</span>
+                ),
+        },
+        {
+            key: 'documento',
+            label: 'Número',
+            width: '110px',
+            getSearchValue: (row) => row.documento,
+            render: (row) => (
+                <span className="font-semibold text-warm-900">{row.documento ?? `#${row.id}`}</span>
+            ),
         },
         {
             key: 'almacen',
             label: 'Almacén',
+            width: '150px',
+            getSearchValue: (row) => row.almacen?.nombre,
             render: (row) => (
-                <span className="inline-flex items-center gap-2 font-medium text-warm-900">
-                    <Scale className="h-4 w-4 text-primary-600" />
-                    {row.almacen?.nombre ?? '—'}
+                <span className="flex items-center gap-2 font-medium text-warm-900">
+                    <Scale className="h-4 w-4 shrink-0 text-primary-600" />
+                    <span className="truncate">{row.almacen?.nombre ?? '—'}</span>
                 </span>
             ),
         },
         {
+            key: 'proveedor',
+            label: 'Proveedor',
+            width: '150px',
+            getSearchValue: (row) => row.proveedor?.nombre,
+            render: (row) => (
+                <span className="block truncate text-warm-500" title={row.proveedor?.nombre ?? ''}>
+                    {row.proveedor?.nombre ?? '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'motivo',
+            label: 'Motivo',
+            width: '150px',
+            render: (row) => (
+                <span className="block truncate" title={row.motivo ?? ''}>
+                    {row.motivo ?? <span className="text-gray-400">—</span>}
+                </span>
+            ),
+        },
+        {
+            key: 'observaciones',
+            label: 'Observación',
+            width: '160px',
+            render: (row) => (
+                <span className="block truncate text-warm-500" title={row.observaciones ?? ''}>
+                    {row.observaciones ?? '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'registra',
+            label: 'Registra',
+            width: '130px',
+            getSearchValue: (row) => row.usuario_solicita?.name,
+            render: (row) => (
+                <span className="block truncate">{row.usuario_solicita?.name ?? '—'}</span>
+            ),
+        },
+        {
+            key: 'estado',
+            label: 'Estado',
+            width: '110px',
+            render: (row) => {
+                const info = estadoInfo[row.estado] ?? { label: row.estado ?? '—', variant: 'gray' };
+                return <Badge variant={info.variant}>{info.label}</Badge>;
+            },
+        },
+        {
             key: 'tipo',
-            label: 'Tipo',
+            label: 'T. Ingreso',
+            width: '110px',
             render: (row) => {
                 const info = tipoInfo[row.tipo] ?? { label: row.tipo ?? '—', variant: 'gray' };
                 const Icon = info.icon;
@@ -515,49 +602,38 @@ export default function Ajustes() {
             },
         },
         {
-            key: 'motivo',
-            label: 'Motivo',
-            render: (row) => row.motivo ?? <span className="text-gray-400">—</span>,
-        },
-        {
-            key: 'estado',
-            label: 'Estado',
-            render: (row) => {
-                const info = estadoInfo[row.estado] ?? { label: row.estado ?? '—', variant: 'gray' };
-                return <Badge variant={info.variant}>{info.label}</Badge>;
-            },
-        },
-        {
-            key: 'fecha',
-            label: 'Fecha',
-            render: (row) =>
-                row.fecha ? (
-                    <span className="text-gray-700">{new Date(row.fecha).toLocaleDateString('es-PE')}</span>
-                ) : (
-                    <span className="text-gray-400">—</span>
-                ),
-        },
-        {
-            key: 'observaciones',
-            label: 'Observaciones',
-            render: (row) => row.observaciones ?? <span className="text-gray-400">—</span>,
+            key: 'total',
+            label: 'Total',
+            width: '110px',
+            align: 'right',
+            searchable: false,
+            render: (row) => (
+                <span className="font-semibold text-primary-600">{money(row.total)}</span>
+            ),
         },
         {
             type: 'actions',
             key: 'actions',
             label: 'Acciones',
+            width: '110px',
             actions: (row) => (
                 <>
                     <button
                         aria-label="Editar"
-                        onClick={() => openEdit(row)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            openEdit(row);
+                        }}
                         className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 hover:text-primary-700"
                     >
                         <Edit className="h-4 w-4" />
                     </button>
                     <button
                         aria-label="Eliminar"
-                        onClick={() => setDeleteTarget(row)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(row);
+                        }}
                         className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700"
                     >
                         <Trash2 className="h-4 w-4" />
@@ -692,7 +768,82 @@ export default function Ajustes() {
                         filterable
                         filters={filters}
                         filterCount={filterCount}
+                        onRowClick={(row) => setSeleccionado(row)}
+                        rowClassName={(row) => (row.id === seleccionado?.id ? 'bg-primary-50' : undefined)}
                     />
+
+                    {/* Detalle del ajuste seleccionado */}
+                    <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+                        <div className="flex items-center justify-between border-b border-edge px-5 py-3">
+                            <h2 className="text-sm font-semibold text-warm-900">
+                                Detalle {seleccionado?.documento ? `de ${seleccionado.documento}` : ''}
+                            </h2>
+                            {seleccionado && (
+                                <span className="text-xs text-warm-500">
+                                    {detalleSeleccionado.length}{' '}
+                                    {detalleSeleccionado.length === 1 ? 'producto' : 'productos'} ·{' '}
+                                    <span className="font-semibold text-primary-600">
+                                        {money(seleccionado.total)}
+                                    </span>
+                                </span>
+                            )}
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[820px] text-sm">
+                                <thead>
+                                    <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                                        <th className="w-12 px-3 py-2.5 text-center">#</th>
+                                        <th className="w-28 px-3 py-2.5">Código</th>
+                                        <th className="px-3 py-2.5">Descripción</th>
+                                        <th className="w-32 px-3 py-2.5">Marca</th>
+                                        <th className="w-24 px-3 py-2.5 text-right">Cantidad</th>
+                                        <th className="w-32 px-3 py-2.5">U. Medida</th>
+                                        <th className="w-28 px-3 py-2.5 text-right">Costo</th>
+                                        <th className="w-28 px-3 py-2.5 text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {detalleSeleccionado.length === 0 && (
+                                        <tr>
+                                            <td colSpan={8} className="px-3 py-10 text-center text-sm text-warm-500">
+                                                {seleccionado
+                                                    ? 'Este ajuste no tiene productos.'
+                                                    : 'Selecciona un ajuste arriba para ver su detalle.'}
+                                            </td>
+                                        </tr>
+                                    )}
+
+                                    {detalleSeleccionado.map((d, i) => {
+                                        const producto = d.presentacion?.producto;
+                                        return (
+                                            <tr key={d.id}>
+                                                <td className="px-3 py-2 text-center text-warm-500">{i + 1}</td>
+                                                <td className="px-3 py-2 text-warm-500">{producto?.codigo ?? '—'}</td>
+                                                <td className="px-3 py-2 font-semibold text-warm-900">
+                                                    {producto?.nombre ?? '—'}
+                                                </td>
+                                                <td className="px-3 py-2 text-warm-500">
+                                                    {producto?.marca?.nombre ?? '—'}
+                                                </td>
+                                                <td className="px-3 py-2 text-right font-medium text-warm-900">
+                                                    {num(d.cantidad)}
+                                                </td>
+                                                <td className="px-3 py-2 text-warm-500">
+                                                    {d.presentacion?.nombre ?? '—'}
+                                                </td>
+                                                <td className="px-3 py-2 text-right text-warm-900">
+                                                    {money(d.costo_unitario)}
+                                                </td>
+                                                <td className="px-3 py-2 text-right font-semibold text-primary-600">
+                                                    {money(d.subtotal)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </>
             ) : (
                 <>
@@ -764,6 +915,14 @@ export default function Ajustes() {
                                     })),
                                 ]}
                                 error={formErrors.almacen_id}
+                            />
+                            <SearchSelect
+                                label="Proveedor (opcional)"
+                                value={form.proveedor_id}
+                                onChange={(v) => setForm((prev) => ({ ...prev, proveedor_id: v }))}
+                                options={proveedores.map((p) => ({ value: String(p.id), label: p.nombre }))}
+                                placeholder="Sin proveedor"
+                                emptyText="Sin coincidencias"
                             />
                             <Select
                                 label="Tipo"

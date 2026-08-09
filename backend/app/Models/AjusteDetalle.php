@@ -11,6 +11,8 @@ class AjusteDetalle extends Model
         'ajuste_id',
         'producto_presentacion_id',
         'cantidad',
+        'costo_unitario',
+        'subtotal',
         'cantidad_sistema',
         'cantidad_fisica',
         'diferencia',
@@ -19,6 +21,8 @@ class AjusteDetalle extends Model
     protected function casts(): array
     {
         return [
+            'costo_unitario' => 'decimal:4',
+            'subtotal' => 'decimal:2',
             'cantidad_sistema' => 'decimal:2',
             'cantidad_fisica' => 'decimal:2',
             'diferencia' => 'decimal:2',
