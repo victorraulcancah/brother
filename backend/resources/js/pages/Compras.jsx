@@ -156,6 +156,8 @@ export default function Compras() {
             type: 'actions',
             key: 'actions',
             label: 'Acciones',
+            // Cinco botones: el ancho por defecto (120px) los recortaba.
+            width: '200px',
             actions: (row) => (
                 <>
                     <button

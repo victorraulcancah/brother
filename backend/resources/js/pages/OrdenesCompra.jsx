@@ -92,6 +92,7 @@ export default function OrdenesCompra() {
             type: 'actions',
             key: 'actions',
             label: 'Acciones',
+            width: '140px',
             actions: (row) => {
                 // Una orden ya transformada en compra queda congelada.
                 const bloqueada = row.compras_count > 0;
