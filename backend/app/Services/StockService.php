@@ -207,8 +207,28 @@ class StockService
             'costo_anterior' => $costoAnterior,
             'costo_actual' => $costoActual,
             'saldo_stock' => $saldoStock,
-            'fecha' => $fecha ?? now(),
+            // Si llega solo la fecha (ej. "2026-08-09"), se le agrega la hora actual:
+            // con 00:00 el kardex desordenaba los movimientos del mismo día.
+            'fecha' => $this->fechaConHora($fecha),
             'usuario_id' => $usuarioId,
         ]);
+    }
+
+    /**
+     * Respeta la fecha que elige el usuario, pero conserva la hora del registro.
+     * Sin hora, todos los movimientos de un día quedan empatados en 00:00 y el
+     * kardex no puede ordenarlos en la secuencia real en que ocurrieron.
+     */
+    private function fechaConHora(?string $fecha): \Illuminate\Support\Carbon
+    {
+        if (! $fecha) {
+            return now();
+        }
+
+        $parsed = \Illuminate\Support\Carbon::parse($fecha);
+
+        return $parsed->isStartOfDay()
+            ? $parsed->setTimeFrom(now())
+            : $parsed;
     }
 }
