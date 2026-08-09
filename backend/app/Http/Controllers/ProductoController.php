@@ -9,6 +9,7 @@ use App\Models\Producto;
 use App\Models\ProductoAlmacenStock;
 use App\Models\ProductoLote;
 use App\Models\ProductoPresentacion;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ProductoController extends Controller
@@ -20,10 +21,12 @@ class ProductoController extends Controller
         'lotes',
     ];
 
-    public function index()
+    public function index(Request $request)
     {
-        $productos = Producto::with(['marca', 'categoria', 'subCategoria', 'unidadMedida', 'presentaciones'])
-            ->paginate(15);
+        $perPage = min(max((int) $request->input('per_page', 15), 1), 500);
+
+        $productos = Producto::with(['marca', 'subMarca', 'categoria', 'subCategoria', 'unidadMedida', 'presentaciones.unidadBase'])
+            ->paginate($perPage);
         return ProductoResource::collection($productos);
     }
 
