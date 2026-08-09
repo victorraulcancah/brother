@@ -66,9 +66,9 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('ordenes-compra', OrdenCompraController::class);
     Route::apiResource('compras', CompraController::class);
     Route::post('compras/{compra}/anular', [CompraController::class, 'anular']);
+    Route::post('compras/{compra}/finalizar', [CompraController::class, 'finalizar']);
     Route::get('compras/{compra}/pendientes-recepcion', [RecepcionCompraController::class, 'pendientesDeCompra']);
     Route::apiResource('recepciones-compra', RecepcionCompraController::class);
-    Route::post('recepciones-compra/{recepcionesCompra}/finalizar', [RecepcionCompraController::class, 'finalizar']);
     Route::post('recepciones-compra/{recepcionesCompra}/deshacer', [RecepcionCompraController::class, 'deshacer']);
 
     // Inventario

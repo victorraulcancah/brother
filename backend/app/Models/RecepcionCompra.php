@@ -23,9 +23,6 @@ class RecepcionCompra extends Model
         'fecha_recepcion',
         'estado',
         'activo',
-        'finalizado',
-        'motivo_finalizacion',
-        'fecha_finalizacion',
         'stock_aplicado',
         'usuario_recibe_id',
         'observaciones',
@@ -37,10 +34,8 @@ class RecepcionCompra extends Model
     {
         return [
             'fecha_recepcion' => 'datetime',
-            'fecha_finalizacion' => 'datetime',
             'stock_aplicado' => 'boolean',
             'activo' => 'boolean',
-            'finalizado' => 'boolean',
         ];
     }
 

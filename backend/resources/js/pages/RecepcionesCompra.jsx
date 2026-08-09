@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Truck, Undo2 } from 'lucide-react';
+import { Truck, Undo2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
-import { Alert, Badge, Button, DataTable, Input, Modal } from '../components/ui';
+import { Alert, Badge, Button, DataTable, Modal } from '../components/ui';
 
 const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
@@ -25,8 +25,6 @@ export default function RecepcionesCompra() {
     /** Recepción cuyo detalle se muestra en la segunda tabla. */
     const [seleccionada, setSeleccionada] = useState(null);
 
-    const [finalizarTarget, setFinalizarTarget] = useState(null);
-    const [motivo, setMotivo] = useState('');
     const [deshacerTarget, setDeshacerTarget] = useState(null);
     const [procesando, setProcesando] = useState(false);
 
@@ -49,23 +47,6 @@ export default function RecepcionesCompra() {
         load();
     }, [load]);
 
-    const finalizar = async () => {
-        if (!motivo.trim()) return toast.error('Indica el motivo de finalización.');
-
-        setProcesando(true);
-        try {
-            await api.post(`/recepciones-compra/${finalizarTarget.id}/finalizar`, { motivo });
-            toast.success('Recepción finalizada: se cerró el pendiente.');
-            setFinalizarTarget(null);
-            setMotivo('');
-            await load();
-        } catch (err) {
-            toast.error(err.response?.data?.message ?? 'No se pudo finalizar.');
-        } finally {
-            setProcesando(false);
-        }
-    };
-
     const deshacer = async () => {
         setProcesando(true);
         try {
@@ -80,34 +61,48 @@ export default function RecepcionesCompra() {
         }
     };
 
+    // La finalización se decide en la compra; aquí solo se refleja.
     const columnasRecepcion = [
-        { key: 'idx', label: '#', render: (row) => <span className="text-warm-500">{recepciones.indexOf(row) + 1}</span> },
+        {
+            key: 'idx',
+            label: '#',
+            width: '48px',
+            render: (row) => <span className="text-warm-500">{recepciones.indexOf(row) + 1}</span>,
+        },
         {
             key: 'documento',
-            label: 'N° Documento',
+            label: 'N° Doc.',
+            width: '110px',
             render: (row) => <span className="font-semibold text-warm-900">{row.documento ?? '—'}</span>,
         },
-        { key: 'fecha_recepcion', label: 'Fecha', render: (row) => fecha(row.fecha_recepcion) },
-        { key: 'registrador', label: 'Registrador', render: (row) => row.usuario_recibe?.name ?? '—' },
+        { key: 'fecha_recepcion', label: 'Fecha', width: '95px', render: (row) => fecha(row.fecha_recepcion) },
+        {
+            key: 'registrador',
+            label: 'Registró',
+            width: '130px',
+            render: (row) => <span className="truncate">{row.usuario_recibe?.name ?? '—'}</span>,
+        },
         {
             key: 'proveedor',
             label: 'Proveedor',
             render: (row) => (
                 <span className="inline-flex items-center gap-2 font-medium text-warm-900">
-                    <Truck className="h-4 w-4 text-primary-600" />
+                    <Truck className="h-4 w-4 shrink-0 text-primary-600" />
                     {row.proveedor?.nombre ?? '—'}
                 </span>
             ),
         },
-        { key: 'almacen', label: 'Almacén Receptor', render: (row) => row.almacen?.nombre ?? '—' },
+        { key: 'almacen', label: 'Almacén', width: '150px', render: (row) => row.almacen?.nombre ?? '—' },
         {
             key: 'compra',
             label: 'Compra',
+            width: '135px',
             render: (row) => (row.compra ? <Badge variant="gray">{row.compra.numero_compra}</Badge> : '—'),
         },
         {
             key: 'estado',
             label: 'Estado',
+            width: '105px',
             render: (row) => {
                 if (!row.activo) return <Badge variant="red">Inactiva</Badge>;
                 const info = estadoInfo[row.estado] ?? { label: row.estado ?? '—', variant: 'gray' };
@@ -116,52 +111,58 @@ export default function RecepcionesCompra() {
         },
         {
             key: 'finalizado',
-            label: 'Finalización',
+            label: 'Final.',
+            width: '95px',
             render: (row) =>
-                row.finalizado ? <Badge variant="blue">Finalizada</Badge> : <Badge variant="gray">Abierta</Badge>,
+                row.compra?.finalizado ? <Badge variant="blue">Sí</Badge> : <Badge variant="gray">No</Badge>,
         },
         {
             key: 'motivo_finalizacion',
-            label: 'Motivo de Finalización',
-            render: (row) => <span className="text-warm-500">{row.motivo_finalizacion ?? '—'}</span>,
+            label: 'Motivo Final.',
+            width: '190px',
+            render: (row) => (
+                <span className="block truncate text-warm-500" title={row.compra?.motivo_finalizacion ?? ''}>
+                    {row.compra?.motivo_finalizacion ?? '—'}
+                </span>
+            ),
         },
-        { key: 'fecha_finalizacion', label: 'Fecha Finalización', render: (row) => fecha(row.fecha_finalizacion) },
+        {
+            key: 'fecha_finalizacion',
+            label: 'F. Final.',
+            width: '100px',
+            render: (row) => fecha(row.compra?.fecha_finalizacion),
+        },
         {
             type: 'actions',
             key: 'actions',
-            label: 'Acciones',
+            label: 'Acc.',
+            width: '70px',
             actions: (row) => (
-                <>
-                    <button
-                        aria-label="Finalizar"
-                        title={
-                            !row.activo
-                                ? 'Está deshecha'
-                                : row.finalizado
-                                  ? 'Ya está finalizada'
-                                  : 'Finalizar: cerrar lo que ya no va a llegar'
-                        }
-                        disabled={!row.activo || row.finalizado}
-                        onClick={() => setFinalizarTarget(row)}
-                        className="rounded-md p-1.5 text-green-600 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                    >
-                        <CheckCircle2 className="h-4 w-4" />
-                    </button>
-                    <button
-                        aria-label="Deshacer"
-                        title={row.activo ? 'Deshacer: revierte el stock ingresado' : 'Ya está deshecha'}
-                        disabled={!row.activo}
-                        onClick={() => setDeshacerTarget(row)}
-                        className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                    >
-                        <Undo2 className="h-4 w-4" />
-                    </button>
-                </>
+                <button
+                    aria-label="Deshacer"
+                    title={row.activo ? 'Deshacer: revierte el stock ingresado' : 'Ya está deshecha'}
+                    disabled={!row.activo}
+                    onClick={() => setDeshacerTarget(row)}
+                    className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                    <Undo2 className="h-4 w-4" />
+                </button>
             ),
         },
     ];
 
     const detalles = seleccionada?.detalles ?? [];
+
+    /**
+     * Total recibido de una línea sumando todas las recepciones vigentes de la
+     * misma compra, no solo la que se está viendo.
+     */
+    const totalRecepcionado = (compraDetalleId) =>
+        recepciones
+            .filter((r) => r.activo && r.compra_id === seleccionada?.compra_id)
+            .flatMap((r) => r.detalles ?? [])
+            .filter((d) => d.compra_detalle_id === compraDetalleId)
+            .reduce((acc, d) => acc + (Number(d.cantidad_recibida) || 0), 0);
 
     return (
         <Layout>
@@ -200,11 +201,11 @@ export default function RecepcionesCompra() {
                                 <th className="px-3 py-2.5">Producto</th>
                                 <th className="px-3 py-2.5">Marca</th>
                                 <th className="px-3 py-2.5">Unidad Derivada</th>
-                                <th className="px-3 py-2.5 text-right">Cantidad</th>
-                                <th className="px-3 py-2.5 text-right">Cant. Pedida</th>
-                                <th className="px-3 py-2.5 text-right">Cant. Total Recepcionada</th>
-                                <th className="px-3 py-2.5 text-right">Cant. Finalizada</th>
-                                <th className="px-3 py-2.5 text-right">Stock Anterior</th>
+                                <th className="px-3 py-2.5 text-right">Cant.</th>
+                                <th className="px-3 py-2.5 text-right">Pedida</th>
+                                <th className="px-3 py-2.5 text-right" title="Cantidad total recepcionada">Total Recep.</th>
+                                <th className="px-3 py-2.5 text-right" title="Cantidad finalizada">Finaliz.</th>
+                                <th className="px-3 py-2.5 text-right">Stock Ant.</th>
                                 <th className="px-3 py-2.5 text-right">Stock Nuevo</th>
                             </tr>
                         </thead>
@@ -230,8 +231,10 @@ export default function RecepcionesCompra() {
                                         <td className="px-3 py-2 text-warm-500">{d.presentacion?.nombre ?? '—'}</td>
                                         <td className="px-3 py-2 text-right font-semibold text-primary-600">{num(d.cantidad_recibida)}</td>
                                         <td className="px-3 py-2 text-right text-warm-900">{num(d.cantidad_pedida)}</td>
-                                        <td className="px-3 py-2 text-right text-warm-900">{num(d.cantidad_recibida)}</td>
-                                        <td className="px-3 py-2 text-right text-amber-600">{num(d.cantidad_finalizada)}</td>
+                                        <td className="px-3 py-2 text-right text-warm-900">
+                                            {num(totalRecepcionado(d.compra_detalle_id))}
+                                        </td>
+                                        <td className="px-3 py-2 text-right text-amber-600">{num(d.compra_detalle?.cantidad_finalizada)}</td>
                                         <td className="px-3 py-2 text-right text-warm-500">{num(d.stock_anterior)}</td>
                                         <td className="px-3 py-2 text-right font-medium text-warm-900">{num(d.stock_nuevo)}</td>
                                     </tr>
@@ -241,31 +244,6 @@ export default function RecepcionesCompra() {
                     </table>
                 </div>
             </div>
-
-            {/* Finalizar */}
-            <Modal
-                open={Boolean(finalizarTarget)}
-                onClose={() => setFinalizarTarget(null)}
-                title={`Finalizar ${finalizarTarget?.documento ?? ''}`}
-                description="Cierra lo que falta por recibir. La compra queda dada por concluida."
-                size="md"
-                footer={
-                    <>
-                        <Button variant="secondary" onClick={() => setFinalizarTarget(null)}>Cancelar</Button>
-                        <Button loading={procesando} onClick={finalizar}>Finalizar</Button>
-                    </>
-                }
-            >
-                <Alert variant="warning" className="mb-3">
-                    Lo pendiente se registrará como cantidad finalizada y no se podrá recibir después.
-                </Alert>
-                <Input
-                    label="Motivo de finalización"
-                    placeholder="Ej. el proveedor no tenía stock del resto"
-                    value={motivo}
-                    onChange={(e) => setMotivo(e.target.value)}
-                />
-            </Modal>
 
             {/* Deshacer */}
             <Modal

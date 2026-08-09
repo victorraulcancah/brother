@@ -24,6 +24,9 @@ class Compra extends Model
         'subtotal',
         'total',
         'estado',
+        'finalizado',
+        'motivo_finalizacion',
+        'fecha_finalizacion',
         'observaciones',
         'usuario_id',
     ];
@@ -34,8 +37,10 @@ class Compra extends Model
     {
         return [
             'correlativo' => 'integer',
+            'finalizado' => 'boolean',
             'fecha' => 'date',
             'fecha_vencimiento' => 'date',
+            'fecha_finalizacion' => 'datetime',
             'flete' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'total' => 'decimal:2',
@@ -78,9 +83,47 @@ class Compra extends Model
         return $this->hasMany(CompraPago::class);
     }
 
-    /** Recepciones vigentes de esta compra (las deshechas no cuentan). */
     public function recepciones()
     {
         return $this->hasMany(RecepcionCompra::class);
+    }
+
+    /**
+     * Cantidad aún por recibir de cada línea, indexada por id de compra_detalle.
+     * Solo cuentan las recepciones vigentes: una deshecha devolvió su mercadería.
+     */
+    public function pendientePorLinea(): array
+    {
+        $this->loadMissing('detalles');
+
+        $recibido = $this->recepciones()
+            ->where('activo', true)
+            ->with('detalles')
+            ->get()
+            ->flatMap->detalles
+            ->groupBy('compra_detalle_id')
+            ->map(fn ($lineas) => (float) $lineas->sum('cantidad_recibida'));
+
+        return $this->detalles
+            ->mapWithKeys(fn ($d) => [
+                $d->id => max(0, round(
+                    (float) $d->cantidad - (float) ($recibido[$d->id] ?? 0) - (float) $d->cantidad_finalizada,
+                    2,
+                )),
+            ])
+            ->all();
+    }
+
+    /** Total recibido por línea, indexado por id de compra_detalle. */
+    public function recibidoPorLinea(): array
+    {
+        return $this->recepciones()
+            ->where('activo', true)
+            ->with('detalles')
+            ->get()
+            ->flatMap->detalles
+            ->groupBy('compra_detalle_id')
+            ->map(fn ($lineas) => (float) $lineas->sum('cantidad_recibida'))
+            ->all();
     }
 }

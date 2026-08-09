@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ban, PackageCheck, Pencil, ShoppingBag, Trash2 } from 'lucide-react';
+import { Ban, CheckCircle2, PackageCheck, Pencil, ShoppingBag, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import RecepcionarCompraModal from '../components/RecepcionarCompraModal';
-import { Alert, Badge, Button, DataTable, Modal } from '../components/ui';
+import { Alert, Badge, Button, DataTable, Input, Modal } from '../components/ui';
 
 const estadoCompra = {
     registrada: { label: 'Registrada', variant: 'green' },
@@ -31,6 +31,8 @@ export default function Compras() {
     const [deleting, setDeleting] = useState(false);
     const [actionId, setActionId] = useState(null);
     const [recepcionarId, setRecepcionarId] = useState(null);
+    const [finalizarTarget, setFinalizarTarget] = useState(null);
+    const [motivo, setMotivo] = useState('');
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -56,6 +58,23 @@ export default function Compras() {
             await load();
         } catch {
             toast.error('No se pudo anular la compra.');
+        } finally {
+            setActionId(null);
+        }
+    };
+
+    const finalizar = async () => {
+        if (!motivo.trim()) return toast.error('Indica el motivo de finalización.');
+
+        setActionId(finalizarTarget.id);
+        try {
+            await api.post(`/compras/${finalizarTarget.id}/finalizar`, { motivo });
+            toast.success('Compra finalizada: se cerró lo pendiente de recibir.');
+            setFinalizarTarget(null);
+            setMotivo('');
+            await load();
+        } catch (err) {
+            toast.error(err.response?.data?.message ?? 'No se pudo finalizar.');
         } finally {
             setActionId(null);
         }
@@ -118,7 +137,12 @@ export default function Compras() {
             label: 'Estado',
             render: (row) => {
                 const info = estadoCompra[row.estado] ?? { label: row.estado ?? '—', variant: 'gray' };
-                return <Badge variant={info.variant}>{info.label}</Badge>;
+                return (
+                    <div className="flex flex-wrap items-center gap-1">
+                        <Badge variant={info.variant}>{info.label}</Badge>
+                        {row.finalizado && <Badge variant="blue">Finalizada</Badge>}
+                    </div>
+                );
             },
         },
         {
@@ -136,11 +160,24 @@ export default function Compras() {
                                   ? 'Ya está totalmente recepcionada'
                                   : 'Recepcionar (admite parciales)'
                         }
-                        disabled={row.estado === 'anulada' || row.estado === 'recepcionada'}
+                        disabled={row.estado === 'anulada' || row.estado === 'recepcionada' || row.finalizado}
                         onClick={() => setRecepcionarId(row.id)}
                         className="rounded-md p-1.5 text-green-600 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                     >
                         <PackageCheck className="h-4 w-4" />
+                    </button>
+                    <button
+                        aria-label="Finalizar"
+                        title={
+                            row.finalizado
+                                ? `Finalizada: ${row.motivo_finalizacion ?? ''}`
+                                : 'Finalizar: cerrar lo que ya no va a llegar'
+                        }
+                        disabled={row.estado === 'anulada' || row.finalizado || row.estado === 'recepcionada'}
+                        onClick={() => setFinalizarTarget(row)}
+                        className="rounded-md p-1.5 text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                    >
+                        <CheckCircle2 className="h-4 w-4" />
                     </button>
                     <button
                         aria-label="Editar"
@@ -205,6 +242,31 @@ export default function Compras() {
                 }
             >
                 <Alert variant="warning">La compra y sus pagos se eliminarán permanentemente.</Alert>
+            </Modal>
+
+            <Modal
+                open={Boolean(finalizarTarget)}
+                onClose={() => setFinalizarTarget(null)}
+                title={`Finalizar ${finalizarTarget?.numero_compra ?? ''}`}
+                description="Cierra lo que ya no va a llegar del proveedor."
+                size="md"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setFinalizarTarget(null)}>Cancelar</Button>
+                        <Button loading={actionId === finalizarTarget?.id} onClick={finalizar}>Finalizar</Button>
+                    </>
+                }
+            >
+                <Alert variant="warning" className="mb-3">
+                    Lo que falte por recibir quedará registrado como cantidad finalizada y la compra ya no
+                    admitirá más recepciones.
+                </Alert>
+                <Input
+                    label="Motivo de finalización"
+                    placeholder="Ej. el proveedor no tenía stock del resto"
+                    value={motivo}
+                    onChange={(e) => setMotivo(e.target.value)}
+                />
             </Modal>
 
             <RecepcionarCompraModal

@@ -16,10 +16,11 @@ class RecepcionCompraController extends Controller
     private const RELACIONES = [
         'proveedor:id,nombre',
         'almacen:id,nombre',
-        'compra:id,correlativo',
+        'compra:id,correlativo,estado,finalizado,motivo_finalizacion,fecha_finalizacion',
         'ordenCompra:id,codigo',
         'usuarioRecibe:id,name',
         'detalles.presentacion.producto.marca',
+        'detalles.compraDetalle:id,cantidad,cantidad_finalizada',
     ];
 
     public function index()
@@ -37,37 +38,22 @@ class RecepcionCompraController extends Controller
     {
         $compra->load(['detalles.presentacion.producto.marca', 'proveedor:id,nombre']);
 
-        // Solo cuentan las recepciones vigentes: una deshecha devolvió su mercadería.
-        $recibidoPorLinea = $compra->recepciones()
-            ->where('activo', true)
-            ->with('detalles')
-            ->get()
-            ->flatMap->detalles
-            ->groupBy('producto_presentacion_id')
-            ->map(fn ($lineas) => [
-                'recibido' => (float) $lineas->sum('cantidad_recibida'),
-                'finalizado' => (float) $lineas->sum('cantidad_finalizada'),
-            ]);
+        $pendientes = $compra->pendientePorLinea();
+        $recibidos = $compra->recibidoPorLinea();
 
-        $lineas = $compra->detalles->map(function ($d) use ($recibidoPorLinea) {
-            $acumulado = $recibidoPorLinea[$d->producto_presentacion_id] ?? ['recibido' => 0, 'finalizado' => 0];
-            $pedida = (float) $d->cantidad;
-            $cerrado = $acumulado['recibido'] + $acumulado['finalizado'];
-
-            return [
-                'compra_detalle_id' => $d->id,
-                'producto_presentacion_id' => $d->producto_presentacion_id,
-                'producto' => $d->presentacion?->producto?->nombre,
-                'codigo' => $d->presentacion?->producto?->codigo,
-                'marca' => $d->presentacion?->producto?->marca?->nombre,
-                'unidad' => $d->presentacion?->nombre,
-                'costo_unitario' => (float) $d->costo_unitario,
-                'cantidad_pedida' => $pedida,
-                'cantidad_recibida' => $acumulado['recibido'],
-                'cantidad_finalizada' => $acumulado['finalizado'],
-                'pendiente' => max(0, round($pedida - $cerrado, 2)),
-            ];
-        });
+        $lineas = $compra->detalles->map(fn ($d) => [
+            'compra_detalle_id' => $d->id,
+            'producto_presentacion_id' => $d->producto_presentacion_id,
+            'producto' => $d->presentacion?->producto?->nombre,
+            'codigo' => $d->presentacion?->producto?->codigo,
+            'marca' => $d->presentacion?->producto?->marca?->nombre,
+            'unidad' => $d->presentacion?->nombre,
+            'costo_unitario' => (float) $d->costo_unitario,
+            'cantidad_pedida' => (float) $d->cantidad,
+            'cantidad_recibida' => $recibidos[$d->id] ?? 0,
+            'cantidad_finalizada' => (float) $d->cantidad_finalizada,
+            'pendiente' => $pendientes[$d->id] ?? 0,
+        ]);
 
         return response()->json([
             'compra' => [
@@ -109,7 +95,11 @@ class RecepcionCompraController extends Controller
                     throw new \RuntimeException('La compra está anulada: no admite recepciones.');
                 }
 
-                $pendientes = $this->pendientePorLinea($compra);
+                if ($compra->finalizado) {
+                    throw new \RuntimeException('La compra está finalizada: ya no admite recepciones.');
+                }
+
+                $pendientes = $compra->pendientePorLinea();
 
                 $recepcion = RecepcionCompra::create([
                     'compra_id' => $compra->id,
@@ -166,7 +156,6 @@ class RecepcionCompraController extends Controller
                         'cantidad_recibida' => $cantidad,
                         'cantidad_conforme' => $cantidad,
                         'cantidad_rechazada' => 0,
-                        'cantidad_finalizada' => 0,
                         'costo_unitario' => $costoPresentacion,
                         // El movimiento guarda el saldo resultante en unidad base.
                         'stock_anterior' => (float) $movimiento->stock_anterior,
@@ -183,47 +172,6 @@ class RecepcionCompraController extends Controller
         }
 
         return response()->json($recepcion->load(self::RELACIONES), 201);
-    }
-
-    /**
-     * Cierra el pendiente: se pidió 100, llegaron 50 y el resto ya no va a llegar.
-     * Lo que falta queda registrado como cantidad finalizada con su motivo.
-     */
-    public function finalizar(Request $request, RecepcionCompra $recepcionesCompra)
-    {
-        $data = $request->validate(['motivo' => 'required|string|max:255']);
-
-        if (! $recepcionesCompra->activo) {
-            return response()->json(['message' => 'La recepción está deshecha.'], 422);
-        }
-        if ($recepcionesCompra->finalizado) {
-            return response()->json(['message' => 'La recepción ya está finalizada.'], 422);
-        }
-
-        DB::transaction(function () use ($data, $recepcionesCompra) {
-            $compra = $recepcionesCompra->compra;
-            $pendientes = $compra ? $this->pendientePorLinea($compra) : [];
-
-            foreach ($recepcionesCompra->detalles as $detalle) {
-                $pendiente = $pendientes[$detalle->compra_detalle_id] ?? 0;
-                if ($pendiente > 0) {
-                    $detalle->update(['cantidad_finalizada' => $pendiente]);
-                }
-            }
-
-            $recepcionesCompra->update([
-                'finalizado' => true,
-                'motivo_finalizacion' => $data['motivo'],
-                'fecha_finalizacion' => now(),
-                'estado' => 'completa',
-            ]);
-
-            if ($compra) {
-                $compra->update(['estado' => 'recepcionada']);
-            }
-        });
-
-        return response()->json($recepcionesCompra->fresh()->load(self::RELACIONES));
     }
 
     /** Deshace la recepción: revierte el stock que ingresó y la deja inactiva. */
@@ -291,43 +239,28 @@ class RecepcionCompraController extends Controller
         return response()->json(['message' => 'Eliminado']);
     }
 
-    /** Cantidad aún pendiente de recibir por cada línea de la compra. */
-    private function pendientePorLinea(Compra $compra): array
-    {
-        $acumulado = $compra->recepciones()
-            ->where('activo', true)
-            ->with('detalles')
-            ->get()
-            ->flatMap->detalles
-            ->groupBy('compra_detalle_id')
-            ->map(fn ($ls) => $ls->sum('cantidad_recibida') + $ls->sum('cantidad_finalizada'));
-
-        return $compra->detalles
-            ->mapWithKeys(fn ($d) => [
-                $d->id => max(0, round((float) $d->cantidad - (float) ($acumulado[$d->id] ?? 0), 2)),
-            ])
-            ->all();
-    }
-
     /** Ajusta el estado de la recepción y de la compra según lo que falte. */
     private function refrescarEstados(RecepcionCompra $recepcion, Compra $compra): void
     {
         $compra = $compra->fresh('detalles');
-        $faltante = array_sum($this->pendientePorLinea($compra));
+        $faltante = array_sum($compra->pendientePorLinea());
         $pedido = (float) $compra->detalles->sum('cantidad');
 
         if ($recepcion->activo) {
             $recepcion->update(['estado' => $faltante > 0 ? 'parcial' : 'completa']);
         }
 
+        // Una compra finalizada conserva su estado: ya se cerró a mano.
+        if ($compra->finalizado) {
+            return;
+        }
+
         // Sin nada recibido vuelve a "registrada"; es el caso de deshacer todo.
-        $estado = match (true) {
+        $compra->update(['estado' => match (true) {
             $faltante <= 0 => 'recepcionada',
             abs($faltante - $pedido) < 0.001 => 'registrada',
             default => 'parcial',
-        };
-
-        $compra->update(['estado' => $estado]);
+        }]);
     }
 
     /** Correlativo formal del documento, ej. RC01-0024. */

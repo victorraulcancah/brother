@@ -161,6 +161,42 @@ class CompraController extends Controller
         );
     }
 
+    /**
+     * Cierra lo que falta por recibir: se pidieron 100, llegaron 50 y el resto ya
+     * no va a llegar. El pendiente queda registrado como cantidad finalizada.
+     */
+    public function finalizar(Request $request, Compra $compra)
+    {
+        $data = $request->validate(['motivo' => 'required|string|max:255']);
+
+        if ($compra->estado === 'anulada') {
+            return response()->json(['message' => 'La compra está anulada.'], 422);
+        }
+        if ($compra->finalizado) {
+            return response()->json(['message' => 'La compra ya está finalizada.'], 422);
+        }
+
+        DB::transaction(function () use ($data, $compra) {
+            $pendientes = $compra->pendientePorLinea();
+
+            foreach ($compra->detalles as $detalle) {
+                $pendiente = $pendientes[$detalle->id] ?? 0;
+                if ($pendiente > 0) {
+                    $detalle->increment('cantidad_finalizada', $pendiente);
+                }
+            }
+
+            $compra->update([
+                'finalizado' => true,
+                'motivo_finalizacion' => $data['motivo'],
+                'fecha_finalizacion' => now(),
+                'estado' => 'recepcionada',
+            ]);
+        });
+
+        return response()->json($compra->fresh()->load(['detalles', 'proveedor:id,nombre']));
+    }
+
     public function anular(Compra $compra)
     {
         $compra->update(['estado' => 'anulada']);

@@ -12,6 +12,7 @@ class CompraDetalle extends Model
         'compra_id',
         'producto_presentacion_id',
         'cantidad',
+        'cantidad_finalizada',
         'costo_unitario',
         'subtotal',
     ];
@@ -20,6 +21,7 @@ class CompraDetalle extends Model
     {
         return [
             'cantidad' => 'decimal:2',
+            'cantidad_finalizada' => 'decimal:2',
             'costo_unitario' => 'decimal:2',
             'subtotal' => 'decimal:2',
         ];
