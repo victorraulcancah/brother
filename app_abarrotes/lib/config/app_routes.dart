@@ -27,6 +27,7 @@ class AppRoutes {
 
   // Inventario
   static const String almacenes = '/almacenes';
+  static const String existencias = '/existencias';
   static const String movimientos = '/movimientos';
   static const String tomasInventario = '/tomas-inventario';
 

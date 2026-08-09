@@ -2,23 +2,39 @@ import 'package:flutter/material.dart';
 import '../config/api_endpoints.dart';
 import '../services/api_service.dart';
 import '../services/crud_service.dart';
+import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
-import '../widgets/app_button.dart';
-import '../widgets/app_form_section.dart';
+import '../widgets/app_confirm_dialog.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
+import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
-import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
-import '../widgets/app_text_field.dart';
 import '../widgets/data_card.dart';
-import '../widgets/product_lines_editor.dart';
 
-String _money(dynamic v) => 'S/ ${(double.tryParse('${v ?? 0}') ?? 0).toStringAsFixed(2)}';
+String _fecha(dynamic v) =>
+    v == null ? '—' : '$v'.split('T').first.split(' ').first;
 
+/// Etiqueta y color del estado de la recepción.
+({String label, AppBadgeType type}) _estadoInfo(Map<String, dynamic> r) {
+  if (r['activo'] == false) {
+    return (label: 'Inactiva', type: AppBadgeType.danger);
+  }
+  return switch (r['estado']) {
+    'completa' => (label: 'Completa', type: AppBadgeType.success),
+    'deshecha' => (label: 'Deshecha', type: AppBadgeType.danger),
+    _ => (label: 'Parcial', type: AppBadgeType.warning),
+  };
+}
+
+/// Registro de recepciones. No se crean aquí: se generan desde cada compra,
+/// que es donde se sabe qué queda pendiente de recibir.
 class RecepcionesCompraScreen extends StatefulWidget {
   const RecepcionesCompraScreen({super.key});
 
   @override
-  State<RecepcionesCompraScreen> createState() => _RecepcionesCompraScreenState();
+  State<RecepcionesCompraScreen> createState() =>
+      _RecepcionesCompraScreenState();
 }
 
 class _RecepcionesCompraScreenState extends State<RecepcionesCompraScreen> {
@@ -26,6 +42,9 @@ class _RecepcionesCompraScreenState extends State<RecepcionesCompraScreen> {
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
+  String? _filtroEstado;
 
   @override
   void initState() {
@@ -35,210 +54,292 @@ class _RecepcionesCompraScreenState extends State<RecepcionesCompraScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _items = await _crud.getAll();
-    } catch (_) {}
+    } catch (_) {
+      _error = 'No se pudieron cargar las recepciones.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _nueva() async {
-    final ok = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const _CrearRecepcionScreen()));
-    if (ok == true) _load();
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    return _items.where((r) {
+      if (_filtroEstado == 'activas' && r['activo'] == false) return false;
+      if (_filtroEstado == 'inactivas' && r['activo'] != false) return false;
+      if (q.isEmpty) return true;
+
+      final prov = (r['proveedor'] as Map?)?['nombre'] ?? '';
+      final compra = (r['compra'] as Map?)?['numero_compra'] ?? '';
+      return '${r['documento'] ?? ''} $prov $compra'.toLowerCase().contains(q);
+    }).toList();
   }
+
+  Future<void> _deshacer(Map<String, dynamic> item) async {
+    final confirmado = await showAppConfirmDialog(
+      context,
+      title: 'Deshacer ${item['documento'] ?? ''}',
+      message:
+          'Se dará salida del stock que esta recepción ingresó al almacén, y '
+          'sus cantidades volverán a quedar pendientes en la compra.',
+    );
+    if (!confirmado) return;
+
+    try {
+      await _api.post(ApiEndpoints.recepcionDeshacer(item['id']), body: {});
+      await _load();
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          'Recepción deshecha: el stock fue revertido',
+          type: AppSnackbarType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
+  }
+
+  /// Total recibido de una línea sumando las recepciones vigentes de la
+  /// misma compra, no solo la que se está viendo.
+  double _totalRecepcionado(Map<String, dynamic> recepcion, int? compraDetalleId) {
+    if (compraDetalleId == null) return 0;
+    return _items
+        .where(
+          (r) =>
+              r['activo'] != false &&
+              r['compra_id'] == recepcion['compra_id'],
+        )
+        .expand((r) => (r['detalles'] as List?) ?? [])
+        .whereType<Map>()
+        .where((d) => d['compra_detalle_id'] == compraDetalleId)
+        .fold<double>(
+          0,
+          (acc, d) => acc + (double.tryParse('${d['cantidad_recibida']}') ?? 0),
+        );
+  }
+
+  Future<void> _verDetalle(Map<String, dynamic> item) async {
+    final detalles = ((item['detalles'] as List?) ?? [])
+        .whereType<Map>()
+        .map((e) => e.cast<String, dynamic>())
+        .toList();
+
+    await showAppModal<void>(
+      context,
+      title: 'Detalle ${item['documento'] ?? ''}',
+      child: detalles.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: Text('Esta recepción no tiene líneas.')),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final d in detalles) _detalleCard(item, d),
+              ],
+            ),
+    );
+  }
+
+  Widget _detalleCard(Map<String, dynamic> recepcion, Map<String, dynamic> d) {
+    final pres = d['presentacion'] as Map<String, dynamic>?;
+    final producto = pres?['producto'] as Map<String, dynamic>?;
+    final compraDetalle = d['compra_detalle'] as Map<String, dynamic>?;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              producto?['nombre']?.toString() ?? '-',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            Text(
+              '${producto?['codigo'] ?? '-'} · ${pres?['nombre'] ?? '-'}'
+              '${producto?['marca'] is Map ? ' · ${producto!['marca']['nombre']}' : ''}',
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _dato('Cant.', '${d['cantidad_recibida']}', destacado: true),
+                _dato('Pedida', '${d['cantidad_pedida']}'),
+                _dato(
+                  'Total recep.',
+                  '${_totalRecepcionado(recepcion, d['compra_detalle_id'] as int?)}',
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                _dato('Finalizada', '${compraDetalle?['cantidad_finalizada'] ?? 0}'),
+                _dato('Stock ant.', '${d['stock_anterior'] ?? 0}'),
+                _dato('Stock nuevo', '${d['stock_nuevo'] ?? 0}'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dato(String label, String valor, {bool destacado = false}) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+        ),
+        Text(
+          valor,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: destacado ? AppColors.primary : null,
+          ),
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Recepciones de Compra',
-      floatingActionButton: FloatingActionButton(onPressed: _nueva, child: const Icon(Icons.add)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay recepciones'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
-              itemBuilder: (context, index) {
-                final item = _items[index];
-                final prov = item['proveedor'] as Map<String, dynamic>?;
-                final almacen = item['almacen'] as Map<String, dynamic>?;
-                final aplicado = item['stock_aplicado'] as bool? ?? false;
-                final doc = item['documento'] as String? ?? '#${item['id']}';
-                return DataCard(
-                  title: '$doc  ·  ${prov?['nombre'] ?? 'Sin proveedor'}',
-                  rows: [
-                    DataCardRow.text('Almacén', almacen?['nombre'] as String? ?? '—'),
-                    DataCardRow.text('Documento', '${item['numero_documento'] ?? '—'}'),
-                    DataCardRow.text('Fecha', '${item['fecha_recepcion'] ?? '—'}'),
-                    DataCardRow.text('Productos', '${item['detalles_count'] ?? 0}'),
-                    DataCardRow(
-                      label: 'Stock',
-                      value: AppBadge(aplicado ? 'Ingresado' : 'Pendiente',
-                          type: aplicado ? AppBadgeType.success : AppBadgeType.warning),
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar recepciones...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  filters: [
+                    AppListFilter(
+                      label: 'Estado',
+                      value: _filtroEstado,
+                      options: const [
+                        AppListFilterOption(null, 'Todas'),
+                        AppListFilterOption('activas', 'Activas'),
+                        AppListFilterOption('inactivas', 'Deshechas'),
+                      ],
+                      onChanged: (v) => setState(() => _filtroEstado = v),
                     ),
                   ],
-                );
-              },
-            ),
-    );
-  }
-}
+                  activeFilters: _filtroEstado != null ? 1 : 0,
+                  onClearFilters: () => setState(() => _filtroEstado = null),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(
+                              _items.isEmpty
+                                  ? 'No hay recepciones.\nSe registran desde el botón '
+                                        'Recepcionar de cada compra.'
+                                  : 'Ninguna recepción coincide con la búsqueda',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _visibles.length,
+                          itemBuilder: (context, index) {
+                            final item = _visibles[index];
+                            final compra = item['compra'] as Map?;
+                            final info = _estadoInfo(item);
+                            final activa = item['activo'] != false;
+                            final finalizada = compra?['finalizado'] == true;
 
-class _CrearRecepcionScreen extends StatefulWidget {
-  const _CrearRecepcionScreen();
-
-  @override
-  State<_CrearRecepcionScreen> createState() => _CrearRecepcionScreenState();
-}
-
-class _CrearRecepcionScreenState extends State<_CrearRecepcionScreen> {
-  final ApiService _api = ApiService();
-  bool _loading = true;
-  bool _saving = false;
-
-  List<Map<String, dynamic>> _proveedores = [];
-  List<Map<String, dynamic>> _almacenes = [];
-  final List<AppSelectOption<int>> _presOptions = [];
-
-  int? _proveedorId;
-  int? _almacenId;
-  String _tipoDoc = 'factura';
-  final _numeroDoc = TextEditingController();
-  final List<ProductLine> _lineas = [ProductLine(precio: '0')];
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void dispose() {
-    _numeroDoc.dispose();
-    for (final l in _lineas) {
-      l.dispose();
-    }
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    try {
-      final results = await Future.wait([
-        CrudService(_api, ApiEndpoints.proveedores).getAll(),
-        CrudService(_api, ApiEndpoints.almacenes).getAll(),
-        CrudService(_api, ApiEndpoints.productos).getAll(),
-      ]);
-      _proveedores = results[0];
-      _almacenes = results[1];
-      for (final p in results[2]) {
-        for (final pres in (p['presentaciones'] as List? ?? [])) {
-          _presOptions.add(AppSelectOption(pres['id'] as int, '${p['nombre']} — ${pres['nombre']}'));
-        }
-      }
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
-  }
-
-  double get _total => _lineas.fold(0, (a, l) => a + l.subtotal);
-
-  Future<void> _guardar() async {
-    final lineas = _lineas.where((l) => l.presentacionId != null && l.cant > 0).toList();
-    if (_almacenId == null) {
-      showAppSnackbar(context, 'Selecciona el almacén', type: AppSnackbarType.error);
-      return;
-    }
-    if (lineas.isEmpty) {
-      showAppSnackbar(context, 'Agrega al menos un producto', type: AppSnackbarType.error);
-      return;
-    }
-    final fecha = DateTime.now().toIso8601String().substring(0, 10);
-    setState(() => _saving = true);
-    try {
-      await _api.post(ApiEndpoints.recepciones, body: {
-        'proveedor_id': _proveedorId,
-        'almacen_id': _almacenId,
-        'tipo_documento': _tipoDoc,
-        'numero_documento': _numeroDoc.text.trim(),
-        'fecha_recepcion': fecha,
-        'detalles': lineas
-            .map((l) => {'producto_presentacion_id': l.presentacionId, 'cantidad_recibida': l.cant, 'costo_unitario': l.precioVal})
-            .toList(),
-      });
-      if (mounted) {
-        showAppSnackbar(context, 'Recepción registrada. Stock ingresado.', type: AppSnackbarType.success);
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AppScaffold(
-      title: 'Nueva Recepción',
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AppFormSection(
-                    title: 'Datos de la recepción',
-                    children: [
-                      AppSelect<int>(
-                        label: 'Proveedor',
-                        icon: Icons.local_shipping_outlined,
-                        value: _proveedorId,
-                        options: [for (final p in _proveedores) AppSelectOption(p['id'] as int, p['nombre'] as String? ?? '')],
-                        onChanged: (v) => setState(() => _proveedorId = v),
-                      ),
-                      AppSelect<int>(
-                        label: 'Almacén',
-                        icon: Icons.warehouse_outlined,
-                        value: _almacenId,
-                        options: [for (final a in _almacenes) AppSelectOption(a['id'] as int, a['nombre'] as String? ?? '')],
-                        onChanged: (v) => setState(() => _almacenId = v),
-                      ),
-                      AppSelect<String>(
-                        label: 'Tipo documento',
-                        icon: Icons.description_outlined,
-                        value: _tipoDoc,
-                        options: const [
-                          AppSelectOption('factura', 'Factura'),
-                          AppSelectOption('boleta', 'Boleta'),
-                          AppSelectOption('guia_remision', 'Guía de remisión'),
-                        ],
-                        onChanged: (v) => setState(() => _tipoDoc = v ?? 'factura'),
-                      ),
-                      AppTextField(controller: _numeroDoc, label: 'N° Documento', icon: Icons.numbers),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  AppFormSection(
-                    title: 'Productos recibidos',
-                    children: [
-                      ProductLinesEditor(
-                        lines: _lineas,
-                        options: _presOptions,
-                        priceLabel: 'Costo',
-                        onAdd: () => setState(() => _lineas.add(ProductLine(precio: '0'))),
-                        onRemove: (i) => setState(() => _lineas.removeAt(i).dispose()),
-                        onChanged: () => setState(() {}),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text('Total: ${_money(_total)}',
-                      textAlign: TextAlign.right, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 12),
-                  PrimaryButton(label: 'Registrar e ingresar stock', loading: _saving, onPressed: _guardar),
-                ],
-              ),
+                            return DataCard(
+                              title: item['documento']?.toString() ?? '#${item['id']}',
+                              subtitle:
+                                  (item['proveedor'] as Map?)?['nombre']
+                                      ?.toString(),
+                              onTap: () => _verDetalle(item),
+                              rows: [
+                                DataCardRow.text(
+                                  'Fecha',
+                                  _fecha(item['fecha_recepcion']),
+                                ),
+                                DataCardRow.text(
+                                  'Registró',
+                                  (item['usuario_recibe']
+                                          as Map?)?['name']
+                                      ?.toString() ??
+                                      '—',
+                                ),
+                                DataCardRow.text(
+                                  'Almacén',
+                                  (item['almacen'] as Map?)?['nombre']
+                                          ?.toString() ??
+                                      '—',
+                                ),
+                                DataCardRow.text(
+                                  'Compra',
+                                  compra?['numero_compra']?.toString() ?? '—',
+                                ),
+                                DataCardRow(
+                                  label: 'Estado',
+                                  value: AppBadge(info.label, type: info.type),
+                                ),
+                                DataCardRow(
+                                  label: 'Finalización',
+                                  value: AppBadge(
+                                    finalizada ? 'Sí' : 'No',
+                                    type: finalizada
+                                        ? AppBadgeType.info
+                                        : AppBadgeType.neutral,
+                                  ),
+                                ),
+                                if (finalizada &&
+                                    compra?['motivo_finalizacion'] != null)
+                                  DataCardRow.text(
+                                    'Motivo',
+                                    compra!['motivo_finalizacion'].toString(),
+                                  ),
+                                if (finalizada)
+                                  DataCardRow.text(
+                                    'F. finalización',
+                                    _fecha(compra?['fecha_finalizacion']),
+                                  ),
+                              ],
+                              actions: [
+                                if (activa)
+                                  DataCardAction(
+                                    icon: Icons.undo,
+                                    color: AppColors.danger,
+                                    tooltip: 'Deshacer',
+                                    onTap: () => _deshacer(item),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
     );
   }

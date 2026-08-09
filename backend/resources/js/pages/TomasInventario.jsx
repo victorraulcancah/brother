@@ -10,7 +10,7 @@ const emptyForm = { almacen_id: '', estado: 'en_proceso', observaciones: '' };
 
 const estadoInfo = {
     en_proceso: { label: 'En proceso', variant: 'blue' },
-    cerrada: { label: 'Cerrada', variant: 'green' },
+    cerrado: { label: 'Cerrada', variant: 'green' },
 };
 
 export default function TomasInventario() {
@@ -154,7 +154,7 @@ export default function TomasInventario() {
                 options={[
                     { value: '', label: 'Todas' },
                     { value: 'en_proceso', label: 'En proceso' },
-                    { value: 'cerrada', label: 'Cerrada' },
+                    { value: 'cerrado', label: 'Cerrada' },
                 ]}
                 className="w-40"
             />

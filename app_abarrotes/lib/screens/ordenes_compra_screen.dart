@@ -10,11 +10,38 @@ import '../widgets/app_form_section.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
-import '../widgets/app_text_field.dart';
 import '../widgets/data_card.dart';
 import '../widgets/product_lines_editor.dart';
 
 String _money(dynamic v) => 'S/ ${(double.tryParse('${v ?? 0}') ?? 0).toStringAsFixed(2)}';
+
+/// Etiqueta y color de cada estado de la orden, igual que en la web.
+({String label, AppBadgeType type}) _estadoInfo(String? estado) =>
+    switch (estado) {
+      'aprobada' => (label: 'Aprobada', type: AppBadgeType.success),
+      'enviada' => (label: 'Enviada', type: AppBadgeType.info),
+      'parcial' => (label: 'Parcial', type: AppBadgeType.warning),
+      'completada' => (label: 'Completada', type: AppBadgeType.success),
+      'anulada' => (label: 'Anulada', type: AppBadgeType.danger),
+      _ => (label: 'Pendiente', type: AppBadgeType.warning),
+    };
+
+/// Campo de solo lectura que explica que el código lo asigna el sistema.
+class _CodigoAutomatico extends StatelessWidget {
+  const _CodigoAutomatico();
+
+  @override
+  Widget build(BuildContext context) {
+    return const TextField(
+      readOnly: true,
+      decoration: InputDecoration(
+        labelText: 'Código',
+        prefixIcon: Icon(Icons.tag),
+        hintText: 'Se genera automáticamente',
+      ),
+    );
+  }
+}
 
 class OrdenesCompraScreen extends StatefulWidget {
   const OrdenesCompraScreen({super.key});
@@ -82,10 +109,33 @@ class _OrdenesCompraScreenState extends State<OrdenesCompraScreen> {
                     DataCardRow.text('Proveedor', prov?['nombre'] as String? ?? '—'),
                     DataCardRow.text('Emisión', '${item['fecha_emision'] ?? '—'}'),
                     DataCardRow.text('Productos', '${item['detalles_count'] ?? 0}'),
-                    DataCardRow(label: 'Estado', value: AppBadge(item['estado'] as String? ?? '—', type: AppBadgeType.warning)),
+                    DataCardRow(
+                      label: 'Estado',
+                      value: AppBadge(
+                        _estadoInfo(item['estado']?.toString()).label,
+                        type: _estadoInfo(item['estado']?.toString()).type,
+                      ),
+                    ),
+                    DataCardRow(
+                      label: 'Compra',
+                      value: AppBadge(
+                        (item['compras_count'] ?? 0) > 0
+                            ? 'Transformada'
+                            : 'Sin compra',
+                        type: (item['compras_count'] ?? 0) > 0
+                            ? AppBadgeType.success
+                            : AppBadgeType.neutral,
+                      ),
+                    ),
                   ],
                   actions: [
-                    DataCardAction(icon: Icons.delete_outline, color: AppColors.danger, tooltip: 'Eliminar', onTap: () => _delete(item)),
+                    if ((item['compras_count'] ?? 0) == 0)
+                      DataCardAction(
+                        icon: Icons.delete_outline,
+                        color: AppColors.danger,
+                        tooltip: 'Eliminar',
+                        onTap: () => _delete(item),
+                      ),
                   ],
                 );
               },
@@ -110,7 +160,6 @@ class _CrearOrdenScreenState extends State<_CrearOrdenScreen> {
   final List<AppSelectOption<int>> _presOptions = [];
 
   int? _proveedorId;
-  final _codigo = TextEditingController();
   final List<ProductLine> _lineas = [ProductLine(precio: '0')];
 
   @override
@@ -121,7 +170,6 @@ class _CrearOrdenScreenState extends State<_CrearOrdenScreen> {
 
   @override
   void dispose() {
-    _codigo.dispose();
     for (final l in _lineas) {
       l.dispose();
     }
@@ -152,10 +200,6 @@ class _CrearOrdenScreenState extends State<_CrearOrdenScreen> {
       showAppSnackbar(context, 'Selecciona el proveedor', type: AppSnackbarType.error);
       return;
     }
-    if (_codigo.text.trim().isEmpty) {
-      showAppSnackbar(context, 'Ingresa el código', type: AppSnackbarType.error);
-      return;
-    }
     if (lineas.isEmpty) {
       showAppSnackbar(context, 'Agrega al menos un producto', type: AppSnackbarType.error);
       return;
@@ -164,7 +208,6 @@ class _CrearOrdenScreenState extends State<_CrearOrdenScreen> {
     setState(() => _saving = true);
     try {
       await _api.post(ApiEndpoints.ordenes, body: {
-        'codigo': _codigo.text.trim(),
         'proveedor_id': _proveedorId,
         'fecha_emision': fecha,
         'moneda': 'PEN',
@@ -197,7 +240,8 @@ class _CrearOrdenScreenState extends State<_CrearOrdenScreen> {
                   AppFormSection(
                     title: 'Datos de la orden',
                     children: [
-                      AppTextField(controller: _codigo, label: 'Código', icon: Icons.tag),
+                      // El código es un correlativo interno que asigna el backend.
+                      const _CodigoAutomatico(),
                       AppSelect<int>(
                         label: 'Proveedor',
                         icon: Icons.local_shipping_outlined,

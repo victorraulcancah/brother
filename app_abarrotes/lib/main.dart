@@ -4,6 +4,7 @@ import 'config/app_routes.dart';
 import 'providers/auth_provider.dart';
 import 'screens/ajustes_screen.dart';
 import 'screens/almacenes_screen.dart';
+import 'screens/existencias_screen.dart';
 import 'screens/cajas_screen.dart';
 import 'screens/categorias_screen.dart';
 import 'screens/clientes_screen.dart';
@@ -71,6 +72,7 @@ class MyApp extends StatelessWidget {
           AppRoutes.solicitudesCompra: (_) => const SolicitudesCompraScreen(),
           AppRoutes.recepcionesCompra: (_) => const RecepcionesCompraScreen(),
           AppRoutes.almacenes: (_) => const AlmacenesScreen(),
+          AppRoutes.existencias: (_) => const ExistenciasScreen(),
           AppRoutes.movimientos: (_) => const MovimientosScreen(),
           AppRoutes.tomasInventario: (_) => const TomasInventarioScreen(),
           AppRoutes.traslados: (_) => const TrasladosScreen(),

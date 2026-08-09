@@ -6,11 +6,21 @@ import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_form_section.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/data_card.dart';
 import '../widgets/product_lines_editor.dart';
+
+/// Etiqueta legible de cada estado del traslado.
+const _estadoLabel = {
+  'pendiente': 'Pendiente',
+  'en_transito': 'En tránsito',
+  'recibida': 'Recibida',
+  'anulada': 'Anulada',
+};
 
 AppBadgeType _estadoBadge(String? e) => switch (e) {
       'pendiente' => AppBadgeType.warning,
@@ -32,6 +42,9 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
+  String? _filtroEstado;
 
   @override
   void initState() {
@@ -41,10 +54,15 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _items = await _crud.getAll();
-    } catch (_) {}
+    } catch (_) {
+      _error = 'No se pudieron cargar los traslados.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -78,6 +96,17 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
     if (ok == true) _accion(item, 'anular', 'Traslado anulado.');
   }
 
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    return _items.where((t) {
+      if (_filtroEstado != null && t['estado'] != _filtroEstado) return false;
+      if (q.isEmpty) return true;
+      final origen = (t['almacen_origen'] as Map?)?['nombre'] ?? '';
+      final destino = (t['almacen_destino'] as Map?)?['nombre'] ?? '';
+      return '${t['codigo'] ?? ''} $origen $destino'.toLowerCase().contains(q);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -85,13 +114,47 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       floatingActionButton: FloatingActionButton(onPressed: _nuevo, child: const Icon(Icons.add)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay traslados'))
-          : ListView.builder(
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar traslados...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  filters: [
+                    AppListFilter(
+                      label: 'Estado',
+                      value: _filtroEstado,
+                      options: const [
+                        AppListFilterOption(null, 'Todos'),
+                        AppListFilterOption('pendiente', 'Pendiente'),
+                        AppListFilterOption('en_transito', 'En tránsito'),
+                        AppListFilterOption('recibida', 'Recibida'),
+                        AppListFilterOption('anulada', 'Anulada'),
+                      ],
+                      onChanged: (v) => setState(() => _filtroEstado = v),
+                    ),
+                  ],
+                  activeFilters: _filtroEstado != null ? 1 : 0,
+                  onClearFilters: () => setState(() => _filtroEstado = null),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(
+                          child: Text(
+                            _items.isEmpty ? 'No hay traslados' : 'Ningun traslado coincide con la busqueda',
+                          ),
+                        )
+                      : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
+              itemCount: _visibles.length,
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = _visibles[index];
                 final origen = item['almacen_origen'] as Map<String, dynamic>?;
                 final destino = item['almacen_destino'] as Map<String, dynamic>?;
                 final estado = item['estado'] as String?;
@@ -99,7 +162,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                   title: '#${item['id']}  ${origen?['nombre'] ?? '—'} → ${destino?['nombre'] ?? '—'}',
                   rows: [
                     DataCardRow.text('Productos', '${item['detalles_count'] ?? 0}'),
-                    DataCardRow(label: 'Estado', value: AppBadge(estado ?? '—', type: _estadoBadge(estado))),
+                    DataCardRow(label: 'Estado', value: AppBadge(_estadoLabel[estado] ?? estado ?? '—', type: _estadoBadge(estado))),
                   ],
                   actions: [
                     if (estado == 'pendiente')
@@ -126,6 +189,9 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                   ],
                 );
               },
+            ),
+                ),
+              ],
             ),
     );
   }

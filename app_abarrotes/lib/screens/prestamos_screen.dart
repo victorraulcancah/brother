@@ -7,12 +7,22 @@ import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_form_section.dart';
 import '../widgets/app_modal.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/data_card.dart';
 import '../widgets/product_lines_editor.dart';
+
+/// Etiqueta legible de cada estado del prestamo.
+const _estadoLabel = {
+  'pendiente': 'Pendiente',
+  'prestado': 'Prestado',
+  'parcial': 'Devuelto parcial',
+  'devuelto': 'Devuelto',
+};
 
 AppBadgeType _estadoBadge(String? e) => switch (e) {
       'prestado' => AppBadgeType.warning,
@@ -33,6 +43,10 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
+  String? _filtroEstado;
+  String? _filtroTipo;
 
   @override
   void initState() {
@@ -42,10 +56,15 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _items = await _crud.getAll();
-    } catch (_) {}
+    } catch (_) {
+      _error = 'No se pudieron cargar los prestamos.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -71,6 +90,18 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
     }
   }
 
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    return _items.where((p) {
+      if (_filtroEstado != null && p['estado'] != _filtroEstado) return false;
+      if (_filtroTipo != null && p['tipo'] != _filtroTipo) return false;
+      if (q.isEmpty) return true;
+      return '${p['tercero'] ?? ''} ${p['observaciones'] ?? ''}'
+          .toLowerCase()
+          .contains(q);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -78,13 +109,62 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
       floatingActionButton: FloatingActionButton(onPressed: _nuevo, child: const Icon(Icons.add)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay préstamos'))
-          : ListView.builder(
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar prestamos...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  filters: [
+                    AppListFilter(
+                      label: 'Estado',
+                      value: _filtroEstado,
+                      options: const [
+                        AppListFilterOption(null, 'Todos'),
+                        AppListFilterOption('pendiente', 'Pendiente'),
+                        AppListFilterOption('prestado', 'Prestado'),
+                        AppListFilterOption('parcial', 'Devuelto parcial'),
+                        AppListFilterOption('devuelto', 'Devuelto'),
+                      ],
+                      onChanged: (v) => setState(() => _filtroEstado = v),
+                    ),
+                    AppListFilter(
+                      label: 'Tipo',
+                      value: _filtroTipo,
+                      options: const [
+                        AppListFilterOption(null, 'Todos'),
+                        AppListFilterOption('prestado', 'Presté'),
+                        AppListFilterOption('recibido', 'Me prestaron'),
+                      ],
+                      onChanged: (v) => setState(() => _filtroTipo = v),
+                    ),
+                  ],
+                  activeFilters:
+                      (_filtroEstado != null ? 1 : 0) +
+                      (_filtroTipo != null ? 1 : 0),
+                  onClearFilters: () => setState(() {
+                    _filtroEstado = null;
+                    _filtroTipo = null;
+                  }),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(
+                          child: Text(
+                            _items.isEmpty ? 'No hay préstamos' : 'Ningun prestamo coincide con la busqueda',
+                          ),
+                        )
+                      : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
+              itemCount: _visibles.length,
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = _visibles[index];
                 final presto = item['tipo'] == 'prestado';
                 final estado = item['estado'] as String?;
                 return DataCard(
@@ -96,7 +176,7 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
                           type: presto ? AppBadgeType.danger : AppBadgeType.success),
                     ),
                     DataCardRow.text('Productos', '${(item['detalles'] as List?)?.length ?? 0}'),
-                    DataCardRow(label: 'Estado', value: AppBadge(estado ?? '—', type: _estadoBadge(estado))),
+                    DataCardRow(label: 'Estado', value: AppBadge(_estadoLabel[estado] ?? estado ?? '—', type: _estadoBadge(estado))),
                   ],
                   actions: estado == 'devuelto'
                       ? []
@@ -110,6 +190,9 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
                         ],
                 );
               },
+            ),
+                ),
+              ],
             ),
     );
   }

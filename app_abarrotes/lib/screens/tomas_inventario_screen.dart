@@ -6,6 +6,8 @@ import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_form_section.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
@@ -24,6 +26,9 @@ class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
+  String? _filtroEstado;
 
   @override
   void initState() {
@@ -33,10 +38,15 @@ class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _items = await _crud.getAll();
-    } catch (_) {}
+    } catch (_) {
+      _error = 'No se pudieron cargar las tomas.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -55,6 +65,18 @@ class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
     }
   }
 
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    return _items.where((t) {
+      if (_filtroEstado != null && t['estado'] != _filtroEstado) return false;
+      if (q.isEmpty) return true;
+      final almacen = (t['almacen'] as Map?)?['nombre'] ?? '';
+      return '${t['id']} $almacen ${t['observaciones'] ?? ''}'
+          .toLowerCase()
+          .contains(q);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -62,13 +84,45 @@ class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
       floatingActionButton: FloatingActionButton(onPressed: _nueva, child: const Icon(Icons.add)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay tomas de inventario'))
-          : ListView.builder(
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar tomas...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  filters: [
+                    AppListFilter(
+                      label: 'Estado',
+                      value: _filtroEstado,
+                      options: const [
+                        AppListFilterOption(null, 'Todos'),
+                        AppListFilterOption('en_proceso', 'En proceso'),
+                        AppListFilterOption('cerrado', 'Cerrada'),
+                      ],
+                      onChanged: (v) => setState(() => _filtroEstado = v),
+                    ),
+                  ],
+                  activeFilters: _filtroEstado != null ? 1 : 0,
+                  onClearFilters: () => setState(() => _filtroEstado = null),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(
+                          child: Text(
+                            _items.isEmpty ? 'No hay tomas de inventario' : 'Ninguna toma coincide con la busqueda',
+                          ),
+                        )
+                      : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
+              itemCount: _visibles.length,
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = _visibles[index];
                 final almacen = item['almacen'] as Map<String, dynamic>?;
                 final cerrado = item['estado'] == 'cerrado';
                 return DataCard(
@@ -95,6 +149,9 @@ class _TomasInventarioScreenState extends State<TomasInventarioScreen> {
                         ],
                 );
               },
+            ),
+                ),
+              ],
             ),
     );
   }

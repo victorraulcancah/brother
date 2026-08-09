@@ -47,6 +47,8 @@ class ApiEndpoints {
 
   static const String recepciones = '/recepciones-compra';
   static String recepcion(int id) => '/recepciones-compra/$id';
+  /// Revierte el stock que ingreso la recepcion y la deja inactiva.
+  static String recepcionDeshacer(int id) => '/recepciones-compra/$id/deshacer';
 
   static const String tomas = '/tomas-inventario';
   static String toma(int id) => '/tomas-inventario/$id';
@@ -66,6 +68,11 @@ class ApiEndpoints {
   // Compras
   static const String compras = '/compras';
   static String compra(int id) => '/compras/$id';
+  static String compraAnular(int id) => '/compras/$id/anular';
+  /// Cierra lo que ya no va a llegar del proveedor.
+  static String compraFinalizar(int id) => '/compras/$id/finalizar';
+  /// Lineas de la compra con lo pedido, lo recibido y lo pendiente.
+  static String compraPendientes(int id) => '/compras/$id/pendientes-recepcion';
 
   // Tesorería
   static const String bancos = '/bancos';

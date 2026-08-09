@@ -7,6 +7,8 @@ import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_form_section.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_snackbar.dart';
@@ -26,6 +28,8 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
 
   @override
   void initState() {
@@ -35,14 +39,32 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _items = await _crud.getAll();
-    } catch (_) {}
+    } catch (_) {
+      _error = 'No se pudieron cargar los proveedores.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _openForm({Map<String, dynamic>? item, int? index}) async {
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    if (q.isEmpty) return _items;
+    return _items
+        .where(
+          (p) =>
+              '${p['nombre']} ${p['codigo']} ${p['ruc']} ${p['contacto_nombre']}'
+                  .toLowerCase()
+                  .contains(q),
+        )
+        .toList();
+  }
+
+  Future<void> _openForm({Map<String, dynamic>? item}) async {
     final result = await showAppModal<Map<String, dynamic>>(
       context,
       title: item == null ? 'Nuevo proveedor' : 'Editar proveedor',
@@ -50,8 +72,8 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
     );
     if (result == null) return;
     try {
-      if (index != null) {
-        await _crud.update(item!['id'], result);
+      if (item != null) {
+        await _crud.update(item['id'], result);
       } else {
         await _crud.create(result);
       }
@@ -70,8 +92,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
     }
   }
 
-  Future<void> _delete(int index) async {
-    final item = _items[index];
+  Future<void> _delete(Map<String, dynamic> item) async {
     final confirmado = await showAppConfirmDialog(
       context,
       title: 'Eliminar proveedor',
@@ -105,13 +126,33 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay proveedores'))
-          : ListView.builder(
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar proveedores...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(
+                          child: Text(
+                            _items.isEmpty
+                                ? 'No hay proveedores'
+                                : 'Ningun proveedor coincide con la busqueda',
+                          ),
+                        )
+                      : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
+              itemCount: _visibles.length,
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = _visibles[index];
                 final activo = item['activo'] as bool? ?? true;
                 return DataCard(
                   title: item['nombre'] as String,
@@ -142,17 +183,20 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
                       icon: Icons.edit_outlined,
                       color: AppColors.primary,
                       tooltip: 'Editar',
-                      onTap: () => _openForm(item: item, index: index),
+                      onTap: () => _openForm(item: item),
                     ),
                     DataCardAction(
                       icon: Icons.delete_outline,
                       color: AppColors.danger,
                       tooltip: 'Eliminar',
-                      onTap: () => _delete(index),
+                      onTap: () => _delete(item),
                     ),
                   ],
                 );
               },
+            ),
+                ),
+              ],
             ),
     );
   }

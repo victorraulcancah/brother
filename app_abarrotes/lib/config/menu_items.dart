@@ -68,8 +68,9 @@ class AppMenu {
       icon: Icons.warehouse_outlined,
       label: 'Inventario',
       children: [
-        MenuLink(icon: Icons.warehouse_outlined, label: 'Existencias', route: AppRoutes.almacenes),
-        MenuLink(icon: Icons.swap_vert, label: 'Movimientos', route: AppRoutes.movimientos),
+        MenuLink(icon: Icons.warehouse_outlined, label: 'Existencias', route: AppRoutes.existencias),
+        MenuLink(icon: Icons.store_outlined, label: 'Almacenes', route: AppRoutes.almacenes),
+        MenuLink(icon: Icons.swap_vert, label: 'Kardex', route: AppRoutes.movimientos),
         MenuLink(icon: Icons.repeat, label: 'Traslados', route: AppRoutes.traslados),
         MenuLink(icon: Icons.tune, label: 'Ajustes', route: AppRoutes.ajustes),
         MenuLink(icon: Icons.fact_check_outlined, label: 'Tomas de inventario', route: AppRoutes.tomasInventario),

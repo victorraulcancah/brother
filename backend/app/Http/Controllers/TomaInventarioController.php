@@ -66,7 +66,11 @@ class TomaInventarioController extends Controller
 
     public function update(Request $request, TomaInventario $tomasInventario)
     {
-        $data = $request->validate(['observaciones' => 'nullable|string']);
+        // El formulario también manda el estado; sin esta regla se descartaba.
+        $data = $request->validate([
+            'estado' => 'nullable|in:en_proceso,cerrado',
+            'observaciones' => 'nullable|string',
+        ]);
         $tomasInventario->update($data);
         return response()->json($tomasInventario);
     }
