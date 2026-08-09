@@ -7,6 +7,8 @@ import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_form_section.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_snackbar.dart';
@@ -26,6 +28,9 @@ class _MarcasScreenState extends State<MarcasScreen> {
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
+  String? _filtroEstado;
 
   @override
   void initState() {
@@ -35,14 +40,35 @@ class _MarcasScreenState extends State<MarcasScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _items = await _crud.getAll();
-    } catch (_) {}
+    } catch (_) {
+      _error = 'No se pudieron cargar las marcas.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _openForm({Map<String, dynamic>? item, int? index}) async {
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    return _items.where((m) {
+      if (_filtroEstado == 'activos' && m['activo'] != true) return false;
+      if (_filtroEstado == 'inactivos' && m['activo'] == true) return false;
+      if (q.isEmpty) return true;
+      return '${m['nombre']}'.toLowerCase().contains(q);
+    }).toList();
+  }
+
+  /// Sub-marcas que cuelgan de la marca, si la respuesta las trae.
+  int _subMarcasDe(Map<String, dynamic> m) {
+    final subs = m['sub_marcas'];
+    return subs is List ? subs.length : 0;
+  }
+
+  Future<void> _openForm({Map<String, dynamic>? item}) async {
     final result = await showAppModal<Map<String, dynamic>>(
       context,
       title: item == null ? 'Nueva marca' : 'Editar marca',
@@ -50,8 +76,8 @@ class _MarcasScreenState extends State<MarcasScreen> {
     );
     if (result == null) return;
     try {
-      if (index != null) {
-        await _crud.update(item!['id'], result);
+      if (item != null) {
+        await _crud.update(item['id'], result);
       } else {
         await _crud.create(result);
       }
@@ -70,8 +96,7 @@ class _MarcasScreenState extends State<MarcasScreen> {
     }
   }
 
-  Future<void> _delete(int index) async {
-    final item = _items[index];
+  Future<void> _delete(Map<String, dynamic> item) async {
     final confirmado = await showAppConfirmDialog(
       context,
       title: 'Eliminar marca',
@@ -105,17 +130,53 @@ class _MarcasScreenState extends State<MarcasScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay marcas'))
-          : ListView.builder(
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar marcas...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  filters: [
+                    AppListFilter(
+                      label: 'Estado',
+                      value: _filtroEstado,
+                      options: const [
+                        AppListFilterOption(null, 'Todos'),
+                        AppListFilterOption('activos', 'Activas'),
+                        AppListFilterOption('inactivos', 'Inactivas'),
+                      ],
+                      onChanged: (v) => setState(() => _filtroEstado = v),
+                    ),
+                  ],
+                  activeFilters: _filtroEstado != null ? 1 : 0,
+                  onClearFilters: () => setState(() => _filtroEstado = null),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(
+                          child: Text(
+                            _items.isEmpty ? 'No hay marcas' : 'Ninguna marca coincide con la busqueda',
+                          ),
+                        )
+                      : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
+              itemCount: _visibles.length,
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = _visibles[index];
                 final activo = item['activo'] == true;
                 return DataCard(
                   title: item['nombre']?.toString() ?? '',
                   rows: [
+                    DataCardRow.text(
+                      'Sub-marcas',
+                      '${_subMarcasDe(item)}',
+                    ),
                     DataCardRow(
                       label: 'Estado',
                       value: AppBadge(
@@ -131,17 +192,20 @@ class _MarcasScreenState extends State<MarcasScreen> {
                       icon: Icons.edit_outlined,
                       color: AppColors.primary,
                       tooltip: 'Editar',
-                      onTap: () => _openForm(item: item, index: index),
+                      onTap: () => _openForm(item: item),
                     ),
                     DataCardAction(
                       icon: Icons.delete_outline,
                       color: AppColors.danger,
                       tooltip: 'Eliminar',
-                      onTap: () => _delete(index),
+                      onTap: () => _delete(item),
                     ),
                   ],
                 );
               },
+            ),
+                ),
+              ],
             ),
     );
   }
@@ -159,24 +223,32 @@ class _MarcaFormSheet extends StatefulWidget {
 class _MarcaFormSheetState extends State<_MarcaFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nombre;
+  late final TextEditingController _logo;
   bool _activo = true;
 
   @override
   void initState() {
     super.initState();
     _nombre = TextEditingController(text: widget.initial?['nombre'] ?? '');
+    _logo = TextEditingController(text: widget.initial?['logo'] ?? '');
     _activo = widget.initial?['activo'] == true || widget.initial == null;
   }
 
   @override
   void dispose() {
     _nombre.dispose();
+    _logo.dispose();
     super.dispose();
   }
 
   void _guardar() {
     if (!_formKey.currentState!.validate()) return;
-    Navigator.pop(context, {'nombre': _nombre.text.trim(), 'activo': _activo});
+    final logo = _logo.text.trim();
+    Navigator.pop(context, {
+      'nombre': _nombre.text.trim(),
+      'logo': logo.isEmpty ? null : logo,
+      'activo': _activo,
+    });
   }
 
   @override
@@ -196,6 +268,11 @@ class _MarcaFormSheetState extends State<_MarcaFormSheet> {
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Ingrese el nombre'
                     : null,
+              ),
+              AppTextField(
+                controller: _logo,
+                label: 'Logo (URL)',
+                icon: Icons.image_outlined,
               ),
               AppToggle(
                 label: 'Activo',

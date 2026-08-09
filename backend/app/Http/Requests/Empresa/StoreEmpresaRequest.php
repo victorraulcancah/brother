@@ -24,6 +24,7 @@ class StoreEmpresaRequest extends FormRequest
             'ciudad' => 'nullable|string|max:100',
             'telefono' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
+            'activa' => 'sometimes|boolean',
         ];
     }
 

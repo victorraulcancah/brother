@@ -6,6 +6,8 @@ import '../theme/app_colors.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_form_section.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_snackbar.dart';
@@ -24,6 +26,9 @@ class _RolesScreenState extends State<RolesScreen> {
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
+  String? _filtroGuard;
 
   @override
   void initState() {
@@ -33,14 +38,46 @@ class _RolesScreenState extends State<RolesScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _items = await _crud.getAll();
-    } catch (_) {}
+    } catch (_) {
+      // Antes se silenciaba: la lista quedaba vacia sin explicar por que.
+      _error = 'No se pudieron cargar los roles.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _openForm({Map<String, dynamic>? item, int? index}) async {
+  /// Roles que pasan el buscador y el filtro por guard.
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    return _items.where((r) {
+      if (_filtroGuard != null && r['guard_name']?.toString() != _filtroGuard) {
+        return false;
+      }
+      if (q.isEmpty) return true;
+      return '${r['name']} ${r['guard_name']}'.toLowerCase().contains(q);
+    }).toList();
+  }
+
+  List<AppListFilterOption> get _guards {
+    final valores =
+        _items
+            .map((r) => r['guard_name']?.toString())
+            .where((g) => g != null && g.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    return [
+      const AppListFilterOption(null, 'Todos los guards'),
+      for (final g in valores) AppListFilterOption(g, g!),
+    ];
+  }
+
+  Future<void> _openForm({Map<String, dynamic>? item}) async {
     final result = await showAppModal<Map<String, dynamic>>(
       context,
       title: item == null ? 'Nuevo rol' : 'Editar rol',
@@ -48,8 +85,8 @@ class _RolesScreenState extends State<RolesScreen> {
     );
     if (result == null) return;
     try {
-      if (index != null) {
-        await _crud.update(item!['id'], result);
+      if (item != null) {
+        await _crud.update(item['id'], result);
       } else {
         await _crud.create(result);
       }
@@ -68,8 +105,7 @@ class _RolesScreenState extends State<RolesScreen> {
     }
   }
 
-  Future<void> _delete(int index) async {
-    final item = _items[index];
+  Future<void> _delete(Map<String, dynamic> item) async {
     final confirmado = await showAppConfirmDialog(
       context,
       title: 'Eliminar rol',
@@ -99,34 +135,74 @@ class _RolesScreenState extends State<RolesScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay roles'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
-              itemBuilder: (context, index) {
-                final item = _items[index];
-                return DataCard(
-                  title: item['name']?.toString() ?? '',
-                  rows: [
-                    DataCardRow.text('Nombre', item['name']?.toString() ?? ''),
-                  ],
-                  actions: [
-                    DataCardAction(
-                      icon: Icons.edit_outlined,
-                      color: AppColors.primary,
-                      tooltip: 'Editar',
-                      onTap: () => _openForm(item: item, index: index),
-                    ),
-                    DataCardAction(
-                      icon: Icons.delete_outline,
-                      color: AppColors.danger,
-                      tooltip: 'Eliminar',
-                      onTap: () => _delete(index),
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar roles...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  filters: [
+                    AppListFilter(
+                      label: 'Guard',
+                      value: _filtroGuard,
+                      options: _guards,
+                      onChanged: (v) => setState(() => _filtroGuard = v),
                     ),
                   ],
-                );
-              },
+                  activeFilters: _filtroGuard != null ? 1 : 0,
+                  onClearFilters: () => setState(() => _filtroGuard = null),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(
+                          child: Text(
+                            _items.isEmpty
+                                ? 'No hay roles'
+                                : 'Ningun rol coincide con la busqueda',
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _visibles.length,
+                          itemBuilder: (context, index) {
+                            final item = _visibles[index];
+                            return DataCard(
+                              title: item['name']?.toString() ?? '',
+                              rows: [
+                                DataCardRow.text(
+                                  'ID',
+                                  item['id']?.toString() ?? '-',
+                                ),
+                                DataCardRow.text(
+                                  'Guard',
+                                  item['guard_name']?.toString() ?? '-',
+                                ),
+                              ],
+                              actions: [
+                                DataCardAction(
+                                  icon: Icons.edit_outlined,
+                                  color: AppColors.primary,
+                                  tooltip: 'Editar',
+                                  onTap: () => _openForm(item: item),
+                                ),
+                                DataCardAction(
+                                  icon: Icons.delete_outline,
+                                  color: AppColors.danger,
+                                  tooltip: 'Eliminar',
+                                  onTap: () => _delete(item),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
     );
   }

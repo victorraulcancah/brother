@@ -7,6 +7,8 @@ import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_form_section.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
@@ -28,6 +30,9 @@ class _SubMarcasScreenState extends State<SubMarcasScreen> {
   List<Map<String, dynamic>> _items = [];
   List<Map<String, dynamic>> _marcas = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
+  String? _filtroMarca;
 
   @override
   void initState() {
@@ -37,15 +42,32 @@ class _SubMarcasScreenState extends State<SubMarcasScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _items = await _crud.getAll();
       _marcas = await CrudService(_api, ApiEndpoints.marcas).getAll();
-    } catch (_) {}
+    } catch (_) {
+      _error = 'No se pudieron cargar las sub-marcas.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _openForm({Map<String, dynamic>? item, int? index}) async {
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    return _items.where((sm) {
+      final marcaId = (sm['marca'] is Map)
+          ? sm['marca']['id']?.toString()
+          : sm['marca_id']?.toString();
+      if (_filtroMarca != null && marcaId != _filtroMarca) return false;
+      if (q.isEmpty) return true;
+      return '${sm['nombre']} ${_marcaNombre(sm)}'.toLowerCase().contains(q);
+    }).toList();
+  }
+
+  Future<void> _openForm({Map<String, dynamic>? item}) async {
     final result = await showAppModal<Map<String, dynamic>>(
       context,
       title: item == null ? 'Nueva sub-marca' : 'Editar sub-marca',
@@ -53,8 +75,8 @@ class _SubMarcasScreenState extends State<SubMarcasScreen> {
     );
     if (result == null) return;
     try {
-      if (index != null) {
-        await _crud.update(item!['id'], result);
+      if (item != null) {
+        await _crud.update(item['id'], result);
       } else {
         await _crud.create(result);
       }
@@ -73,8 +95,7 @@ class _SubMarcasScreenState extends State<SubMarcasScreen> {
     }
   }
 
-  Future<void> _delete(int index) async {
-    final item = _items[index];
+  Future<void> _delete(Map<String, dynamic> item) async {
     final confirmado = await showAppConfirmDialog(
       context,
       title: 'Eliminar sub-marca',
@@ -120,13 +141,48 @@ class _SubMarcasScreenState extends State<SubMarcasScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay sub-marcas'))
-          : ListView.builder(
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar sub-marcas...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  filters: [
+                    AppListFilter(
+                      label: 'Marca',
+                      value: _filtroMarca,
+                      options: [
+                        const AppListFilterOption(null, 'Todas las marcas'),
+                        for (final m in _marcas)
+                          AppListFilterOption(
+                            m['id'].toString(),
+                            m['nombre']?.toString() ?? '',
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _filtroMarca = v),
+                    ),
+                  ],
+                  activeFilters: _filtroMarca != null ? 1 : 0,
+                  onClearFilters: () => setState(() => _filtroMarca = null),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(
+                          child: Text(
+                            _items.isEmpty ? 'No hay sub-marcas' : 'Ninguna sub-marca coincide con la busqueda',
+                          ),
+                        )
+                      : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
+              itemCount: _visibles.length,
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = _visibles[index];
                 final activo = item['activo'] == true;
                 return DataCard(
                   title: item['nombre']?.toString() ?? '',
@@ -147,17 +203,20 @@ class _SubMarcasScreenState extends State<SubMarcasScreen> {
                       icon: Icons.edit_outlined,
                       color: AppColors.primary,
                       tooltip: 'Editar',
-                      onTap: () => _openForm(item: item, index: index),
+                      onTap: () => _openForm(item: item),
                     ),
                     DataCardAction(
                       icon: Icons.delete_outline,
                       color: AppColors.danger,
                       tooltip: 'Eliminar',
-                      onTap: () => _delete(index),
+                      onTap: () => _delete(item),
                     ),
                   ],
                 );
               },
+            ),
+                ),
+              ],
             ),
     );
   }

@@ -7,6 +7,8 @@ import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_form_section.dart';
+import '../widgets/app_list_header.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
@@ -32,6 +34,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
   List<Map<String, dynamic>> _subMarcas = [];
   List<Map<String, dynamic>> _unidades = [];
   bool _loading = true;
+  String? _error;
+  String _busqueda = '';
+  String? _filtroEstado;
 
   @override
   void initState() {
@@ -41,18 +46,44 @@ class _ProductosScreenState extends State<ProductosScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      _items = await _crud.getAll();
-      _categorias = await CrudService(_api, ApiEndpoints.categorias).getAll();
-      _marcas = await CrudService(_api, ApiEndpoints.marcas).getAll();
-      _subMarcas = await CrudService(_api, ApiEndpoints.subMarcas).getAll();
-      _unidades = await CrudService(_api, ApiEndpoints.unidades).getAll();
-    } catch (_) {}
+      // En paralelo: eran cinco llamadas encadenadas.
+      final r = await Future.wait([
+        _crud.getAll(),
+        CrudService(_api, ApiEndpoints.categorias).getAll(),
+        CrudService(_api, ApiEndpoints.marcas).getAll(),
+        CrudService(_api, ApiEndpoints.subMarcas).getAll(),
+        CrudService(_api, ApiEndpoints.unidades).getAll(),
+      ]);
+      _items = r[0];
+      _categorias = r[1];
+      _marcas = r[2];
+      _subMarcas = r[3];
+      _unidades = r[4];
+    } catch (_) {
+      _error = 'No se pudieron cargar los productos.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _openForm({Map<String, dynamic>? item, int? index}) async {
+  List<Map<String, dynamic>> get _visibles {
+    final q = _busqueda.trim().toLowerCase();
+    return _items.where((p) {
+      if (_filtroEstado == 'activos' && p['activo'] != true) return false;
+      if (_filtroEstado == 'inactivos' && p['activo'] == true) return false;
+      if (q.isEmpty) return true;
+      final texto =
+          '${p['codigo']} ${p['codigo_barras'] ?? ''} ${p['nombre']} '
+          '${_nested(p, 'marca')} ${_nested(p, 'categoria')}';
+      return texto.toLowerCase().contains(q);
+    }).toList();
+  }
+
+  Future<void> _openForm({Map<String, dynamic>? item}) async {
     final result = await showAppModal<Map<String, dynamic>>(
       context,
       title: item == null ? 'Nuevo producto' : 'Editar producto',
@@ -66,14 +97,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
     if (result == null) return;
     try {
-      if (index != null) {
-        final updated = await _crud.update(item!['id'], result['producto']);
-        final prodId = updated['id'] ?? item['id'];
-        await _sincronizarPresentaciones(prodId, result['presentaciones'] ?? []);
+      // El backend acepta las presentaciones dentro del payload del producto,
+      // así que todo se guarda en una sola llamada (antes se borraban y se
+      // recreaban por endpoints aparte: si fallaba a medias, se perdían).
+      if (item != null) {
+        await _crud.update(item['id'], result);
       } else {
-        final created = await _crud.create(result['producto']);
-        final prodId = created['id'];
-        await _sincronizarPresentaciones(prodId, result['presentaciones'] ?? []);
+        await _crud.create(result);
       }
       await _load();
       if (mounted) {
@@ -90,21 +120,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
   }
 
-  Future<void> _sincronizarPresentaciones(int productoId, List<Map<String, dynamic>> presentaciones) async {
-    final listEndpoint = ApiEndpoints.presentaciones(productoId);
-    final itemBase = ApiEndpoints.presentacionesBase;
-    final existentes = await _api.get(listEndpoint);
-    final lista = (existentes is List) ? existentes.whereType<Map<String, dynamic>>().toList() : [];
-    for (final p in lista) {
-      await _api.delete('$itemBase/${p['id']}');
-    }
-    for (final p in presentaciones) {
-      await _api.post(listEndpoint, body: p);
-    }
-  }
-
-  Future<void> _delete(int index) async {
-    final item = _items[index];
+  Future<void> _delete(Map<String, dynamic> item) async {
     final confirmado = await showAppConfirmDialog(
       context,
       title: 'Eliminar producto',
@@ -146,19 +162,63 @@ class _ProductosScreenState extends State<ProductosScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? const Center(child: Text('No hay productos'))
-          : ListView.builder(
+          : Column(
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: AppMessage(text: _error!),
+                  ),
+                AppListHeader(
+                  hintText: 'Buscar productos...',
+                  searchValue: _busqueda,
+                  onSearch: (v) => setState(() => _busqueda = v),
+                  filters: [
+                    AppListFilter(
+                      label: 'Estado',
+                      value: _filtroEstado,
+                      options: const [
+                        AppListFilterOption(null, 'Todos'),
+                        AppListFilterOption('activos', 'Activos'),
+                        AppListFilterOption('inactivos', 'Inactivos'),
+                      ],
+                      onChanged: (v) => setState(() => _filtroEstado = v),
+                    ),
+                  ],
+                  activeFilters: _filtroEstado != null ? 1 : 0,
+                  onClearFilters: () => setState(() => _filtroEstado = null),
+                  resultCount: _visibles.length,
+                ),
+                Expanded(
+                  child: _visibles.isEmpty
+                      ? Center(
+                          child: Text(
+                            _items.isEmpty
+                                ? 'No hay productos'
+                                : 'Ningun producto coincide con la busqueda',
+                          ),
+                        )
+                      : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _items.length,
+              itemCount: _visibles.length,
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = _visibles[index];
                 final activo = item['activo'] == true;
                 final presCount = _presentacionesCount(item);
                 return DataCard(
                   title: item['nombre']?.toString() ?? '',
                   subtitle: '${item['codigo']}  ·  $presCount presentac.  ·  ${_nested(item, 'categoria')}',
                   rows: [
+                    DataCardRow.text('Marca', _nested(item, 'marca')),
+                    DataCardRow.text(
+                      'Unidad',
+                      (item['unidad_medida'] is Map)
+                          ? (item['unidad_medida']['abreviatura'] ??
+                                    item['unidad_medida']['nombre'] ??
+                                    '-')
+                                .toString()
+                          : '-',
+                    ),
                     DataCardRow.text('Precio base', 'S/ ${item['precio_base'] ?? ''}'),
                     DataCardRow(
                       label: 'Estado',
@@ -173,17 +233,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       icon: Icons.edit_outlined,
                       color: AppColors.primary,
                       tooltip: 'Editar',
-                      onTap: () => _openForm(item: item, index: index),
+                      onTap: () => _openForm(item: item),
                     ),
                     DataCardAction(
                       icon: Icons.delete_outline,
                       color: AppColors.danger,
                       tooltip: 'Eliminar',
-                      onTap: () => _delete(index),
+                      onTap: () => _delete(item),
                     ),
                   ],
                 );
               },
+            ),
+                ),
+              ],
             ),
     );
   }
@@ -229,8 +292,12 @@ class _ProductoWizardState extends State<_ProductoWizard> {
 
   // Step 3 fields
   late final TextEditingController _precio;
+  late final TextEditingController _codigoBarras;
+  late final TextEditingController _descripcionTicket;
+  late final TextEditingController _stockMinimo;
+  late final TextEditingController _stockMaximo;
+  int? _subCategoriaId;
   late final TextEditingController _descripcion;
-  bool _afectoIgv = true;
   bool _activo = true;
 
   int? _relId(String directField, String relField) {
@@ -248,16 +315,26 @@ class _ProductoWizardState extends State<_ProductoWizard> {
     _codigo = TextEditingController(text: i?['codigo'] ?? '');
     _nombre = TextEditingController(text: i?['nombre'] ?? '');
     _precio = TextEditingController(text: i?['precio_base']?.toString() ?? '');
+    _codigoBarras = TextEditingController(text: i?['codigo_barras'] ?? '');
+    _descripcionTicket = TextEditingController(
+      text: i?['descripcion_ticket'] ?? '',
+    );
+    _stockMinimo = TextEditingController(
+      text: i?['stock_minimo']?.toString() ?? '',
+    );
+    _stockMaximo = TextEditingController(
+      text: i?['stock_maximo']?.toString() ?? '',
+    );
     _descripcion = TextEditingController(text: i?['descripcion'] ?? '');
     _factorCompra = TextEditingController(text: i?['factor_compra_base']?.toString() ?? '1');
 
     _categoriaId = _relId('categoria_id', 'categoria');
+    _subCategoriaId = _relId('sub_categoria_id', 'sub_categoria');
     _marcaId = _relId('marca_id', 'marca');
     _subMarcaId = _relId('sub_marca_id', 'sub_marca');
     _unidadId = _relId('unidad_medida_id', 'unidad_medida');
     _unidadCompraId = _relId('unidad_compra_id', 'unidad_compra');
     _unidadBaseId = _relId('unidad_base_id', 'unidad_base');
-    _afectoIgv = i?['afecto_igv'] == true || i == null;
     _activo = i?['activo'] == true || i == null;
 
     if (i != null) {
@@ -267,6 +344,8 @@ class _ProductoWizardState extends State<_ProductoWizard> {
           _presentaciones.add(_PresentacionEntry(
             nombreCtrl: TextEditingController(text: p['nombre'] ?? ''),
             codigoCtrl: TextEditingController(text: p['codigo_barras'] ?? ''),
+            costoCtrl: TextEditingController(text: (p['precio_compra'] ?? '').toString()),
+            margenCtrl: TextEditingController(text: (p['margen'] ?? '').toString()),
             precioCtrl: TextEditingController(text: (p['precio_venta'] ?? '').toString()),
             factorCtrl: TextEditingController(text: (p['factor_conversion'] ?? '1').toString()),
             unidadBaseId: p['unidad_base']?['id'],
@@ -281,6 +360,10 @@ class _ProductoWizardState extends State<_ProductoWizard> {
     _codigo.dispose();
     _nombre.dispose();
     _precio.dispose();
+    _codigoBarras.dispose();
+    _descripcionTicket.dispose();
+    _stockMinimo.dispose();
+    _stockMaximo.dispose();
     _descripcion.dispose();
     _factorCompra.dispose();
     for (final p in _presentaciones) {
@@ -300,27 +383,35 @@ class _ProductoWizardState extends State<_ProductoWizard> {
     final presData = _presentaciones.map((p) => {
       'nombre': p.nombreCtrl.text.trim(),
       'codigo_barras': p.codigoCtrl.text.trim().isEmpty ? null : p.codigoCtrl.text.trim(),
+      'precio_compra': double.tryParse(p.costoCtrl.text.trim()) ?? 0,
+      'margen': double.tryParse(p.margenCtrl.text.trim()) ?? 0,
       'precio_venta': double.tryParse(p.precioCtrl.text.trim()) ?? 0,
       'factor_conversion': double.tryParse(p.factorCtrl.text.trim()) ?? 1,
       'unidad_base_id': p.unidadBaseId,
     }).toList();
 
     Navigator.pop(context, {
-      'producto': {
-        'codigo': _codigo.text.trim(),
-        'nombre': _nombre.text.trim(),
-        'categoria_id': _categoriaId,
-        'marca_id': _marcaId,
-        'sub_marca_id': _subMarcaId,
-        'unidad_medida_id': _unidadId,
-        'unidad_compra_id': _unidadCompraId,
-        'unidad_base_id': _unidadBaseId,
-        'factor_compra_base': double.tryParse(_factorCompra.text.trim()) ?? 1,
-        'descripcion': _descripcion.text.trim(),
-        'precio_base': double.tryParse(_precio.text.trim()) ?? 0,
-        'afecto_igv': _afectoIgv,
-        'activo': _activo,
-      },
+      'codigo': _codigo.text.trim(),
+      'codigo_barras': _codigoBarras.text.trim().isEmpty
+          ? null
+          : _codigoBarras.text.trim(),
+      'nombre': _nombre.text.trim(),
+      'descripcion_ticket': _descripcionTicket.text.trim().isEmpty
+          ? null
+          : _descripcionTicket.text.trim(),
+      'categoria_id': _categoriaId,
+      'sub_categoria_id': _subCategoriaId,
+      'marca_id': _marcaId,
+      'sub_marca_id': _subMarcaId,
+      'unidad_medida_id': _unidadId,
+      'unidad_compra_id': _unidadCompraId,
+      'unidad_base_id': _unidadBaseId,
+      'factor_compra_base': double.tryParse(_factorCompra.text.trim()) ?? 1,
+      'descripcion': _descripcion.text.trim(),
+      'precio_base': double.tryParse(_precio.text.trim()) ?? 0,
+      'stock_minimo': double.tryParse(_stockMinimo.text.trim()) ?? 0,
+      'stock_maximo': double.tryParse(_stockMaximo.text.trim()) ?? 0,
+      'activo': _activo,
       'presentaciones': presData,
     });
   }
@@ -339,6 +430,14 @@ class _ProductoWizardState extends State<_ProductoWizard> {
   List<AppSelectOption<int>> _opts(List<Map<String, dynamic>> list) => list
       .map((e) => AppSelectOption<int>(e['id'] as int, e['nombre']?.toString() ?? ''))
       .toList();
+
+  /// Sub-categorías de la categoría elegida; sin categoría, ninguna.
+  List<Map<String, dynamic>> _subCategoriasDeCategoria() {
+    if (_categoriaId == null) return const [];
+    return widget.categorias
+        .where((c) => c['categoria_padre_id']?.toString() == '$_categoriaId')
+        .toList();
+  }
 
   double _unidadFactor(int? id) {
     final u = widget.unidades.firstWhere((e) => e['id'] == id, orElse: () => <String, dynamic>{});
@@ -428,10 +527,20 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese el código' : null,
               ),
               AppTextField(
+                controller: _codigoBarras,
+                label: 'Código de barras',
+                icon: Icons.barcode_reader,
+              ),
+              AppTextField(
                 controller: _nombre,
                 label: 'Nombre del producto',
                 icon: Icons.inventory_2_outlined,
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese el nombre' : null,
+              ),
+              AppTextField(
+                controller: _descripcionTicket,
+                label: 'Descripción para ticket',
+                icon: Icons.receipt_long_outlined,
               ),
             ],
           ),
@@ -444,7 +553,18 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                 icon: Icons.category_outlined,
                 value: _categoriaId,
                 options: _opts(widget.categorias),
-                onChanged: (v) => setState(() => _categoriaId = v),
+                // Cambiar de categoría invalida la sub-categoría elegida.
+                onChanged: (v) => setState(() {
+                  _categoriaId = v;
+                  _subCategoriaId = null;
+                }),
+              ),
+              AppSelect<int>(
+                label: 'Sub-categoría',
+                icon: Icons.account_tree_outlined,
+                value: _subCategoriaId,
+                options: _opts(_subCategoriasDeCategoria()),
+                onChanged: (v) => setState(() => _subCategoriaId = v),
               ),
               AppSelect<int>(
                 label: 'Marca',
@@ -535,8 +655,19 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                 icon: Icons.attach_money,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
+              AppTextField(
+                controller: _stockMinimo,
+                label: 'Stock mínimo',
+                icon: Icons.trending_down,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              AppTextField(
+                controller: _stockMaximo,
+                label: 'Stock máximo',
+                icon: Icons.trending_up,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
               AppTextArea(controller: _descripcion, label: 'Descripción'),
-              AppToggle(label: 'Afecto a IGV', value: _afectoIgv, onChanged: (v) => setState(() => _afectoIgv = v)),
               AppToggle(label: 'Activo', value: _activo, onChanged: (v) => setState(() => _activo = v)),
             ],
           ),
@@ -569,12 +700,30 @@ class _ProductoWizardState extends State<_ProductoWizard> {
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
             ),
             const SizedBox(height: 8),
+            AppTextField(controller: p.codigoCtrl, label: 'Código barras'),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: AppTextField(
-                    controller: p.codigoCtrl,
-                    label: 'Código barras',
+                    controller: p.costoCtrl,
+                    label: 'Costo S/',
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    // El precio de venta sale del costo y el margen.
+                    onChanged: (_) => setState(p.recalcularPrecio),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: AppTextField(
+                    controller: p.margenCtrl,
+                    label: 'Margen %',
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    onChanged: (_) => setState(p.recalcularPrecio),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -582,7 +731,9 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                   child: AppTextField(
                     controller: p.precioCtrl,
                     label: 'Precio venta S/',
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
                   ),
                 ),
@@ -653,6 +804,8 @@ class _ProductoWizardState extends State<_ProductoWizard> {
 class _PresentacionEntry {
   final TextEditingController nombreCtrl;
   final TextEditingController codigoCtrl;
+  final TextEditingController costoCtrl;
+  final TextEditingController margenCtrl;
   final TextEditingController precioCtrl;
   final TextEditingController factorCtrl;
   int? unidadBaseId;
@@ -662,12 +815,25 @@ class _PresentacionEntry {
     required this.codigoCtrl,
     required this.precioCtrl,
     required this.factorCtrl,
+    TextEditingController? costoCtrl,
+    TextEditingController? margenCtrl,
     this.unidadBaseId,
-  });
+  }) : costoCtrl = costoCtrl ?? TextEditingController(),
+       margenCtrl = margenCtrl ?? TextEditingController();
+
+  /// Precio de venta = costo + margen%, como lo calcula la web.
+  void recalcularPrecio() {
+    final costo = double.tryParse(costoCtrl.text.trim()) ?? 0;
+    final margen = double.tryParse(margenCtrl.text.trim()) ?? 0;
+    if (costo <= 0) return;
+    precioCtrl.text = (costo * (1 + margen / 100)).toStringAsFixed(2);
+  }
 
   void dispose() {
     nombreCtrl.dispose();
     codigoCtrl.dispose();
+    costoCtrl.dispose();
+    margenCtrl.dispose();
     precioCtrl.dispose();
     factorCtrl.dispose();
   }
