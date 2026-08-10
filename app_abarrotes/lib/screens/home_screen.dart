@@ -32,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _dias = 30;
   Map<String, dynamic>? _data;
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -40,11 +41,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final res = await _api.get('${ApiEndpoints.dashboard}?dias=$_dias');
       if (res is Map<String, dynamic>) _data = res;
-    } catch (_) {}
+    } catch (_) {
+      _error = 'No se pudo cargar el dashboard.';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -66,6 +72,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   _periodo(),
+                  if (_error != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                      ),
+                      child: const Text('No se pudo cargar el dashboard.',
+                          style: TextStyle(color: AppColors.danger, fontSize: 13)),
+                    ),
                   const SizedBox(height: 16),
                   _kpisGrid(),
                   const SizedBox(height: 16),
@@ -74,9 +92,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   _topBars('Top más vendidos', 'top_vendidos', 'unidades', AppColors.primary, esMoneda: false),
                   _topBars('Top por ganancia', 'top_ganancia', 'ganancia', AppColors.success, esMoneda: true),
                   _categorias(),
+                  _pagoTipo(),
                   _caja(),
                   _insightList('🔴 Reposición urgente', 'reposicion_urgente',
-                      (r) => '${r['producto']} · quedan ${_num(r['stock'])}'),
+                      (r) => '${r['producto']} · quedan ${_num(r['stock'])} · vendió ${_num(r['unidades'])}'),
                   _insightList('⚠️ Vende mucho, margen bajo', 'margen_bajo',
                       (r) => '${r['producto']} · ${_money(r['margen_unitario'])}/u'),
                   _insightList('🐌 Sin rotación', 'sin_rotacion',
@@ -109,19 +128,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ---- KPIs ----
   Widget _kpisGrid() {
+    final n = _kpis;
     final items = [
-      ('Ventas', _money(_kpis['ventas_total']), Icons.payments_outlined, AppColors.primary),
-      ('Margen', _money(_kpis['margen_estimado']), Icons.trending_up, AppColors.success),
-      ('Por cobrar', _money(_kpis['por_cobrar']), Icons.call_received, AppColors.warning),
-      ('Por pagar', _money(_kpis['por_pagar']), Icons.call_made, AppColors.danger),
-      ('Capital en stock', _money(_kpis['capital_inmovilizado']), Icons.inventory_2_outlined, AppColors.info),
-      ('Alertas stock', _num(_kpis['productos_alerta']), Icons.warning_amber_outlined, AppColors.danger),
+      ('Ventas', _money(n['ventas_total']), Icons.payments_outlined, AppColors.primary, '${_num(n['num_ventas'])} ventas'),
+      ('Ticket promedio', _money(n['ticket_promedio']), Icons.receipt_long_outlined, AppColors.info, ''),
+      ('Margen', _money(n['margen_estimado']), Icons.trending_up, AppColors.success, ''),
+      ('Por cobrar', _money(n['por_cobrar']), Icons.call_received, AppColors.warning, ''),
+      ('Por pagar', _money(n['por_pagar']), Icons.call_made, AppColors.danger, ''),
+      ('Capital en stock', _money(n['capital_inmovilizado']), Icons.inventory_2_outlined, AppColors.info, 'dinero inmovilizado'),
+      ('Alertas stock', _num(n['productos_alerta']), Icons.warning_amber_outlined, AppColors.danger, 'por reponer'),
+      ('N° de ventas', _num(n['num_ventas']), Icons.receipt_outlined, AppColors.primary, ''),
     ];
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 2.4,
+      childAspectRatio: 2.0,
       crossAxisSpacing: 10,
       mainAxisSpacing: 10,
       children: [
@@ -150,6 +172,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(it.$2,
                           maxLines: 1, overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textStrong)),
+                      if (it.$5.isNotEmpty)
+                        Text(it.$5, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
                     ],
                   ),
                 ),
@@ -184,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text('${e['producto']}',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
-                Text('${_num(e['unidades'])} u · ${_money(e['ganancia'])} de ganancia',
+                Text('${_num(e['unidades'])} u · ${_money(e['total'])} vendidos · ${_money(e['ganancia'])} de ganancia',
                     style: const TextStyle(color: Colors.white, fontSize: 12)),
               ],
             ),
@@ -246,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ---- Barras horizontales (tops) ----
   Widget _topBars(String title, String key, String valueKey, Color color, {required bool esMoneda}) {
-    final items = _list(key).take(6).toList();
+    final items = _list(key).take(10).toList();
     if (items.isEmpty) return _card(title, const _Vacio());
     final maxV = items.map((e) => double.tryParse('${e[valueKey] ?? 0}') ?? 0).fold<double>(0, (a, b) => b > a ? b : a);
     return _card(title, Column(
@@ -339,32 +364,110 @@ class _HomeScreenState extends State<HomeScreen> {
     ));
   }
 
-  // ---- Caja ingresos/egresos ----
+  // ---- Contado vs Crédito (dona + leyenda) ----
+  Widget _pagoTipo() {
+    final items = _list('pago_tipo');
+    if (items.isEmpty) return _card('Contado vs Crédito', const _Vacio());
+    final total = items.fold<double>(0, (a, c) => a + (double.tryParse('${c['total'] ?? 0}') ?? 0));
+    Color colorOf(String tipo) => tipo == 'contado' ? AppColors.success : AppColors.warning;
+    String labelOf(String tipo) => tipo == 'contado' ? 'Contado' : 'Crédito';
+    return _card('Contado vs Crédito', Row(
+      children: [
+        SizedBox(
+          width: 120, height: 120,
+          child: PieChart(PieChartData(
+            sectionsSpace: 2,
+            centerSpaceRadius: 32,
+            sections: [
+              for (final it in items)
+                PieChartSectionData(
+                  value: double.tryParse('${it['total'] ?? 0}') ?? 0,
+                  color: colorOf('${it['tipo']}'),
+                  radius: 26,
+                  showTitle: false,
+                ),
+            ],
+          )),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final it in items)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 10, height: 10,
+                        decoration: BoxDecoration(color: colorOf('${it['tipo']}'), shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(labelOf('${it['tipo']}'),
+                            maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+                      ),
+                      Text(total > 0 ? '${((double.tryParse('${it['total']}') ?? 0) / total * 100).round()}%' : '0%',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ));
+  }
+
+  // ---- Caja ingresos/egresos (barras) ----
   Widget _caja() {
     final caja = _list('caja');
-    if (caja.isEmpty) return const SizedBox.shrink();
+    if (caja.isEmpty) return _card('Ingresos vs Egresos de caja', const _Vacio());
     double v(String tipo) =>
         caja.where((c) => c['tipo'] == tipo).fold<double>(0, (a, c) => a + (double.tryParse('${c['total'] ?? 0}') ?? 0));
-    Widget tile(String label, double val, Color color, IconData icon) => Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(icon, color: color, size: 20),
-                const SizedBox(height: 6),
-                Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                Text(_money(val), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
-              ],
+    final rows = <(String, double, Color)>[
+      ('Ingresos', v('ingreso'), AppColors.success),
+      ('Egresos', v('egreso'), AppColors.danger),
+    ];
+    return _card('Ingresos vs Egresos de caja', SizedBox(
+      height: 170,
+      child: BarChart(BarChartData(
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        alignment: BarChartAlignment.spaceAround,
+        titlesData: FlTitlesData(
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 28,
+              getTitlesWidget: (value, meta) {
+                final i = value.toInt();
+                if (i < 0 || i >= rows.length) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(rows[i].$1, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                );
+              },
             ),
           ),
-        );
-    return _card('Caja del periodo', Row(children: [
-      tile('Ingresos', v('ingreso'), AppColors.success, Icons.south_west),
-      const SizedBox(width: 10),
-      tile('Egresos', v('egreso'), AppColors.danger, Icons.north_east),
-    ]));
+        ),
+        barGroups: [
+          for (var i = 0; i < rows.length; i++)
+            BarChartGroupData(x: i, barRods: [
+              BarChartRodData(
+                toY: rows[i].$2,
+                width: 44,
+                borderRadius: BorderRadius.circular(6),
+                color: rows[i].$3,
+              ),
+            ]),
+        ],
+      )),
+    ));
   }
 
   // ---- Insights genéricos ----
