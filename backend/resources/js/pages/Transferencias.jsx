@@ -1,22 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Ban, Edit, PackageCheck, Plus, Repeat, Send, Trash2, Truck } from 'lucide-react';
+import { ArrowRight, Ban, Edit, ListChecks, Lock, PackageCheck, Plus, PlusCircle, Repeat, Send, Trash2, Truck } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
-import { Alert, Badge, Button, DataTable, Input, Modal, SearchSelect, Select } from '../components/ui';
+import ProductoPickerModal from '../components/ProductoPickerModal';
+import { Alert, Badge, Button, DataTable, Input, Modal, SearchSelect, Select, Tabs } from '../components/ui';
 
-/** Motivos de traslado de la guía de remisión. */
-const MOTIVOS = [
-    { value: 'traslado_entre_establecimientos', label: 'Traslado entre establecimientos de la misma empresa' },
-    { value: 'venta', label: 'Venta' },
-    { value: 'compra', label: 'Compra' },
-    { value: 'devolucion', label: 'Devolución' },
-    { value: 'consignacion', label: 'Consignación' },
-    { value: 'traslado_zona_primaria', label: 'Traslado a zona primaria' },
-    { value: 'otros', label: 'Otros' },
-];
-const MOTIVO_LABEL = Object.fromEntries(MOTIVOS.map((m) => [m.value, m.label]));
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
@@ -55,6 +45,15 @@ export default function Transferencias() {
     const [almacenes, setAlmacenes] = useState([]);
     const [productos, setProductos] = useState([]);
     const [existencias, setExistencias] = useState([]);
+    /** Catálogo administrable de motivos de traslado. */
+    const [motivos, setMotivos] = useState([]);
+    const [tab, setTab] = useState('guias');
+    const [picker, setPicker] = useState({ open: false, query: '' });
+    /** Modal rápido de motivo: { desdeGuia: bool, editing: motivo|null } o null. */
+    const [motivoModal, setMotivoModal] = useState(null);
+    const [motivoForm, setMotivoForm] = useState({ nombre: '', activo: true });
+    const [motivoSaving, setMotivoSaving] = useState(false);
+    const [motivoDelete, setMotivoDelete] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -81,12 +80,14 @@ export default function Transferencias() {
         setLoading(true);
         setError(null);
         try {
-            const [transRes, almRes, prodRes, existRes] = await Promise.all([
+            const [transRes, almRes, prodRes, existRes, motRes] = await Promise.all([
                 api.get('/transferencias'),
                 api.get('/almacenes'),
                 api.get('/productos', { params: { per_page: 500 } }),
                 api.get('/existencias'),
+                api.get('/motivos-traslado'),
             ]);
+            setMotivos(asList(motRes));
             const lista = asList(transRes);
             setTransferencias(lista);
             setSeleccionada((prev) => lista.find((t) => t.id === prev?.id) ?? lista[0] ?? null);
@@ -119,6 +120,60 @@ export default function Transferencias() {
         (id) => productos.find((p) => String(p.id) === String(id)) ?? null,
         [productos],
     );
+
+    const MOTIVO_LABEL = useMemo(() => Object.fromEntries(motivos.map((m) => [m.codigo, m.nombre])), [motivos]);
+    /** En el formulario solo se ofrecen los activos (más el ya elegido, si quedó inactivo). */
+    const motivosOptions = useMemo(
+        () =>
+            motivos
+                .filter((m) => m.activo || m.codigo === form.motivo_traslado)
+                .map((m) => ({ value: m.codigo, label: m.nombre })),
+        [motivos, form.motivo_traslado],
+    );
+
+    // ── CRUD de motivos ──
+    const abrirMotivo = (editing = null, desdeGuia = false) => {
+        setMotivoForm({ nombre: editing?.nombre ?? '', activo: editing?.activo ?? true });
+        setMotivoModal({ editing, desdeGuia });
+    };
+
+    const guardarMotivo = async (e) => {
+        e?.preventDefault?.();
+        if (!motivoForm.nombre.trim()) return toast.error('Ingresa el nombre del motivo.');
+        setMotivoSaving(true);
+        try {
+            let creado = null;
+            if (motivoModal.editing) {
+                await api.put(`/motivos-traslado/${motivoModal.editing.id}`, motivoForm);
+                toast.success('Motivo actualizado.');
+            } else {
+                const { data } = await api.post('/motivos-traslado', motivoForm);
+                creado = data;
+                toast.success('Motivo creado.');
+            }
+            const { data: lista } = await api.get('/motivos-traslado');
+            setMotivos(asList({ data: lista }));
+            // Creado desde la guía: queda seleccionado en el formulario.
+            if (creado && motivoModal.desdeGuia) setField('motivo_traslado', creado.codigo);
+            setMotivoModal(null);
+        } catch (err) {
+            toast.error(err.response?.data?.errors?.nombre?.[0] ?? err.response?.data?.message ?? 'No se pudo guardar el motivo.');
+        } finally {
+            setMotivoSaving(false);
+        }
+    };
+
+    const eliminarMotivo = async () => {
+        try {
+            const { data } = await api.delete(`/motivos-traslado/${motivoDelete.id}`);
+            toast.success(data?.desactivado ? 'El motivo estaba en uso: se desactivó.' : 'Motivo eliminado.');
+            setMotivoDelete(null);
+            const { data: lista } = await api.get('/motivos-traslado');
+            setMotivos(asList({ data: lista }));
+        } catch (err) {
+            toast.error(err.response?.data?.message ?? 'No se pudo eliminar.');
+        }
+    };
 
     /** Solo se traslada lo que hay en el origen. */
     const productosOptions = useMemo(
@@ -199,6 +254,23 @@ export default function Transferencias() {
                 },
             ];
         });
+        setPanel({ ...panelVacio });
+    };
+
+    /** Resultado del buscador avanzado: llegan producto, unidad y cantidad. */
+    const agregarDesdePicker = (seleccionados) => {
+        const utiles = seleccionados.filter((sel) => sel.presentacion && sel.cantidad > 0);
+        if (utiles.length === 0) return;
+        setItems((prev) => {
+            const next = [...prev];
+            utiles.forEach(({ producto, presentacion, cantidad }) => {
+                const i = next.findIndex((it) => String(it.producto_presentacion_id) === String(presentacion.id));
+                if (i !== -1) next[i] = { ...next[i], cantidad: String((Number(next[i].cantidad) || 0) + cantidad) };
+                else next.push({ producto_id: String(producto.id), producto_presentacion_id: String(presentacion.id), cantidad: String(cantidad) });
+            });
+            return next;
+        });
+        toast.success(utiles.length === 1 ? 'Producto agregado.' : `${utiles.length} productos agregados.`);
         setPanel({ ...panelVacio });
     };
 
@@ -484,16 +556,75 @@ export default function Transferencias() {
     const detalles = seleccionada?.detalles ?? [];
     const esPublico = form.modalidad_transporte === 'publico';
 
+    const motivoColumns = [
+        {
+            key: 'nombre',
+            label: 'Motivo',
+            render: (row) => (
+                <span className="inline-flex items-center gap-2 font-medium text-warm-900">
+                    {row.es_sistema && <Lock className="h-4 w-4 text-primary-600" />}
+                    {row.nombre}
+                </span>
+            ),
+        },
+        { key: 'codigo', label: 'Código', width: '240px', render: (row) => <span className="font-mono text-xs text-warm-500">{row.codigo}</span> },
+        {
+            key: 'es_sistema', label: 'Origen', width: '110px', searchable: false,
+            render: (row) => (row.es_sistema ? <Badge variant="blue">Sistema</Badge> : <Badge variant="gray">Manual</Badge>),
+        },
+        {
+            key: 'activo', label: 'Estado', width: '100px', searchable: false,
+            render: (row) => (row.activo ? <Badge variant="green">Activo</Badge> : <Badge variant="red">Inactivo</Badge>),
+        },
+        {
+            type: 'actions', key: 'actions', label: 'Acciones', width: '110px',
+            actions: (row) => (
+                <>
+                    <button aria-label="Editar" title={row.es_sistema ? 'Activar / desactivar' : 'Editar'} onClick={() => abrirMotivo(row)}
+                        className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50">
+                        <Edit className="h-4 w-4" />
+                    </button>
+                    {!row.es_sistema && (
+                        <button aria-label="Eliminar" title="Eliminar" onClick={() => setMotivoDelete(row)}
+                            className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50">
+                            <Trash2 className="h-4 w-4" />
+                        </button>
+                    )}
+                </>
+            ),
+        },
+    ];
+
     return (
         <Layout>
             <PageHeader
                 title="Guías de Traslado"
-                description="Traslado de mercadería entre almacenes: guía de remisión interna numerada"
-                actions={<CreateButton onClick={openCreate}>Nueva guía</CreateButton>}
+                description={tab === 'guias' ? 'Traslado de mercadería entre almacenes: guía de remisión interna numerada' : 'Catálogo de motivos de traslado de la guía'}
+                actions={
+                    tab === 'guias'
+                        ? <CreateButton onClick={openCreate}>Nueva guía</CreateButton>
+                        : <CreateButton onClick={() => abrirMotivo()}>Nuevo motivo</CreateButton>
+                }
             />
 
             {error && <Alert variant="error" className="mb-4">{error}</Alert>}
 
+            <div className="mb-4">
+                <Tabs
+                    items={[
+                        { key: 'guias', label: 'Guías', icon: Repeat },
+                        { key: 'motivos', label: 'Motivos de traslado', icon: ListChecks },
+                    ]}
+                    value={tab}
+                    onChange={setTab}
+                />
+            </div>
+
+            {tab === 'motivos' && (
+                <DataTable columns={motivoColumns} rows={motivos} loading={loading} searchPlaceholder="Buscar motivos..." emptyMessage="No hay motivos de traslado" />
+            )}
+
+            {tab === 'guias' && (<>
             <DataTable
                 columns={columns}
                 rows={filtered}
@@ -562,6 +693,7 @@ export default function Transferencias() {
                     </table>
                 </div>
             </div>
+            </>)}
 
             {/* Modal de guía */}
             <Modal
@@ -601,9 +733,20 @@ export default function Transferencias() {
                             <Input label="Fecha de inicio" type="date" value={form.fecha_inicio_traslado}
                                 onChange={(e) => setField('fecha_inicio_traslado', e.target.value)}
                                 disabled={editing && editing.estado !== 'pendiente'} error={formErrors.fecha_inicio_traslado} />
-                            <Select label="Motivo de traslado" value={form.motivo_traslado}
-                                onChange={(e) => setField('motivo_traslado', e.target.value)}
-                                options={MOTIVOS} disabled={editing && editing.estado !== 'pendiente'} error={formErrors.motivo_traslado} />
+                            <div className="flex items-end gap-2">
+                                <div className="flex-1">
+                                    <Select label="Motivo de traslado" value={form.motivo_traslado}
+                                        onChange={(e) => setField('motivo_traslado', e.target.value)}
+                                        options={[{ value: '', label: 'Selecciona…' }, ...motivosOptions]}
+                                        disabled={editing && editing.estado !== 'pendiente'} error={formErrors.motivo_traslado} />
+                                </div>
+                                {(!editing || editing.estado === 'pendiente') && (
+                                    <button type="button" onClick={() => abrirMotivo(null, true)} title="Crear motivo"
+                                        className="mb-0.5 rounded-md p-1.5 text-emerald-600 transition hover:bg-emerald-50">
+                                        <PlusCircle className="h-5 w-5" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </section>
 
@@ -611,7 +754,14 @@ export default function Transferencias() {
                     <section>
                         <h3 className="mb-2 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-warm-500">
                             <Truck className="h-4 w-4" /> Transporte
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-warm-500">
+                                Opcional
+                            </span>
                         </h3>
+                        <p className="mb-3 text-xs text-warm-500">
+                            Puedes dejarlo vacío y completarlo después, mientras la guía esté pendiente.
+                            {esPublico && ' Con transporte público sí se requiere el transportista y su RUC.'}
+                        </p>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <Select label="Modalidad" value={form.modalidad_transporte}
                                 onChange={(e) => setField('modalidad_transporte', e.target.value)}
@@ -619,10 +769,10 @@ export default function Transferencias() {
                                 disabled={editing && editing.estado !== 'pendiente'} />
                             {esPublico && (
                                 <>
-                                    <Input label="Transportista (razón social)" value={form.transportista_razon_social}
+                                    <Input label="Transportista (razón social) *" value={form.transportista_razon_social}
                                         onChange={(e) => setField('transportista_razon_social', e.target.value)}
                                         error={formErrors.transportista_razon_social} className="sm:col-span-2" />
-                                    <Input label="RUC transportista" value={form.transportista_ruc} maxLength={11}
+                                    <Input label="RUC transportista *" value={form.transportista_ruc} maxLength={11}
                                         onChange={(e) => setField('transportista_ruc', e.target.value.replace(/\D/g, ''))}
                                         error={formErrors.transportista_ruc} />
                                 </>
@@ -658,6 +808,8 @@ export default function Transferencias() {
                                             options={productosOptions}
                                             placeholder="Buscar producto con stock en el origen…"
                                             emptyText="Sin productos con stock en este almacén"
+                                            searchTitle="Buscador avanzado con filtros"
+                                            onSearch={(q) => setPicker({ open: true, query: q })}
                                         />
                                         <Select
                                             label="Unidad"
@@ -735,6 +887,50 @@ export default function Transferencias() {
                     <Button variant="danger" loading={deleting} onClick={handleDelete}>Eliminar</Button>
                 </>}>
                 <Alert variant="warning">Solo se pueden eliminar guías pendientes; no afecta al stock.</Alert>
+            </Modal>
+
+            {/* Buscador avanzado de productos (solo los del almacén de origen con stock) */}
+            <ProductoPickerModal
+                open={picker.open}
+                onClose={() => setPicker((p) => ({ ...p, open: false }))}
+                onSelect={agregarDesdePicker}
+                initialQuery={picker.query}
+                multiple
+                stockFilter
+                productos={productos.filter((p) => (stockOrigen[String(p.id)] ?? 0) > 0)}
+                stockPorProducto={stockOrigen}
+                title="Buscar productos"
+            />
+
+            {/* Motivo de traslado: crear / editar */}
+            <Modal open={Boolean(motivoModal)} onClose={() => setMotivoModal(null)}
+                title={motivoModal?.editing ? 'Editar motivo' : 'Nuevo motivo de traslado'}
+                description={motivoModal?.editing?.es_sistema ? 'Los motivos del sistema solo se pueden activar o desactivar.' : 'Aparecerá en el selector de la guía.'}
+                size="md"
+                footer={<>
+                    <Button variant="secondary" onClick={() => setMotivoModal(null)}>Cancelar</Button>
+                    <Button type="submit" form="motivo-form" loading={motivoSaving}>{motivoModal?.editing ? 'Guardar' : 'Crear'}</Button>
+                </>}>
+                <form id="motivo-form" onSubmit={guardarMotivo} noValidate className="space-y-4">
+                    <Input label="Nombre" placeholder="Ej: Traslado a feria" value={motivoForm.nombre}
+                        disabled={Boolean(motivoModal?.editing?.es_sistema)}
+                        onChange={(e) => setMotivoForm((f) => ({ ...f, nombre: e.target.value }))} />
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                        <input type="checkbox" checked={motivoForm.activo}
+                            onChange={(e) => setMotivoForm((f) => ({ ...f, activo: e.target.checked }))}
+                            className="h-4 w-4 rounded border-gray-300 accent-primary-600" />
+                        <ListChecks className="h-4 w-4 text-primary-600" /> Motivo activo
+                    </label>
+                </form>
+            </Modal>
+
+            <Modal open={Boolean(motivoDelete)} onClose={() => setMotivoDelete(null)} title="Eliminar motivo"
+                description={`¿Eliminar "${motivoDelete?.nombre ?? ''}"?`} size="sm"
+                footer={<>
+                    <Button variant="secondary" onClick={() => setMotivoDelete(null)}>Cancelar</Button>
+                    <Button variant="danger" onClick={eliminarMotivo}>Eliminar</Button>
+                </>}>
+                <Alert variant="warning">Si alguna guía ya lo usa, se desactivará en lugar de eliminarse.</Alert>
             </Modal>
         </Layout>
     );

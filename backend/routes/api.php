@@ -22,6 +22,7 @@ use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\MetodoPagoController;
 use App\Http\Controllers\MotivoMovimientoController;
+use App\Http\Controllers\MotivoTrasladoController;
 use App\Http\Controllers\MovimientoInventarioController;
 use App\Http\Controllers\NotaVentaController;
 use App\Http\Controllers\OrdenCompraController;
@@ -77,6 +78,7 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('almacenes', AlmacenController::class);
     Route::get('movimientos', [MovimientoInventarioController::class, 'index']);
     Route::apiResource('transferencias', TransferenciaController::class);
+    Route::apiResource('motivos-traslado', MotivoTrasladoController::class)->except(['show']);
     Route::post('transferencias/{transferencia}/enviar', [TransferenciaController::class, 'enviar']);
     Route::post('transferencias/{transferencia}/recibir', [TransferenciaController::class, 'recibir']);
     Route::post('transferencias/{transferencia}/anular', [TransferenciaController::class, 'anular']);

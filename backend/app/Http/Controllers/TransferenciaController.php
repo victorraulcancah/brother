@@ -28,7 +28,7 @@ class TransferenciaController extends Controller
         $data = $request->validate([
             'almacen_origen_id' => 'required|exists:almacenes,id',
             'almacen_destino_id' => 'required|exists:almacenes,id|different:almacen_origen_id',
-            'motivo_traslado' => 'nullable|string|in:' . implode(',', array_keys(Transferencia::MOTIVOS)),
+            'motivo_traslado' => 'nullable|string|exists:motivos_traslado,codigo',
             'fecha_inicio_traslado' => 'nullable|date',
             'modalidad_transporte' => 'nullable|in:privado,publico',
             // Transporte publico exige transportista; el privado, vehiculo y conductor.
@@ -94,7 +94,7 @@ class TransferenciaController extends Controller
         $reglas = ['observaciones' => 'nullable|string'];
         if ($transferencia->estado === 'pendiente') {
             $reglas += [
-                'motivo_traslado' => 'nullable|string|in:' . implode(',', array_keys(Transferencia::MOTIVOS)),
+                'motivo_traslado' => 'nullable|string|exists:motivos_traslado,codigo',
                 'fecha_inicio_traslado' => 'nullable|date',
                 'modalidad_transporte' => 'nullable|in:privado,publico',
                 'transportista_razon_social' => 'nullable|string|max:255',

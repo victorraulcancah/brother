@@ -11,17 +11,6 @@ class Transferencia extends Model
     /** Serie del correlativo de la guía de traslado. */
     public const SERIE = 'T001';
 
-    /** Motivos de traslado admitidos (los de la guía de remisión). */
-    public const MOTIVOS = [
-        'traslado_entre_establecimientos' => 'Traslado entre establecimientos de la misma empresa',
-        'venta' => 'Venta',
-        'compra' => 'Compra',
-        'devolucion' => 'Devolución',
-        'consignacion' => 'Consignación',
-        'traslado_zona_primaria' => 'Traslado a zona primaria',
-        'otros' => 'Otros',
-    ];
-
     protected $fillable = [
         'serie',
         'numero',
@@ -62,6 +51,12 @@ class Transferencia extends Model
     public function getDocumentoAttribute(): ?string
     {
         return $this->serie && $this->numero ? "{$this->serie}-{$this->numero}" : null;
+    }
+
+    /** Motivo del catálogo administrable (referenciado por código). */
+    public function motivo()
+    {
+        return $this->belongsTo(MotivoTraslado::class, 'motivo_traslado', 'codigo');
     }
 
     public function almacenOrigen()
