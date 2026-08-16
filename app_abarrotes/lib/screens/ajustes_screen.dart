@@ -11,9 +11,11 @@ import '../widgets/app_list_header.dart';
 import '../widgets/app_message.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/app_segmented.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/app_toggle.dart';
 import '../widgets/data_card.dart';
 
 String _money(dynamic v) =>
@@ -56,6 +58,12 @@ class _AjustesScreenState extends State<AjustesScreen> {
   String? _filtroTipo;
   String? _filtroEstado;
 
+  /// 0 = ajustes, 1 = motivos de movimiento de inventario.
+  int _tab = 0;
+  String _busquedaMotivo = '';
+  String? _filtroMotivoTipo;
+  String? _filtroMotivoEstado;
+
   @override
   void initState() {
     super.initState();
@@ -74,7 +82,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
         CrudService(_api, ApiEndpoints.almacenes).getAll(),
         CrudService(_api, '${ApiEndpoints.productos}?per_page=500').getAll(),
         CrudService(_api, ApiEndpoints.existencias).getAll(),
-        CrudService(_api, ApiEndpoints.motivosMovimiento).getAll(),
+        CrudService(_api, '${ApiEndpoints.motivosMovimiento}?ambito=inventario').getAll(),
         CrudService(_api, ApiEndpoints.proveedores).getAll(),
       ]);
       _items = r[0];
@@ -227,6 +235,177 @@ class _AjustesScreenState extends State<AjustesScreen> {
     );
   }
 
+  // ─────────────────── Motivos de movimiento ───────────────────
+
+  Future<void> _recargarMotivos() async {
+    try {
+      _motivos = await CrudService(_api, '${ApiEndpoints.motivosMovimiento}?ambito=inventario').getAll();
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  List<Map<String, dynamic>> get _motivosVisibles {
+    final q = _busquedaMotivo.trim().toLowerCase();
+    return _motivos.where((m) {
+      if (_filtroMotivoTipo != null && m['tipo'] != _filtroMotivoTipo) return false;
+      if (_filtroMotivoEstado != null) {
+        final activo = m['activo'] != false;
+        if ((_filtroMotivoEstado == 'activo') != activo) return false;
+      }
+      if (q.isEmpty) return true;
+      return '${m['nombre'] ?? ''}'.toLowerCase().contains(q);
+    }).toList();
+  }
+
+  Future<void> _formMotivo({Map<String, dynamic>? item}) async {
+    final data = await showAppModal<Map<String, dynamic>>(
+      context,
+      title: item == null ? 'Nuevo motivo' : 'Editar motivo',
+      child: _MotivoFormSheet(initial: item),
+    );
+    if (data == null) return;
+    try {
+      final crud = CrudService(_api, ApiEndpoints.motivosMovimiento);
+      if (item != null) {
+        await crud.update(item['id'], data);
+      } else {
+        await crud.create(data);
+      }
+      await _recargarMotivos();
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          item == null ? 'Motivo creado' : 'Motivo actualizado',
+          type: AppSnackbarType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+    }
+  }
+
+  Future<void> _eliminarMotivo(Map<String, dynamic> m) async {
+    final ok = await showAppConfirmDialog(
+      context,
+      title: 'Eliminar motivo',
+      message: '¿Eliminar el motivo "${m['nombre']}"?',
+    );
+    if (!ok) return;
+    try {
+      await CrudService(_api, ApiEndpoints.motivosMovimiento).delete(m['id']);
+      await _recargarMotivos();
+      if (mounted) {
+        showAppSnackbar(context, 'Motivo eliminado', type: AppSnackbarType.error);
+      }
+    } catch (e) {
+      if (mounted) showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+    }
+  }
+
+  Widget _listaMotivos() {
+    return Column(
+      children: [
+        AppListHeader(
+          hintText: 'Buscar motivos...',
+          searchValue: _busquedaMotivo,
+          onSearch: (v) => setState(() => _busquedaMotivo = v),
+          filters: [
+            AppListFilter(
+              label: 'Tipo',
+              value: _filtroMotivoTipo,
+              options: const [
+                AppListFilterOption(null, 'Todos'),
+                AppListFilterOption('entrada', 'Entrada'),
+                AppListFilterOption('salida', 'Salida'),
+              ],
+              onChanged: (v) => setState(() => _filtroMotivoTipo = v),
+            ),
+            AppListFilter(
+              label: 'Estado',
+              value: _filtroMotivoEstado,
+              options: const [
+                AppListFilterOption(null, 'Todos'),
+                AppListFilterOption('activo', 'Activo'),
+                AppListFilterOption('inactivo', 'Inactivo'),
+              ],
+              onChanged: (v) => setState(() => _filtroMotivoEstado = v),
+            ),
+          ],
+          activeFilters:
+              (_filtroMotivoTipo != null ? 1 : 0) +
+              (_filtroMotivoEstado != null ? 1 : 0),
+          onClearFilters: () => setState(() {
+            _filtroMotivoTipo = null;
+            _filtroMotivoEstado = null;
+          }),
+          resultCount: _motivosVisibles.length,
+        ),
+        Expanded(
+          child: _motivosVisibles.isEmpty
+              ? Center(
+                  child: Text(
+                    _motivos.isEmpty ? 'No hay motivos' : 'Ningún motivo coincide con la búsqueda',
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _motivosVisibles.length,
+                  itemBuilder: (context, index) {
+                    final m = _motivosVisibles[index];
+                    final sistema = m['es_sistema'] == true;
+                    final activo = m['activo'] != false;
+                    final esEntrada = m['tipo'] == 'entrada';
+                    return DataCard(
+                      title: m['nombre']?.toString() ?? '',
+                      subtitle: '#${m['id'].toString().padLeft(3, '0')}',
+                      rows: [
+                        DataCardRow(
+                          label: 'Tipo',
+                          value: AppBadge(
+                            esEntrada ? 'Entrada' : 'Salida',
+                            type: esEntrada ? AppBadgeType.success : AppBadgeType.danger,
+                          ),
+                        ),
+                        DataCardRow(
+                          label: 'Origen',
+                          value: AppBadge(
+                            sistema ? 'Sistema' : 'Manual',
+                            type: sistema ? AppBadgeType.info : AppBadgeType.neutral,
+                          ),
+                        ),
+                        DataCardRow(
+                          label: 'Estado',
+                          value: AppBadge(
+                            activo ? 'Activo' : 'Inactivo',
+                            type: activo ? AppBadgeType.success : AppBadgeType.danger,
+                          ),
+                        ),
+                      ],
+                      // Los motivos del sistema son fijos: sin editar ni eliminar (igual que la web).
+                      actions: sistema
+                          ? const []
+                          : [
+                              DataCardAction(
+                                icon: Icons.edit_outlined,
+                                color: AppColors.primary,
+                                tooltip: 'Editar',
+                                onTap: () => _formMotivo(item: m),
+                              ),
+                              DataCardAction(
+                                icon: Icons.delete_outline,
+                                color: AppColors.danger,
+                                tooltip: 'Eliminar',
+                                onTap: () => _eliminarMotivo(m),
+                              ),
+                            ],
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
   Widget _detalleCard(Map d) {
     final pres = d['presentacion'] as Map?;
     final producto = pres?['producto'] as Map?;
@@ -272,7 +451,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
     return AppScaffold(
       title: 'Ajustes de Inventario',
       floatingActionButton: FloatingActionButton(
-        onPressed: _nuevo,
+        onPressed: _tab == 0 ? _nuevo : () => _formMotivo(),
         child: const Icon(Icons.add),
       ),
       body: _loading
@@ -284,6 +463,21 @@ class _AjustesScreenState extends State<AjustesScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: AppMessage(text: _error!),
                   ),
+                AppSegmented(
+                  items: const ['Ajustes', 'Motivos'],
+                  icons: const [Icons.tune_outlined, Icons.label_outline],
+                  selected: _tab,
+                  onChanged: (i) => setState(() => _tab = i),
+                ),
+                Expanded(child: _tab == 0 ? _listaAjustes() : _listaMotivos()),
+              ],
+            ),
+    );
+  }
+
+  Widget _listaAjustes() {
+    return Column(
+              children: [
                 AppListHeader(
                   hintText: 'Buscar ajustes...',
                   searchValue: _busqueda,
@@ -411,8 +605,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
                         ),
                 ),
               ],
-            ),
-    );
+            );
   }
 }
 
@@ -883,6 +1076,98 @@ class _EditarAjusteSheetState extends State<_EditarAjusteSheet> {
           ],
         ),
       ],
+    );
+  }
+}
+
+// ══════════════════ Formulario de motivo (inventario) ══════════════════
+
+class _MotivoFormSheet extends StatefulWidget {
+  final Map<String, dynamic>? initial;
+  const _MotivoFormSheet({this.initial});
+
+  @override
+  State<_MotivoFormSheet> createState() => _MotivoFormSheetState();
+}
+
+class _MotivoFormSheetState extends State<_MotivoFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nombre;
+  String _tipo = 'entrada';
+  bool _activo = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _nombre = TextEditingController(text: widget.initial?['nombre']?.toString() ?? '');
+    _tipo = widget.initial?['tipo']?.toString() ?? 'entrada';
+    _activo = widget.initial?['activo'] != false;
+  }
+
+  @override
+  void dispose() {
+    _nombre.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppFormSection(
+            title: 'Datos del motivo',
+            children: [
+              AppTextField(
+                controller: _nombre,
+                label: 'Nombre',
+                icon: Icons.label_outline,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese el nombre' : null,
+              ),
+              AppSelect<String>(
+                label: 'Tipo de movimiento',
+                icon: Icons.swap_vert,
+                value: _tipo,
+                options: const [
+                  AppSelectOption('entrada', 'Entrada'),
+                  AppSelectOption('salida', 'Salida'),
+                ],
+                onChanged: (v) => setState(() => _tipo = v ?? 'entrada'),
+              ),
+              AppToggle(
+                label: 'Motivo activo',
+                subtitle: 'Solo los activos aparecen al crear ajustes',
+                value: _activo,
+                onChanged: (v) => setState(() => _activo = v),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: SecondaryButton(label: 'Cancelar', onPressed: () => Navigator.pop(context))),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PrimaryButton(
+                  label: 'Guardar',
+                  onPressed: () {
+                    if (!_formKey.currentState!.validate()) return;
+                    Navigator.pop(context, {
+                      'nombre': _nombre.text.trim(),
+                      'tipo': _tipo,
+                      'activo': _activo,
+                      // Motivo de inventario (no de caja).
+                      'ambito': 'inventario',
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -86,7 +86,7 @@ export default function Ajustes() {
                 api.get('/almacenes'),
                 api.get('/productos', { params: { per_page: 500 } }),
                 api.get('/existencias'),
-                api.get('/motivos-movimiento'),
+                api.get('/motivos-movimiento?ambito=inventario'),
                 api.get('/proveedores'),
             ]);
             const listaAjustes = asList(ajustesRes);
@@ -109,7 +109,7 @@ export default function Ajustes() {
         setMotivosLoading(true);
         setMotivosError(null);
         try {
-            setMotivos(asList(await api.get('/motivos-movimiento')));
+            setMotivos(asList(await api.get('/motivos-movimiento?ambito=inventario')));
         } catch {
             setMotivosError('No se pudieron cargar los motivos.');
         } finally {
@@ -345,6 +345,8 @@ export default function Ajustes() {
                 nombre: motivoForm.nombre,
                 tipo: motivoForm.tipo,
                 activo: motivoForm.activo,
+                // Los motivos de esta pantalla son de inventario, no de caja.
+                ambito: 'inventario',
             };
             if (editingMotivo) {
                 await api.put(`/motivos-movimiento/${editingMotivo.id}`, payload);

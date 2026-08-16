@@ -8,10 +8,17 @@ class Prestamo extends Model
 {
     protected $table = 'prestamos';
 
+    /** Serie del correlativo del documento de préstamo. */
+    public const SERIE = 'PR01';
+
     protected $fillable = [
+        'serie',
+        'numero',
         'almacen_id',
         'tipo',
         'tercero',
+        'tercero_documento',
+        'tercero_telefono',
         'fecha_prestamo',
         'fecha_devolucion_esperada',
         'fecha_devolucion',
@@ -20,6 +27,8 @@ class Prestamo extends Model
         'observaciones',
     ];
 
+    protected $appends = ['documento'];
+
     protected function casts(): array
     {
         return [
@@ -27,6 +36,16 @@ class Prestamo extends Model
             'fecha_devolucion_esperada' => 'date',
             'fecha_devolucion' => 'datetime',
         ];
+    }
+
+    /** Número formal, ej. PR01-0007. */
+    public function getDocumentoAttribute(): ?string
+    {
+        if (!$this->serie || !$this->numero) {
+            return null;
+        }
+
+        return "{$this->serie}-{$this->numero}";
     }
 
     public function almacen()
