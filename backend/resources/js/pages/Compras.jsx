@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ban, CheckCircle2, PackageCheck, Pencil, ShoppingBag, Trash2 } from 'lucide-react';
+import { Ban, CheckCircle2, PackageCheck, Pencil, Printer, ShoppingBag, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
+import PdfViewerModal from '../components/PdfViewerModal';
 import RecepcionarCompraModal from '../components/RecepcionarCompraModal';
 import { Alert, Badge, Button, DataTable, Input, Modal } from '../components/ui';
 
@@ -30,6 +31,7 @@ export default function Compras() {
     const [error, setError] = useState(null);
 
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [pdfTarget, setPdfTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
     const [actionId, setActionId] = useState(null);
     const [recepcionarId, setRecepcionarId] = useState(null);
@@ -157,9 +159,17 @@ export default function Compras() {
             key: 'actions',
             label: 'Acciones',
             // Cinco botones: el ancho por defecto (120px) los recortaba.
-            width: '200px',
+            width: '230px',
             actions: (row) => (
                 <>
+                    <button
+                        aria-label="Imprimir"
+                        title="Imprimir / PDF"
+                        onClick={() => setPdfTarget(row)}
+                        className="rounded-md p-1.5 text-warm-600 transition hover:bg-gray-100 hover:text-warm-900"
+                    >
+                        <Printer className="h-4 w-4" />
+                    </button>
                     <button
                         aria-label="Recepcionar"
                         title={
@@ -352,6 +362,15 @@ export default function Compras() {
                 compraId={recepcionarId}
                 onClose={() => setRecepcionarId(null)}
                 onDone={load}
+            />
+                    <PdfViewerModal
+                open={Boolean(pdfTarget)}
+                onClose={() => setPdfTarget(null)}
+                tipo="compra"
+                id={pdfTarget?.id}
+                nombre={pdfTarget?.numero_compra}
+                titulo="Compra"
+                formatos={['a4']}
             />
         </Layout>
     );

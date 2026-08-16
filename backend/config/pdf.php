@@ -34,6 +34,9 @@ return [
     */
     'documentos' => [
         'nota-venta' => \App\Pdf\Documentos\NotaVentaPdf::class,
+        'orden-compra' => \App\Pdf\Documentos\OrdenCompraPdf::class,
+        'compra' => \App\Pdf\Documentos\CompraPdf::class,
+        'recepcion-compra' => \App\Pdf\Documentos\RecepcionCompraPdf::class,
     ],
 
 ];

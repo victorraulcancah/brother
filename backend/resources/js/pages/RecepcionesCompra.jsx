@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Truck, Undo2 } from 'lucide-react';
+import { Printer, Truck, Undo2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
+import PdfViewerModal from '../components/PdfViewerModal';
 import { Alert, Badge, Button, DataTable, Modal } from '../components/ui';
 
 const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(Number(n) || 0);
@@ -26,6 +27,7 @@ export default function RecepcionesCompra() {
     const [seleccionada, setSeleccionada] = useState(null);
 
     const [deshacerTarget, setDeshacerTarget] = useState(null);
+    const [pdfTarget, setPdfTarget] = useState(null);
     const [procesando, setProcesando] = useState(false);
 
     const load = useCallback(async () => {
@@ -264,6 +266,15 @@ export default function RecepcionesCompra() {
                     quedar pendientes en la compra.
                 </Alert>
             </Modal>
+                    <PdfViewerModal
+                open={Boolean(pdfTarget)}
+                onClose={() => setPdfTarget(null)}
+                tipo="recepcion-compra"
+                id={pdfTarget?.id}
+                nombre={pdfTarget?.documento}
+                titulo="Recepción de compra"
+                formatos={['a4']}
+            />
         </Layout>
     );
 }

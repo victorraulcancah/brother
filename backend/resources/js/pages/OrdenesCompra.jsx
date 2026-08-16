@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileDown, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
+import { FileDown, Pencil, Printer, ShoppingCart, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
+import PdfViewerModal from '../components/PdfViewerModal';
 import { Alert, Badge, Button, DataTable, Modal, Select } from '../components/ui';
 
 const money = (n) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
@@ -29,6 +30,7 @@ export default function OrdenesCompra() {
 
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    const [pdfTarget, setPdfTarget] = useState(null);
     /** Orden cuyo detalle se muestra en la segunda tabla. */
     const [seleccionada, setSeleccionada] = useState(null);
 
@@ -154,6 +156,14 @@ export default function OrdenesCompra() {
 
                 return (
                     <>
+                        <button
+                            aria-label="Imprimir"
+                            title="Imprimir / PDF"
+                            onClick={() => setPdfTarget(row)}
+                            className="rounded-md p-1.5 text-warm-600 transition hover:bg-gray-100 hover:text-warm-900"
+                        >
+                            <Printer className="h-4 w-4" />
+                        </button>
                         <button
                             aria-label="Transformar a compra"
                             title={bloqueada ? 'Ya se transformó en compra' : 'Transformar a compra'}
@@ -295,6 +305,15 @@ export default function OrdenesCompra() {
             >
                 <Alert variant="warning">La orden se eliminará permanentemente.</Alert>
             </Modal>
+                    <PdfViewerModal
+                open={Boolean(pdfTarget)}
+                onClose={() => setPdfTarget(null)}
+                tipo="orden-compra"
+                id={pdfTarget?.id}
+                nombre={pdfTarget?.codigo}
+                titulo="Orden de compra"
+                formatos={['a4']}
+            />
         </Layout>
     );
 }
