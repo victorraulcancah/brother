@@ -24,14 +24,15 @@ void showAppSnackbar(
   };
 
   // El SnackBar solo sabe salir abajo, donde tapa los botones flotantes y el
-  // teclado. Se lo empuja arriba reservando como margen inferior casi todo el
-  // alto de la pantalla; el margen se acota para que nunca quede negativo.
+  // teclado. Se lo empuja arriba reservando como margen inferior el resto de
+  // la pantalla, dejandolo justo debajo del AppBar: mas arriba quedaria detras
+  // de la barra de estado. El margen se acota para que nunca sea negativo.
   final media = MediaQuery.of(context);
-  final alturaAviso = 72.0;
-  final desdeArriba = media.padding.top + 12;
-  final margenInferior = (media.size.height - alturaAviso - desdeArriba).clamp(
+  const alturaAviso = 72.0;
+  final topeSuperior = media.padding.top + kToolbarHeight + 8;
+  final margenInferior = (media.size.height - alturaAviso - topeSuperior).clamp(
     0.0,
-    double.infinity,
+    media.size.height - alturaAviso,
   );
 
   ScaffoldMessenger.of(context)

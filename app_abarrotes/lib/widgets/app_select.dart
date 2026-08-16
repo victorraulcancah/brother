@@ -29,8 +29,18 @@ class AppSelect<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Un valor que no figura entre las opciones hace que el dropdown lance
+    // una excepcion y la pantalla quede en blanco. Pasa al editar: por
+    // ejemplo, una sub-categoria cuyo padre ya no coincide o una unidad
+    // desactivada. En ese caso se muestra sin seleccion.
+    final valorValido = options.any((o) => o.value == value) ? value : null;
+
     return DropdownButtonFormField<T>(
-      initialValue: value,
+      // Clave por valor: sin ella el campo conserva el estado interno viejo
+      // cuando el padre le pasa un valor nuevo (p. ej. al elegir un producto
+      // y autoseleccionar su unica unidad).
+      key: ValueKey(valorValido),
+      initialValue: valorValido,
       isExpanded: true,
       decoration: InputDecoration(
         labelText: label,

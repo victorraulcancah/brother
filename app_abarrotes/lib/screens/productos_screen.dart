@@ -303,8 +303,10 @@ class _ProductoWizardState extends State<_ProductoWizard> {
   int? _relId(String directField, String relField) {
     final i = widget.initial;
     if (i == null) return null;
-    if (i[directField] != null) return i[directField] as int;
-    if (i[relField] is Map) return (i[relField] as Map)['id'] as int?;
+    // Casts tolerantes: un id que llega como string o un campo inesperado no
+    // deben tumbar el formulario de edicion.
+    if (i[directField] != null) return int.tryParse('${i[directField]}');
+    if (i[relField] is Map) return int.tryParse('${(i[relField] as Map)['id']}');
     return null;
   }
 
@@ -312,12 +314,13 @@ class _ProductoWizardState extends State<_ProductoWizard> {
   void initState() {
     super.initState();
     final i = widget.initial;
-    _codigo = TextEditingController(text: i?['codigo'] ?? '');
-    _nombre = TextEditingController(text: i?['nombre'] ?? '');
+    String txt(dynamic v) => v == null ? '' : '$v';
+    _codigo = TextEditingController(text: txt(i?['codigo']));
+    _nombre = TextEditingController(text: txt(i?['nombre']));
     _precio = TextEditingController(text: i?['precio_base']?.toString() ?? '');
-    _codigoBarras = TextEditingController(text: i?['codigo_barras'] ?? '');
+    _codigoBarras = TextEditingController(text: txt(i?['codigo_barras']));
     _descripcionTicket = TextEditingController(
-      text: i?['descripcion_ticket'] ?? '',
+      text: txt(i?['descripcion_ticket']),
     );
     _stockMinimo = TextEditingController(
       text: i?['stock_minimo']?.toString() ?? '',
@@ -325,7 +328,7 @@ class _ProductoWizardState extends State<_ProductoWizard> {
     _stockMaximo = TextEditingController(
       text: i?['stock_maximo']?.toString() ?? '',
     );
-    _descripcion = TextEditingController(text: i?['descripcion'] ?? '');
+    _descripcion = TextEditingController(text: txt(i?['descripcion']));
     _factorCompra = TextEditingController(text: i?['factor_compra_base']?.toString() ?? '1');
 
     _categoriaId = _relId('categoria_id', 'categoria');
@@ -342,13 +345,13 @@ class _ProductoWizardState extends State<_ProductoWizard> {
       if (pres is List) {
         for (final p in pres) {
           _presentaciones.add(_PresentacionEntry(
-            nombreCtrl: TextEditingController(text: p['nombre'] ?? ''),
-            codigoCtrl: TextEditingController(text: p['codigo_barras'] ?? ''),
+            nombreCtrl: TextEditingController(text: txt(p['nombre'])),
+            codigoCtrl: TextEditingController(text: txt(p['codigo_barras'])),
             costoCtrl: TextEditingController(text: (p['precio_compra'] ?? '').toString()),
             margenCtrl: TextEditingController(text: (p['margen'] ?? '').toString()),
             precioCtrl: TextEditingController(text: (p['precio_venta'] ?? '').toString()),
             factorCtrl: TextEditingController(text: (p['factor_conversion'] ?? '1').toString()),
-            unidadBaseId: p['unidad_base']?['id'],
+            unidadBaseId: int.tryParse('${p['unidad_base']?['id']}'),
           ));
         }
       }

@@ -43,6 +43,12 @@ class AppTheme {
           color: AppColors.textStrong,
         ),
       ),
+      // Material 3 tiñe las superficies con el color semilla y los diálogos
+      // salían anaranjados; se fuerzan en blanco.
+      dialogTheme: const DialogThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textStrong,
