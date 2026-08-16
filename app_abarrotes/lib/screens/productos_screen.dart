@@ -457,15 +457,15 @@ class _ProductoWizardState extends State<_ProductoWizard> {
 
   @override
   Widget build(BuildContext context) {
+    // El modal ya envuelve al hijo en un scroll de altura no acotada: un
+    // Expanded aqui lanza "unbounded height" y el sheet queda en blanco.
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildStepper(),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: _step == 0 ? _buildStep1() : _buildStep2(),
-          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: _step == 0 ? _buildStep1() : _buildStep2(),
         ),
         _buildBottomBar(),
       ],
