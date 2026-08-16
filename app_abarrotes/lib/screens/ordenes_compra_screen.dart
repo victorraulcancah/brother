@@ -15,6 +15,7 @@ import '../widgets/app_search_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_area.dart';
 import '../widgets/data_card.dart';
+import '../widgets/pdf_viewer_sheet.dart';
 import '../widgets/producto_lineas_panel.dart';
 import 'crear_compra_screen.dart';
 
@@ -302,10 +303,21 @@ class _OrdenesCompraScreenState extends State<OrdenesCompraScreen> {
                                   ),
                                 ),
                               ],
-                              // Una orden ya transformada en compra queda congelada.
-                              actions: bloqueada
-                                  ? const []
-                                  : [
+                              actions: [
+                              DataCardAction(
+                                icon: Icons.picture_as_pdf_outlined,
+                                color: AppColors.textMuted,
+                                tooltip: 'Imprimir / PDF',
+                                onTap: () => mostrarPdf(context,
+                                    tipo: 'orden-compra',
+                                    id: item['id'] as int,
+                                    nombre: item['codigo']?.toString() ?? '#${item['id']}',
+                                    titulo: 'Orden de compra',
+                                    formatos: const ['a4', 'ticket']),
+                              ),
+                              // Una orden ya transformada en compra queda congelada
+                              // (solo se puede imprimir).
+                              if (!bloqueada) ...[
                                       DataCardAction(
                                         icon: Icons.shopping_bag_outlined,
                                         color: AppColors.success,
@@ -325,6 +337,7 @@ class _OrdenesCompraScreenState extends State<OrdenesCompraScreen> {
                                         onTap: () => _delete(item),
                                       ),
                                     ],
+                              ],
                             );
                           },
                         ),

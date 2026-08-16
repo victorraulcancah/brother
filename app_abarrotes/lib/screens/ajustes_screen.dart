@@ -17,6 +17,7 @@ import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_toggle.dart';
 import '../widgets/data_card.dart';
+import '../widgets/pdf_viewer_sheet.dart';
 
 String _money(dynamic v) =>
     'S/ ${(double.tryParse('${v ?? 0}') ?? 0).toStringAsFixed(2)}';
@@ -587,6 +588,17 @@ class _AjustesScreenState extends State<AjustesScreen> {
                                 DataCardRow.text('Total', _money(item['total'])),
                               ],
                               actions: [
+                                DataCardAction(
+                                  icon: Icons.picture_as_pdf_outlined,
+                                  color: AppColors.textMuted,
+                                  tooltip: 'Imprimir / PDF',
+                                  onTap: () => mostrarPdf(context,
+                                      tipo: 'ajuste',
+                                      id: item['id'] as int,
+                                      nombre: item['documento']?.toString() ?? '#${item['id']}',
+                                      titulo: 'Ajuste de inventario',
+                                      formatos: const ['a4', 'ticket']),
+                                ),
                                 DataCardAction(
                                   icon: Icons.edit_outlined,
                                   color: AppColors.primary,

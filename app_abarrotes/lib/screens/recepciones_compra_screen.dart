@@ -11,6 +11,7 @@ import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/data_card.dart';
+import '../widgets/pdf_viewer_sheet.dart';
 
 String _fecha(dynamic v) =>
     v == null ? '—' : '$v'.split('T').first.split(' ').first;
@@ -327,7 +328,18 @@ class _RecepcionesCompraScreenState extends State<RecepcionesCompraScreen> {
                                   ),
                               ],
                               actions: [
-                                if (activa)
+                              DataCardAction(
+                                  icon: Icons.picture_as_pdf_outlined,
+                                  color: AppColors.textMuted,
+                                  tooltip: 'Imprimir / PDF',
+                                  onTap: () => mostrarPdf(context,
+                                      tipo: 'recepcion-compra',
+                                      id: item['id'] as int,
+                                      nombre: item['documento']?.toString() ?? '#${item['id']}',
+                                      titulo: 'Recepción de compra',
+                                      formatos: const ['a4', 'ticket']),
+                              ),
+                                                              if (activa)
                                   DataCardAction(
                                     icon: Icons.undo,
                                     color: AppColors.danger,

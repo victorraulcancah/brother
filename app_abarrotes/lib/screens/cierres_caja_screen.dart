@@ -9,6 +9,7 @@ import '../widgets/app_message.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/data_card.dart';
+import '../widgets/pdf_viewer_sheet.dart';
 
 String _money(dynamic v) =>
     'S/ ${(double.tryParse('${v ?? 0}') ?? 0).toStringAsFixed(2)}';
@@ -256,6 +257,19 @@ class _CierresCajaScreenState extends State<CierresCajaScreen> {
                               subtitle: (ap?['usuario'] as Map?)?['name']
                                   ?.toString(),
                               onTap: () => _verMovimientos(c),
+                              actions: [
+                                DataCardAction(
+                                  icon: Icons.picture_as_pdf_outlined,
+                                  color: AppColors.textMuted,
+                                  tooltip: 'Imprimir / PDF',
+                                  onTap: () => mostrarPdf(context,
+                                      tipo: 'cierre-caja',
+                                      id: c['id'] as int,
+                                      nombre: 'Cierre #${c['id'].toString().padLeft(5, '0')}',
+                                      titulo: 'Cierre de caja',
+                                      formatos: const ['ticket']),
+                                ),
+                              ],
                               rows: [
                                 DataCardRow.text(
                                   'Apertura',

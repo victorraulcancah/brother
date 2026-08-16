@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
@@ -104,6 +105,31 @@ class ApiService {
     );
     final result = _handleResponse(response);
     return result is Map<String, dynamic> ? result : <String, dynamic>{};
+  }
+
+  /// Descarga bytes crudos (PDF, imágenes) con el token de la sesión. Un
+  /// launchUrl directo no llevaría la cabecera de autenticación.
+  Future<Uint8List> getBytes(String path) async {
+    await _loadSavedData();
+    final response = await _client.get(
+      Uri.parse('$_baseUrl$path'),
+      headers: {
+        HttpHeaders.acceptHeader: 'application/pdf',
+        if (_token != null) HttpHeaders.authorizationHeader: 'Bearer $_token',
+      },
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return response.bodyBytes;
+    }
+    // El error viene en JSON; se intenta extraer el mensaje.
+    String mensaje = 'No se pudo generar el documento';
+    try {
+      final body = jsonDecode(utf8.decode(response.bodyBytes, allowMalformed: true));
+      if (body is Map) {
+        mensaje = body['message']?.toString() ?? body['error']?.toString() ?? mensaje;
+      }
+    } catch (_) {}
+    throw ApiException(statusCode: response.statusCode, message: mensaje);
   }
 
   /// Cuerpo decodificado siempre como UTF-8. `response.body` usa el charset

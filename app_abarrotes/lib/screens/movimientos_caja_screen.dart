@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../config/api_endpoints.dart';
 import '../services/api_service.dart';
 import '../services/crud_service.dart';
+import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_form_section.dart';
@@ -11,6 +12,7 @@ import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/data_card.dart';
+import '../widgets/pdf_viewer_sheet.dart';
 
 String _money(dynamic v) {
   final n = double.tryParse('${v ?? 0}') ?? 0;
@@ -113,6 +115,19 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
                     if ((item['numero_operacion'] ?? '').toString().isNotEmpty)
                       DataCardRow.text('N° Operación', '${item['numero_operacion']}'),
                     DataCardRow.text('Monto', '${esIngreso ? '+' : '-'} ${_money(item['monto'])}'),
+                  ],
+                  actions: [
+                    DataCardAction(
+                      icon: Icons.picture_as_pdf_outlined,
+                      color: AppColors.textMuted,
+                      tooltip: 'Imprimir comprobante',
+                      onTap: () => mostrarPdf(context,
+                          tipo: 'movimiento-caja',
+                          id: item['id'] as int,
+                          nombre: 'Mov. #${item['id'].toString().padLeft(6, '0')}',
+                          titulo: 'Comprobante de caja',
+                          formatos: const ['ticket']),
+                    ),
                   ],
                 );
               },

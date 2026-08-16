@@ -100,4 +100,7 @@ class ApiEndpoints {
   static String assignRole(int id) => '/users/$id/assign-role';
 
   static const String roles = '/roles';
+
+  /// Documentos PDF: GET /pdf/{tipo}/{id}?formato=a4|ticket
+  static String pdf(String tipo, int id) => '/pdf/$tipo/$id';
 }

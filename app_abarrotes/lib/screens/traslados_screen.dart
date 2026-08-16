@@ -17,6 +17,7 @@ import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_toggle.dart';
 import '../widgets/data_card.dart';
+import '../widgets/pdf_viewer_sheet.dart';
 
 String _num(dynamic v) {
   final n = double.tryParse('${v ?? 0}') ?? 0;
@@ -426,7 +427,18 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
                         ),
                       ],
                       actions: [
-                        if (estado == 'pendiente')
+                      DataCardAction(
+                          icon: Icons.picture_as_pdf_outlined,
+                          color: AppColors.textMuted,
+                          tooltip: 'Imprimir / PDF',
+                          onTap: () => mostrarPdf(context,
+                              tipo: 'guia-traslado',
+                              id: item['id'] as int,
+                              nombre: item['documento']?.toString() ?? '#${item['id']}',
+                              titulo: 'Guía de traslado',
+                              formatos: const ['a4', 'ticket']),
+                      ),
+                                              if (estado == 'pendiente')
                           DataCardAction(
                             icon: Icons.send_outlined,
                             color: AppColors.info,

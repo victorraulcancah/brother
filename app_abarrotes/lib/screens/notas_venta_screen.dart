@@ -12,6 +12,7 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/data_card.dart';
+import '../widgets/pdf_viewer_sheet.dart';
 import 'crear_venta_screen.dart';
 
 String _money(dynamic v) => 'S/ ${(double.tryParse('${v ?? 0}') ?? 0).toStringAsFixed(2)}';
@@ -261,6 +262,17 @@ class _NotasVentaScreenState extends State<NotasVentaScreen> {
                     ),
                   ],
                   actions: [
+                    DataCardAction(
+                      icon: Icons.picture_as_pdf_outlined,
+                      color: AppColors.textMuted,
+                      tooltip: 'Imprimir / PDF',
+                      onTap: () => mostrarPdf(context,
+                          tipo: 'nota-venta',
+                          id: item['id'] as int,
+                          nombre: '${item['serie']}-${item['numero']}',
+                          titulo: 'Nota de venta',
+                          formatos: const ['a4', 'ticket']),
+                    ),
                     DataCardAction(
                       icon: Icons.visibility_outlined,
                       color: AppColors.info,

@@ -16,6 +16,7 @@ import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/data_card.dart';
+import '../widgets/pdf_viewer_sheet.dart';
 
 String _num(dynamic v) {
   final n = double.tryParse('${v ?? 0}') ?? 0;
@@ -375,7 +376,18 @@ class _PrestamosScreenState extends State<PrestamosScreen> {
                                 ),
                               ],
                               actions: [
-                                if (estado != 'devuelto')
+                              DataCardAction(
+                                  icon: Icons.picture_as_pdf_outlined,
+                                  color: AppColors.textMuted,
+                                  tooltip: 'Imprimir / PDF',
+                                  onTap: () => mostrarPdf(context,
+                                      tipo: 'prestamo',
+                                      id: item['id'] as int,
+                                      nombre: item['documento']?.toString() ?? '#${item['id']}',
+                                      titulo: 'Préstamo',
+                                      formatos: const ['a4', 'ticket']),
+                              ),
+                                                              if (estado != 'devuelto')
                                   DataCardAction(
                                     icon: Icons.undo,
                                     color: AppColors.warning,
