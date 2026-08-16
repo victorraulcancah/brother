@@ -75,7 +75,7 @@
 
     @if ($venta->observaciones)
         @if ($formato === 'ticket')
-            <x-pdf.pie :observaciones="$venta->observaciones" formato="ticket" :pieLegal="null" :generadoEn="null" />
+            <div class="muted">Obs.: {{ $venta->observaciones }}</div>
         @else
             <div class="box" style="margin-top: 6px;"><span class="muted">Observaciones:</span> {{ $venta->observaciones }}</div>
         @endif
@@ -85,9 +85,5 @@
         <div class="box" style="margin-top: 6px; border-color: #d32f2f; color: #d32f2f;">
             <span class="strong">ANULADA:</span> {{ $venta->motivo_anulacion }}
         </div>
-    @endif
-
-    @if ($formato === 'a4')
-        <x-pdf.firmas :firmas="['Vendedor', 'Cliente']" formato="a4" />
     @endif
 @endsection

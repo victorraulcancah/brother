@@ -3,6 +3,10 @@
 @php
     // El logo se guarda en storage/app/public; dompdf necesita la ruta física.
     $logoPath = $empresa?->logo ? public_path('storage/' . ltrim($empresa->logo, '/')) : null;
+    // Sin logo propio de la empresa se usa el del sistema (BRAVA).
+    if (!$logoPath || !file_exists($logoPath)) {
+        $logoPath = public_path('img/brava-horizontal.png');
+    }
     $tieneLogo = $logoPath && file_exists($logoPath);
 @endphp
 
@@ -20,9 +24,9 @@
 @else
     <table>
         <tr>
-            <td style="width: 70px; vertical-align: top;">
+            <td style="width: 140px; vertical-align: top;">
                 @if ($tieneLogo)
-                    <img src="{{ $logoPath }}" style="max-height: 56px; max-width: 70px;">
+                    <img src="{{ $logoPath }}" style="max-height: 50px; max-width: 135px;">
                 @endif
             </td>
             <td style="vertical-align: top;">

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ban, Eye, User } from 'lucide-react';
+import { Ban, Eye, Printer, User } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
+import PdfViewerModal from '../components/PdfViewerModal';
 import { Alert, Badge, Button, DataTable, Input, Modal, Select, Spinner } from '../components/ui';
 
 const fecha = (v) => (v ? new Date(v).toLocaleDateString('es-PE') : '—');
@@ -17,6 +18,8 @@ export default function NotasVenta() {
     const toast = useToast();
     const navigate = useNavigate();
     const [notas, setNotas] = useState([]);
+    /** Nota cuyo PDF se está viendo. */
+    const [pdfTarget, setPdfTarget] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [fEstado, setFEstado] = useState('');
@@ -127,6 +130,14 @@ export default function NotasVenta() {
                     >
                         <Eye className="h-4 w-4" />
                     </button>
+                    <button
+                        aria-label="Imprimir"
+                        title="Imprimir / PDF"
+                        onClick={() => setPdfTarget(row)}
+                        className="rounded-md p-1.5 text-warm-600 transition hover:bg-gray-100 hover:text-warm-900"
+                    >
+                        <Printer className="h-4 w-4" />
+                    </button>
                     {row.estado !== 'anulada' && (
                         <button
                             aria-label="Anular"
@@ -141,6 +152,8 @@ export default function NotasVenta() {
             ),
         },
     ];
+
+    const docNombre = (n) => `${n?.serie ?? ''}-${String(n?.numero ?? '').padStart(8, '0')}`;
 
     return (
         <Layout>
@@ -333,6 +346,15 @@ export default function NotasVenta() {
                     </div>
                 )}
             </Modal>
+                    <PdfViewerModal
+                open={Boolean(pdfTarget)}
+                onClose={() => setPdfTarget(null)}
+                tipo="nota-venta"
+                id={pdfTarget?.id}
+                nombre={pdfTarget ? docNombre(pdfTarget) : ''}
+                titulo="Nota de venta"
+                formatos={['a4', 'ticket']}
+            />
         </Layout>
     );
 }
