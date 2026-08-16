@@ -27,6 +27,12 @@ class ExistenciasScreen extends StatefulWidget {
   State<ExistenciasScreen> createState() => _ExistenciasScreenState();
 }
 
+IconData _iconoAlmacen(dynamic tipo) => switch ('$tipo') {
+  'tienda' => Icons.storefront_outlined,
+  'secundario' => Icons.inventory_2_outlined,
+  _ => Icons.warehouse_outlined,
+};
+
 class _ExistenciasScreenState extends State<ExistenciasScreen> {
   final ApiService _api = ApiService();
   List<Map<String, dynamic>> _existencias = [];
@@ -252,9 +258,15 @@ class _ExistenciasScreenState extends State<ExistenciasScreen> {
                     child: AppMessage(text: _error!),
                   ),
                 AppSegmented(
+                  scrollable: true,
                   items: [
                     'Todos',
                     for (final a in _almacenes) a['nombre']?.toString() ?? '',
+                  ],
+                  // Icono segun el tipo de almacen (tienda / principal / secundario).
+                  icons: [
+                    Icons.apps,
+                    for (final a in _almacenes) _iconoAlmacen(a['tipo']),
                   ],
                   selected: _tab,
                   onChanged: (i) => setState(() => _tab = i),
