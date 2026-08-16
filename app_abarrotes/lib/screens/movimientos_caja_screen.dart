@@ -128,7 +128,16 @@ class RegistrarMovimientoCajaScreen extends StatelessWidget {
 /// modal: hace Navigator.pop(context, true) al guardar.
 class RegistrarMovimientoCajaSheet extends StatefulWidget {
   final String? tipoInicial;
-  const RegistrarMovimientoCajaSheet({super.key, this.tipoInicial});
+
+  /// En "Mi Caja" el movimiento va siempre a la caja del usuario: no se
+  /// elige caja aunque sea super-admin. En "Movimientos de Caja" si.
+  final bool soloMiCaja;
+
+  const RegistrarMovimientoCajaSheet({
+    super.key,
+    this.tipoInicial,
+    this.soloMiCaja = false,
+  });
 
   @override
   State<RegistrarMovimientoCajaSheet> createState() => _RegistrarMovimientoCajaSheetState();
@@ -144,6 +153,9 @@ class _RegistrarMovimientoCajaSheetState extends State<RegistrarMovimientoCajaSh
   List<Map<String, dynamic>> _cajas = [];
   int? _miCajaId;
   bool _esSuperAdmin = false;
+
+  /// Si se muestra el selector de caja y se usa la elegida en vez de la propia.
+  bool get _eligeCaja => _esSuperAdmin && !widget.soloMiCaja;
 
   // Form
   late String _tipo = widget.tipoInicial ?? 'ingreso'; // ingreso | egreso
@@ -188,18 +200,32 @@ class _RegistrarMovimientoCajaSheetState extends State<RegistrarMovimientoCajaSh
       _miCajaId = int.tryParse('${mapa['caja_id']}');
       final roles = (mapa['roles'] as List?)?.map((r) => (r as Map)['name']).toList() ?? [];
       _esSuperAdmin = roles.contains('super-admin');
-      if (!_esSuperAdmin) _cajaId = _miCajaId;
+      if (!_eligeCaja) _cajaId = _miCajaId;
     } catch (_) {
       _error ??= 'No se pudo cargar tu usuario.';
     }
 
-    // Solo el super-admin elige caja; para el resto /cajas puede no estar
-    // permitido y no debe tumbar el formulario.
-    if (_esSuperAdmin) {
+    if (_eligeCaja) {
+      // El admin elige entre todas las cajas.
       try {
         _cajas = _asList(await _api.get(ApiEndpoints.cajas));
       } catch (_) {
         _error ??= 'No se pudieron cargar las cajas.';
+      }
+    } else {
+      // Con la caja fija se lee de /mi-caja, que ya trae sus metodos de pago
+      // (acepta_efectivo, cuentas y billeteras). Sin esto _caja quedaba null
+      // y el select de "Tipo de metodo" salia vacio.
+      try {
+        final mi = await _api.get(ApiEndpoints.miCaja);
+        final caja = mi is Map ? mi['caja'] : null;
+        if (caja is Map) {
+          _cajas = [caja.cast<String, dynamic>()];
+          _miCajaId ??= int.tryParse('${caja['id']}');
+          _cajaId = _miCajaId;
+        }
+      } catch (_) {
+        _error ??= 'No se pudo cargar tu caja.';
       }
     }
 
@@ -213,7 +239,7 @@ class _RegistrarMovimientoCajaSheetState extends State<RegistrarMovimientoCajaSh
   }
 
   Map<String, dynamic>? get _caja {
-    final id = _esSuperAdmin ? _cajaId : _miCajaId;
+    final id = _eligeCaja ? _cajaId : _miCajaId;
     if (id == null) return null;
     for (final c in _cajas) {
       if (c['id'] == id) return c;
@@ -247,7 +273,7 @@ class _RegistrarMovimientoCajaSheetState extends State<RegistrarMovimientoCajaSh
   }
 
   Future<void> _guardar() async {
-    final cajaId = _esSuperAdmin ? _cajaId : _miCajaId;
+    final cajaId = _eligeCaja ? _cajaId : _miCajaId;
     if (cajaId == null) {
       showAppSnackbar(context, 'No tienes una caja asignada', type: AppSnackbarType.error);
       return;
@@ -299,7 +325,7 @@ class _RegistrarMovimientoCajaSheetState extends State<RegistrarMovimientoCajaSh
 
   @override
   Widget build(BuildContext context) {
-    final sinCaja = !_esSuperAdmin && _miCajaId == null;
+    final sinCaja = !_eligeCaja && _miCajaId == null;
     if (_loading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
@@ -333,7 +359,7 @@ class _RegistrarMovimientoCajaSheetState extends State<RegistrarMovimientoCajaSh
                     AppFormSection(
                       title: 'Datos del movimiento',
                       children: [
-                        if (_esSuperAdmin)
+                        if (_eligeCaja)
                           AppSelect<int>(
                             label: 'Caja',
                             icon: Icons.point_of_sale_outlined,

@@ -60,7 +60,7 @@ class _MiCajaScreenState extends State<MiCajaScreen> {
     final ok = await showAppModal<bool>(
       context,
       title: tipo == 'ingreso' ? 'Nuevo ingreso' : 'Nuevo gasto',
-      child: RegistrarMovimientoCajaSheet(tipoInicial: tipo),
+      child: RegistrarMovimientoCajaSheet(tipoInicial: tipo, soloMiCaja: true),
     );
     if (ok == true) _load();
   }
