@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Coins } from 'lucide-react';
+import { Coins, Printer } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
+import PdfViewerModal from '../components/PdfViewerModal';
 import { Alert, Badge, Button, DataTable, Select } from '../components/ui';
 
 const money = (n) =>
@@ -24,6 +25,7 @@ export default function CierresCaja() {
 
     /** Cierre cuyos movimientos se muestran abajo. */
     const [seleccionado, setSeleccionado] = useState(null);
+    const [pdfTarget, setPdfTarget] = useState(null);
     const [movimientos, setMovimientos] = useState([]);
     const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
@@ -236,6 +238,19 @@ export default function CierresCaja() {
             searchable: false,
             render: (row) => <Badge variant="gray">{row.movimientos_count ?? 0}</Badge>,
         },
+        {
+            type: 'actions',
+            key: 'actions',
+            label: 'Acc.',
+            width: '60px',
+            actions: (row) => (
+                <button aria-label="Imprimir" title="Imprimir / PDF"
+                    onClick={(e) => { e.stopPropagation(); setPdfTarget(row); }}
+                    className="rounded-md p-1.5 text-warm-600 transition hover:bg-gray-100 hover:text-warm-900">
+                    <Printer className="h-4 w-4" />
+                </button>
+            ),
+        },
     ];
 
     const movColumns = [
@@ -371,6 +386,15 @@ export default function CierresCaja() {
                 />
             </div>
 
+                    <PdfViewerModal
+                open={Boolean(pdfTarget)}
+                onClose={() => setPdfTarget(null)}
+                tipo="cierre-caja"
+                id={pdfTarget?.id}
+                nombre={pdfTarget ? `Cierre #${String(pdfTarget.id).padStart(5, '0')}` : ''}
+                titulo="Cierre de caja"
+                formatos={['ticket']}
+            />
         </Layout>
     );
 }

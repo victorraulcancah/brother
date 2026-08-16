@@ -37,6 +37,11 @@ return [
         'orden-compra' => \App\Pdf\Documentos\OrdenCompraPdf::class,
         'compra' => \App\Pdf\Documentos\CompraPdf::class,
         'recepcion-compra' => \App\Pdf\Documentos\RecepcionCompraPdf::class,
+        'guia-traslado' => \App\Pdf\Documentos\GuiaTrasladoPdf::class,
+        'prestamo' => \App\Pdf\Documentos\PrestamoPdf::class,
+        'ajuste' => \App\Pdf\Documentos\AjustePdf::class,
+        'cierre-caja' => \App\Pdf\Documentos\CierreCajaPdf::class,
+        'movimiento-caja' => \App\Pdf\Documentos\MovimientoCajaPdf::class,
     ],
 
 ];

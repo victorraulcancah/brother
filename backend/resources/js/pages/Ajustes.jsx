@@ -1,18 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-    ArrowDownLeft,
-    ArrowUpRight,
-    BadgeCheck,
-    Edit,
-    Lock,
-    Plus,
-    Scale,
-    Trash2,
-} from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, BadgeCheck, Edit, Lock, Plus, Printer, Scale, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
+import PdfViewerModal from '../components/PdfViewerModal';
 import { Alert, Badge, Button, DataTable, Input, Modal, SearchSelect, Select, Tabs } from '../components/ui';
 
 const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(Number(n) || 0);
@@ -44,6 +36,7 @@ export default function Ajustes() {
     const [proveedores, setProveedores] = useState([]);
     /** Ajuste cuyo detalle se muestra en la segunda tabla. */
     const [seleccionado, setSeleccionado] = useState(null);
+    const [pdfTarget, setPdfTarget] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -620,6 +613,12 @@ export default function Ajustes() {
             width: '110px',
             actions: (row) => (
                 <>
+                    <button aria-label="Imprimir" title="Imprimir / PDF"
+                        onClick={(e) => { e.stopPropagation(); setPdfTarget(row); }}
+                        className="rounded-md p-1.5 text-warm-600 transition hover:bg-gray-100 hover:text-warm-900">
+                        <Printer className="h-4 w-4" />
+                    </button>
+
                     <button
                         aria-label="Editar"
                         onClick={(e) => {
@@ -1217,6 +1216,15 @@ export default function Ajustes() {
                     El motivo se eliminará de forma permanente.
                 </Alert>
             </Modal>
+                    <PdfViewerModal
+                open={Boolean(pdfTarget)}
+                onClose={() => setPdfTarget(null)}
+                tipo="ajuste"
+                id={pdfTarget?.id}
+                nombre={pdfTarget?.documento}
+                titulo="Ajuste de inventario"
+                formatos={['a4', 'ticket']}
+            />
         </Layout>
     );
 }

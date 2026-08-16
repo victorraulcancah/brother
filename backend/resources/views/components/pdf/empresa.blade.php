@@ -11,10 +11,8 @@
 @endphp
 
 @if ($formato === 'ticket')
+    {{-- El ticket no lleva logo: la térmica lo imprime pobre y ocupa papel. --}}
     <div class="center">
-        @if ($tieneLogo)
-            <img src="{{ $logoPath }}" style="max-height: 40px; max-width: 70%;"><br>
-        @endif
         <span class="strong">{{ $empresa->razon_social ?? $empresa->nombre_comercial ?? 'Mi Empresa' }}</span><br>
         @if ($empresa?->ruc)RUC {{ $empresa->ruc }}<br>@endif
         @if ($empresa?->direccion)<span class="muted">{{ $empresa->direccion }}</span><br>@endif

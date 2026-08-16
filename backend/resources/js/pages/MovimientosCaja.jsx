@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Printer } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
+import PdfViewerModal from '../components/PdfViewerModal';
 import MetodoCajaPicker from '../components/MetodoCajaPicker';
 import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
 
@@ -47,6 +48,7 @@ export default function MovimientosCaja() {
     const [fTipo, setFTipo] = useState('');
 
     const [modalOpen, setModalOpen] = useState(false);
+    const [pdfTarget, setPdfTarget] = useState(null);
     const [form, setForm] = useState(emptyForm('ingreso'));
     const [formErrors, setFormErrors] = useState({});
     const [saving, setSaving] = useState(false);
@@ -158,6 +160,19 @@ export default function MovimientosCaja() {
                 <span className={row.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'}>
                     {row.tipo === 'ingreso' ? '+' : '-'} {money(row.monto)}
                 </span>
+            ),
+        },
+        {
+            type: 'actions',
+            key: 'actions',
+            label: 'Acc.',
+            width: '60px',
+            actions: (row) => (
+                <button aria-label="Imprimir" title="Imprimir comprobante"
+                    onClick={(e) => { e.stopPropagation(); setPdfTarget(row); }}
+                    className="rounded-md p-1.5 text-warm-600 transition hover:bg-gray-100 hover:text-warm-900">
+                    <Printer className="h-4 w-4" />
+                </button>
             ),
         },
     ];
@@ -293,6 +308,15 @@ export default function MovimientosCaja() {
                     )}
                 </form>
             </Modal>
+                    <PdfViewerModal
+                open={Boolean(pdfTarget)}
+                onClose={() => setPdfTarget(null)}
+                tipo="movimiento-caja"
+                id={pdfTarget?.id}
+                nombre={pdfTarget ? `Mov. #${String(pdfTarget.id).padStart(6, '0')}` : ''}
+                titulo="Comprobante de caja"
+                formatos={['ticket']}
+            />
         </Layout>
     );
 }

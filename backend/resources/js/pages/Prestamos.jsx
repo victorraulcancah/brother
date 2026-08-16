@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Edit, HandCoins, Handshake, Plus, Trash2, Undo2 } from 'lucide-react';
+import { AlertTriangle, Edit, HandCoins, Handshake, Plus, Printer, Trash2, Undo2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
+import PdfViewerModal from '../components/PdfViewerModal';
 import ProductoPickerModal from '../components/ProductoPickerModal';
 import { Alert, Badge, Button, DataTable, Input, Modal, SearchSelect, Select, Tabs } from '../components/ui';
 
@@ -54,6 +55,7 @@ export default function Prestamos() {
     const [picker, setPicker] = useState({ open: false, query: '' });
 
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [pdfTarget, setPdfTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
 
     /** Préstamo del modal de devolución + cantidades a devolver por presentación. */
@@ -421,6 +423,12 @@ export default function Prestamos() {
             type: 'actions', key: 'actions', label: 'Acciones', width: '120px',
             actions: (row) => (
                 <>
+                    <button aria-label="Imprimir" title="Imprimir / PDF"
+                        onClick={(e) => { e.stopPropagation(); setPdfTarget(row); }}
+                        className="rounded-md p-1.5 text-warm-600 transition hover:bg-gray-100 hover:text-warm-900">
+                        <Printer className="h-4 w-4" />
+                    </button>
+
                     {row.estado !== 'devuelto' && (
                         <button aria-label="Devolución" title="Registrar devolución"
                             onClick={(e) => { e.stopPropagation(); openDevolucion(row); }}
@@ -770,6 +778,15 @@ export default function Prestamos() {
                 productos={productosDisponibles}
                 stockPorProducto={esPrestado ? stockAlmacen : undefined}
                 title="Buscar productos"
+            />
+                    <PdfViewerModal
+                open={Boolean(pdfTarget)}
+                onClose={() => setPdfTarget(null)}
+                tipo="prestamo"
+                id={pdfTarget?.id}
+                nombre={pdfTarget?.documento}
+                titulo="Préstamo"
+                formatos={['a4', 'ticket']}
             />
         </Layout>
     );

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Ban, Edit, ListChecks, Lock, PackageCheck, Plus, PlusCircle, Repeat, Send, Trash2, Truck } from 'lucide-react';
+import { ArrowRight, Ban, Edit, ListChecks, Lock, PackageCheck, Plus, PlusCircle, Printer, Repeat, Send, Trash2, Truck } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
+import PdfViewerModal from '../components/PdfViewerModal';
 import ProductoPickerModal from '../components/ProductoPickerModal';
 import { Alert, Badge, Button, DataTable, Input, Modal, SearchSelect, Select, Tabs } from '../components/ui';
 
@@ -67,6 +68,7 @@ export default function Transferencias() {
     const [actionId, setActionId] = useState(null);
 
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [pdfTarget, setPdfTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
 
     /** Guía cuyo detalle se muestra en la segunda tabla. */
@@ -515,6 +517,12 @@ export default function Transferencias() {
             width: '150px',
             actions: (row) => (
                 <>
+                    <button aria-label="Imprimir" title="Imprimir / PDF"
+                        onClick={(e) => { e.stopPropagation(); setPdfTarget(row); }}
+                        className="rounded-md p-1.5 text-warm-600 transition hover:bg-gray-100 hover:text-warm-900">
+                        <Printer className="h-4 w-4" />
+                    </button>
+
                     {row.estado === 'pendiente' && (
                         <button aria-label="Enviar" title="Enviar (descuenta stock del origen)" disabled={actionId === row.id}
                             onClick={(e) => { e.stopPropagation(); runAccion(row, 'enviar', 'Guía enviada. Stock descontado del origen.'); }}
@@ -932,6 +940,15 @@ export default function Transferencias() {
                 </>}>
                 <Alert variant="warning">Si alguna guía ya lo usa, se desactivará en lugar de eliminarse.</Alert>
             </Modal>
+                    <PdfViewerModal
+                open={Boolean(pdfTarget)}
+                onClose={() => setPdfTarget(null)}
+                tipo="guia-traslado"
+                id={pdfTarget?.id}
+                nombre={pdfTarget?.documento}
+                titulo="Guía de traslado"
+                formatos={['a4', 'ticket']}
+            />
         </Layout>
     );
 }
