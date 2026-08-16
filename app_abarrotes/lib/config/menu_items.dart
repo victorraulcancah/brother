@@ -33,14 +33,13 @@ class AppMenu {
   AppMenu._();
 
   static const List<MenuEntry> entries = [
-    MenuLink(icon: Icons.home_outlined, label: 'Inicio', route: AppRoutes.home),
+    MenuLink(icon: Icons.home_outlined, label: 'Dashboard', route: AppRoutes.home),
     MenuGroup(
-      icon: Icons.tune,
-      label: 'Gestión',
+      icon: Icons.shopping_bag_outlined,
+      label: 'Ventas',
       children: [
-        MenuLink(icon: Icons.shield_outlined, label: 'Roles', route: AppRoutes.roles),
-        MenuLink(icon: Icons.people_alt_outlined, label: 'Usuarios', route: AppRoutes.usuarios),
-        MenuLink(icon: Icons.business_outlined, label: 'Empresa', route: AppRoutes.empresa),
+        MenuLink(icon: Icons.people_outline, label: 'Clientes', route: AppRoutes.clientes),
+        MenuLink(icon: Icons.receipt_long_outlined, label: 'Notas de Venta', route: AppRoutes.notasVenta),
       ],
     ),
     MenuGroup(
@@ -68,8 +67,8 @@ class AppMenu {
       icon: Icons.warehouse_outlined,
       label: 'Inventario',
       children: [
-        MenuLink(icon: Icons.warehouse_outlined, label: 'Existencias', route: AppRoutes.existencias),
         MenuLink(icon: Icons.store_outlined, label: 'Almacenes', route: AppRoutes.almacenes),
+        MenuLink(icon: Icons.warehouse_outlined, label: 'Existencias', route: AppRoutes.existencias),
         MenuLink(icon: Icons.swap_vert, label: 'Kardex', route: AppRoutes.movimientos),
         MenuLink(icon: Icons.repeat, label: 'Traslados', route: AppRoutes.traslados),
         MenuLink(icon: Icons.tune, label: 'Ajustes', route: AppRoutes.ajustes),
@@ -78,11 +77,17 @@ class AppMenu {
       ],
     ),
     MenuGroup(
-      icon: Icons.shopping_bag_outlined,
-      label: 'Ventas',
+      icon: Icons.account_balance_wallet_outlined,
+      label: 'Tesorería',
       children: [
-        MenuLink(icon: Icons.people_outline, label: 'Clientes', route: AppRoutes.clientes),
-        MenuLink(icon: Icons.receipt_long_outlined, label: 'Notas de venta', route: AppRoutes.notasVenta),
+        MenuLink(icon: Icons.account_balance_wallet, label: 'Mi Caja', route: AppRoutes.miCaja),
+        MenuLink(icon: Icons.credit_card, label: 'Cuentas y Medios de Pago', route: AppRoutes.cuentasMedios),
+        MenuLink(icon: Icons.point_of_sale_outlined, label: 'Cajas', route: AppRoutes.cajas),
+        MenuLink(icon: Icons.swap_horiz, label: 'Movimientos de Caja', route: AppRoutes.movimientosCaja),
+        MenuLink(icon: Icons.lock_outline, label: 'Cierres de Caja', route: AppRoutes.cierresCaja),
+        MenuLink(icon: Icons.label_outline, label: 'Motivos de Movimiento', route: AppRoutes.motivosMovimiento),
+        MenuLink(icon: Icons.call_received, label: 'Cuentas por Cobrar', route: AppRoutes.cuentasPorCobrar),
+        MenuLink(icon: Icons.call_made, label: 'Cuentas por Pagar', route: AppRoutes.cuentasPorPagar),
       ],
     ),
     MenuGroup(
@@ -93,17 +98,12 @@ class AppMenu {
       ],
     ),
     MenuGroup(
-      icon: Icons.account_balance_wallet_outlined,
-      label: 'Tesorería',
+      icon: Icons.tune,
+      label: 'Gestión',
       children: [
-        MenuLink(icon: Icons.account_balance_wallet, label: 'Mi Caja', route: AppRoutes.miCaja),
-        MenuLink(icon: Icons.credit_card, label: 'Cuentas y medios de pago', route: AppRoutes.cuentasMedios),
-        MenuLink(icon: Icons.point_of_sale_outlined, label: 'Cajas', route: AppRoutes.cajas),
-        MenuLink(icon: Icons.swap_horiz, label: 'Movimientos de caja', route: AppRoutes.movimientosCaja),
-        MenuLink(icon: Icons.lock_outline, label: 'Cierres de caja', route: AppRoutes.cierresCaja),
-        MenuLink(icon: Icons.label_outline, label: 'Motivos de movimiento', route: AppRoutes.motivosMovimiento),
-        MenuLink(icon: Icons.call_received, label: 'Cuentas por cobrar', route: AppRoutes.cuentasPorCobrar),
-        MenuLink(icon: Icons.call_made, label: 'Cuentas por pagar', route: AppRoutes.cuentasPorPagar),
+        MenuLink(icon: Icons.shield_outlined, label: 'Roles', route: AppRoutes.roles),
+        MenuLink(icon: Icons.people_alt_outlined, label: 'Usuarios', route: AppRoutes.usuarios),
+        MenuLink(icon: Icons.business_outlined, label: 'Empresa', route: AppRoutes.empresa),
       ],
     ),
   ];
