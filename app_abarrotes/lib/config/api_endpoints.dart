@@ -38,6 +38,8 @@ class ApiEndpoints {
 
   static const String transferencias = '/transferencias';
   static String transferencia(int id) => '/transferencias/$id';
+  /// Catalogo administrable de motivos de la guia de traslado.
+  static const String motivosTraslado = '/motivos-traslado';
 
   static const String solicitudes = '/solicitudes-compra';
   static String solicitud(int id) => '/solicitudes-compra/$id';
