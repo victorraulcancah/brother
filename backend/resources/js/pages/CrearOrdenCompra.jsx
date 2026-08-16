@@ -341,15 +341,18 @@ export default function CrearOrdenCompra() {
                     <h2 className="text-xs font-bold uppercase tracking-wide text-warm-500">Datos de la orden</h2>
                 </div>
                 <div className="grid grid-cols-2 gap-4 p-5 md:grid-cols-4">
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-gray-700">Código</label>
-                        <input
-                            readOnly
-                            value={codigo || 'Se genera automáticamente'}
-                            className="block w-full rounded-md border-0 bg-gray-50 px-3 py-2 text-sm text-gray-500 shadow-sm ring-1 ring-inset ring-gray-300"
-                        />
-                        {formErrors.codigo && <p className="mt-1 text-xs text-red-600">{formErrors.codigo}</p>}
-                    </div>
+                    {/* Al crear no se muestra: el correlativo lo asigna el backend
+                        y todavía no existe. Al editar sí, como referencia. */}
+                    {editando && (
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">Código</label>
+                            <input
+                                readOnly
+                                value={codigo}
+                                className="block w-full rounded-md border-0 bg-gray-50 px-3 py-2 text-sm text-gray-500 shadow-sm ring-1 ring-inset ring-gray-300"
+                            />
+                        </div>
+                    )}
                     <div className="md:col-span-2">
                         <SearchSelect
                             label="Proveedor"

@@ -15,7 +15,10 @@ class UpdateUserRequest extends FormRequest
     {
         return [
             'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|max:255|unique:users,email,' . $this->route('user'),
+            // La ruta declara {id}: con route('user') venía null y el unique no
+            // ignoraba al propio usuario, así que guardar sin tocar el correo
+            // fallaba con "El correo ya está registrado".
+            'email' => 'sometimes|email|max:255|unique:users,email,' . $this->route('id'),
             'password' => 'sometimes|string|min:6|confirmed',
             'empresa_id' => 'nullable|exists:empresas,id',
             'caja_id' => 'nullable|exists:cajas,id',

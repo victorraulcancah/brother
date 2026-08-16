@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../utils/responsive.dart';
@@ -17,10 +18,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  /// Solo se recuerda el correo: guardar la contraseña en el dispositivo
-  /// la dejaría legible para cualquiera que abra el almacenamiento de la app.
+  /// La preferencia va en SharedPreferences (no es sensible) y las credenciales
+  /// en el almacenamiento seguro del sistema: Keychain en iOS, Keystore en
+  /// Android. En texto plano quedarían legibles en un backup del dispositivo.
   static const _recordarKey = 'login_recordar';
   static const _correoKey = 'login_correo';
+  static const _passKey = 'login_password';
+
+  static const _seguro = FlutterSecureStorage();
 
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -31,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarCorreoRecordado();
+    _cargarCredenciales();
   }
 
   @override
@@ -41,27 +46,42 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _cargarCorreoRecordado() async {
+  Future<void> _cargarCredenciales() async {
     final prefs = await SharedPreferences.getInstance();
     if (!prefs.getBool(_recordarKey).isTrue) return;
 
-    final correo = prefs.getString(_correoKey);
+    String? correo;
+    String? clave;
+    try {
+      correo = await _seguro.read(key: _correoKey);
+      clave = await _seguro.read(key: _passKey);
+    } catch (_) {
+      // Sin almacenamiento seguro disponible se entra a mano.
+      return;
+    }
     if (!mounted || correo == null || correo.isEmpty) return;
 
     setState(() {
       _recordar = true;
-      _emailController.text = correo;
+      _emailController.text = correo!;
+      _passwordController.text = clave ?? '';
     });
   }
 
-  Future<void> _guardarPreferencia(String correo) async {
+  Future<void> _guardarCredenciales(String correo, String clave) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_recordarKey, _recordar);
 
-    if (_recordar) {
-      await prefs.setString(_correoKey, correo);
-    } else {
-      await prefs.remove(_correoKey);
+    try {
+      if (_recordar) {
+        await _seguro.write(key: _correoKey, value: correo);
+        await _seguro.write(key: _passKey, value: clave);
+      } else {
+        await _seguro.delete(key: _correoKey);
+        await _seguro.delete(key: _passKey);
+      }
+    } catch (_) {
+      // Si el dispositivo no lo soporta, no se guarda nada.
     }
   }
 
@@ -69,11 +89,12 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final correo = _emailController.text.trim();
+    final clave = _passwordController.text;
     final auth = context.read<AuthProvider>();
-    final success = await auth.login(correo, _passwordController.text);
+    final success = await auth.login(correo, clave);
 
     if (!success) return;
-    await _guardarPreferencia(correo);
+    await _guardarCredenciales(correo, clave);
 
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, '/home');
@@ -171,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               MaterialTapTargetSize.shrinkWrap,
                         ),
                         const SizedBox(width: 4),
-                        Text('Recordar mi correo', style: textTheme.bodyMedium),
+                        Text('Recordar mis credenciales', style: textTheme.bodyMedium),
                       ],
                     ),
                   ),
