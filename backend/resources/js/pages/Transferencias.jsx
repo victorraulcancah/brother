@@ -1,13 +1,43 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, Ban, Edit, PackageCheck, Plus, Repeat, Send, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowRight, Ban, Edit, PackageCheck, Plus, Repeat, Send, Trash2, Truck } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
-import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
+import { Alert, Badge, Button, DataTable, Input, Modal, SearchSelect, Select } from '../components/ui';
 
-const emptyForm = { almacen_origen_id: '', almacen_destino_id: '', observaciones: '' };
-const emptyDetalle = { producto_presentacion_id: '', cantidad_enviada: '' };
+/** Motivos de traslado de la guía de remisión. */
+const MOTIVOS = [
+    { value: 'traslado_entre_establecimientos', label: 'Traslado entre establecimientos de la misma empresa' },
+    { value: 'venta', label: 'Venta' },
+    { value: 'compra', label: 'Compra' },
+    { value: 'devolucion', label: 'Devolución' },
+    { value: 'consignacion', label: 'Consignación' },
+    { value: 'traslado_zona_primaria', label: 'Traslado a zona primaria' },
+    { value: 'otros', label: 'Otros' },
+];
+const MOTIVO_LABEL = Object.fromEntries(MOTIVOS.map((m) => [m.value, m.label]));
+
+const hoy = () => new Date().toISOString().slice(0, 10);
+
+const emptyForm = {
+    almacen_origen_id: '',
+    almacen_destino_id: '',
+    motivo_traslado: 'traslado_entre_establecimientos',
+    fecha_inicio_traslado: hoy(),
+    modalidad_transporte: 'privado',
+    transportista_razon_social: '',
+    transportista_ruc: '',
+    vehiculo_placa: '',
+    conductor_nombre: '',
+    conductor_documento: '',
+    conductor_licencia: '',
+    numero_bultos: '',
+    peso_bruto_kg: '',
+    observaciones: '',
+};
+
+const panelVacio = { producto_id: '', producto_presentacion_id: '', cantidad: '1' };
 
 const estadoInfo = {
     pendiente: { label: 'Pendiente', variant: 'amber' },
@@ -16,24 +46,32 @@ const estadoInfo = {
     cancelada: { label: 'Cancelada', variant: 'red' },
 };
 
+const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(Number(n) || 0);
+const fecha = (f) => (f ? new Date(f).toLocaleDateString('es-PE') : '—');
+
 export default function Transferencias() {
     const toast = useToast();
     const [transferencias, setTransferencias] = useState([]);
     const [almacenes, setAlmacenes] = useState([]);
     const [productos, setProductos] = useState([]);
+    const [existencias, setExistencias] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState(emptyForm);
-    const [detalles, setDetalles] = useState([{ ...emptyDetalle }]);
+    const [panel, setPanel] = useState({ ...panelVacio });
+    const [items, setItems] = useState([]);
     const [formErrors, setFormErrors] = useState({});
     const [saving, setSaving] = useState(false);
     const [actionId, setActionId] = useState(null);
 
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
+
+    /** Guía cuyo detalle se muestra en la segunda tabla. */
+    const [seleccionada, setSeleccionada] = useState(null);
 
     const [filterEstado, setFilterEstado] = useState('');
     const [filterAlmacen, setFilterAlmacen] = useState('');
@@ -43,16 +81,20 @@ export default function Transferencias() {
         setLoading(true);
         setError(null);
         try {
-            const [transRes, almRes, prodRes] = await Promise.all([
+            const [transRes, almRes, prodRes, existRes] = await Promise.all([
                 api.get('/transferencias'),
                 api.get('/almacenes'),
-                api.get('/productos'),
+                api.get('/productos', { params: { per_page: 500 } }),
+                api.get('/existencias'),
             ]);
-            setTransferencias(asList(transRes));
+            const lista = asList(transRes);
+            setTransferencias(lista);
+            setSeleccionada((prev) => lista.find((t) => t.id === prev?.id) ?? lista[0] ?? null);
             setAlmacenes(asList(almRes));
             setProductos(asList(prodRes));
+            setExistencias(asList(existRes));
         } catch {
-            setError('No se pudieron cargar las transferencias.');
+            setError('No se pudieron cargar las guías de traslado.');
         } finally {
             setLoading(false);
         }
@@ -62,18 +104,106 @@ export default function Transferencias() {
         load();
     }, [load]);
 
-    const presentacionesOptions = productos.flatMap((p) =>
-        (Array.isArray(p.presentaciones) ? p.presentaciones : []).map((pres) => ({
-            value: String(pres.id),
-            label: `${p.nombre} — ${pres.nombre}`,
-        })),
+    // ── Stock del almacén de origen (en unidad base) ──
+    const stockOrigen = useMemo(() => {
+        if (!form.almacen_origen_id) return {};
+        return existencias
+            .filter((e) => String(e.almacen_id) === String(form.almacen_origen_id))
+            .reduce((acc, e) => {
+                acc[String(e.producto_id)] = Number(e.stock_actual) || 0;
+                return acc;
+            }, {});
+    }, [existencias, form.almacen_origen_id]);
+
+    const productoDe = useCallback(
+        (id) => productos.find((p) => String(p.id) === String(id)) ?? null,
+        [productos],
     );
 
-    const setDetalle = (index, patch) =>
-        setDetalles((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
-    const addDetalle = () => setDetalles((prev) => [...prev, { ...emptyDetalle }]);
-    const removeDetalle = (index) =>
-        setDetalles((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
+    /** Solo se traslada lo que hay en el origen. */
+    const productosOptions = useMemo(
+        () =>
+            productos
+                .filter((p) => (stockOrigen[String(p.id)] ?? 0) > 0)
+                .map((p) => ({
+                    value: String(p.id),
+                    label: p.nombre,
+                    keywords: `${p.codigo ?? ''} ${p.codigo_barras ?? ''}`,
+                })),
+        [productos, stockOrigen],
+    );
+
+    /** Unidades del producto con el disponible convertido a esa unidad. */
+    const unidadesDe = useCallback(
+        (productoId) => {
+            const p = productoDe(productoId);
+            if (!p) return [];
+            const base = stockOrigen[String(p.id)] ?? 0;
+            return (p.presentaciones ?? [])
+                .filter((pres) => pres.activo !== false)
+                .map((pres) => {
+                    const factor = Number(pres.factor_conversion) || 1;
+                    return {
+                        value: String(pres.id),
+                        label: pres.nombre,
+                        disponible: Math.floor((base / factor) * 100) / 100,
+                    };
+                });
+        },
+        [productoDe, stockOrigen],
+    );
+
+    const disponibleDe = (productoId, presId) =>
+        unidadesDe(productoId).find((u) => String(u.value) === String(presId))?.disponible ?? 0;
+
+    const setField = (name, value) => {
+        setForm((prev) => ({ ...prev, [name]: value }));
+        if (formErrors[name]) setFormErrors((prev) => ({ ...prev, [name]: undefined }));
+    };
+
+    // ── Panel de alta de producto ──
+    const elegirProducto = (productoId) => {
+        const us = unidadesDe(productoId);
+        setPanel({
+            producto_id: productoId,
+            producto_presentacion_id: us.length === 1 ? us[0].value : '',
+            cantidad: '1',
+        });
+    };
+
+    const agregarProducto = () => {
+        if (!form.almacen_origen_id) return toast.error('Elige primero el almacén de origen.');
+        if (!panel.producto_id) return toast.error('Busca y elige un producto.');
+        if (!panel.producto_presentacion_id) return toast.error('Elige la unidad.');
+        const cant = Number(panel.cantidad) || 0;
+        if (cant <= 0) return toast.error('La cantidad debe ser mayor a 0.');
+
+        const disp = disponibleDe(panel.producto_id, panel.producto_presentacion_id);
+        if (cant > disp) return toast.error(`Solo hay ${num(disp)} disponibles en el origen.`);
+
+        setItems((prev) => {
+            const i = prev.findIndex(
+                (it) => String(it.producto_presentacion_id) === String(panel.producto_presentacion_id),
+            );
+            if (i !== -1) {
+                return prev.map((it, idx) =>
+                    idx === i ? { ...it, cantidad: String((Number(it.cantidad) || 0) + cant) } : it,
+                );
+            }
+            return [
+                ...prev,
+                {
+                    producto_id: panel.producto_id,
+                    producto_presentacion_id: panel.producto_presentacion_id,
+                    cantidad: String(cant),
+                },
+            ];
+        });
+        setPanel({ ...panelVacio });
+    };
+
+    const setItem = (i, patch) => setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
+    const quitarItem = (i) => setItems((prev) => prev.filter((_, idx) => idx !== i));
 
     const runAccion = async (row, accion, exito) => {
         setActionId(row.id);
@@ -90,19 +220,31 @@ export default function Transferencias() {
 
     const openCreate = () => {
         setEditing(null);
-        setForm(emptyForm);
-        setDetalles([{ ...emptyDetalle }]);
+        setForm({ ...emptyForm, fecha_inicio_traslado: hoy() });
+        setPanel({ ...panelVacio });
+        setItems([]);
         setFormErrors({});
         setModalOpen(true);
     };
 
-    const openEdit = (transferencia) => {
-        setEditing(transferencia);
+    const openEdit = (t) => {
+        setEditing(t);
         setForm({
-            almacen_origen_id: String(transferencia.almacen_origen_id ?? transferencia.almacen_origen?.id ?? ''),
-            almacen_destino_id: String(transferencia.almacen_destino_id ?? transferencia.almacen_destino?.id ?? ''),
-            estado: transferencia.estado ?? 'pendiente',
-            observaciones: transferencia.observaciones ?? '',
+            ...emptyForm,
+            almacen_origen_id: String(t.almacen_origen_id ?? ''),
+            almacen_destino_id: String(t.almacen_destino_id ?? ''),
+            motivo_traslado: t.motivo_traslado ?? 'traslado_entre_establecimientos',
+            fecha_inicio_traslado: (t.fecha_inicio_traslado ?? '').slice(0, 10) || hoy(),
+            modalidad_transporte: t.modalidad_transporte ?? 'privado',
+            transportista_razon_social: t.transportista_razon_social ?? '',
+            transportista_ruc: t.transportista_ruc ?? '',
+            vehiculo_placa: t.vehiculo_placa ?? '',
+            conductor_nombre: t.conductor_nombre ?? '',
+            conductor_documento: t.conductor_documento ?? '',
+            conductor_licencia: t.conductor_licencia ?? '',
+            numero_bultos: t.numero_bultos ?? '',
+            peso_bruto_kg: t.peso_bruto_kg ?? '',
+            observaciones: t.observaciones ?? '',
         });
         setFormErrors({});
         setModalOpen(true);
@@ -113,41 +255,51 @@ export default function Transferencias() {
         setSaving(true);
         setFormErrors({});
 
+        const transporte = {
+            motivo_traslado: form.motivo_traslado,
+            fecha_inicio_traslado: form.fecha_inicio_traslado,
+            modalidad_transporte: form.modalidad_transporte,
+            transportista_razon_social: form.transportista_razon_social || null,
+            transportista_ruc: form.transportista_ruc || null,
+            vehiculo_placa: form.vehiculo_placa || null,
+            conductor_nombre: form.conductor_nombre || null,
+            conductor_documento: form.conductor_documento || null,
+            conductor_licencia: form.conductor_licencia || null,
+            numero_bultos: form.numero_bultos === '' ? null : Number(form.numero_bultos),
+            peso_bruto_kg: form.peso_bruto_kg === '' ? null : Number(form.peso_bruto_kg),
+            observaciones: form.observaciones,
+        };
+
         try {
             if (editing) {
-                await api.put(`/transferencias/${editing.id}`, {
-                    estado: form.estado,
-                    observaciones: form.observaciones,
-                });
-                toast.success('Transferencia actualizada correctamente.');
+                await api.put(`/transferencias/${editing.id}`, transporte);
+                toast.success('Guía actualizada.');
             } else {
-                const lineas = detalles.filter((d) => d.producto_presentacion_id && Number(d.cantidad_enviada) > 0);
-                if (lineas.length === 0) {
-                    setFormErrors((prev) => ({ ...prev, detalles: 'Agrega al menos un producto con cantidad.' }));
+                if (items.length === 0) {
+                    setFormErrors({ detalles: 'Agrega al menos un producto.' });
                     setSaving(false);
                     return;
                 }
                 await api.post('/transferencias', {
                     almacen_origen_id: form.almacen_origen_id,
                     almacen_destino_id: form.almacen_destino_id,
-                    observaciones: form.observaciones,
-                    detalles: lineas.map((d) => ({
-                        producto_presentacion_id: d.producto_presentacion_id,
-                        cantidad_enviada: d.cantidad_enviada,
+                    ...transporte,
+                    detalles: items.map((it) => ({
+                        producto_presentacion_id: it.producto_presentacion_id,
+                        cantidad_enviada: it.cantidad,
                     })),
                 });
-                toast.success('Traslado creado. Ahora puedes enviarlo.');
+                toast.success('Guía de traslado creada. Envíala para descontar el stock del origen.');
             }
             setModalOpen(false);
             await load();
         } catch (err) {
             if (err.response?.status === 422) {
-                const validation = err.response.data?.errors ?? {};
-                setFormErrors(
-                    Object.fromEntries(Object.entries(validation).map(([k, v]) => [k, v[0]])),
-                );
+                const v = err.response.data?.errors ?? {};
+                setFormErrors(Object.fromEntries(Object.entries(v).map(([k, val]) => [k, val[0]])));
+                toast.error(err.response.data?.message ?? 'Revisa los datos.');
             } else {
-                toast.error('No se pudo guardar la transferencia.');
+                toast.error('No se pudo guardar la guía.');
             }
         } finally {
             setSaving(false);
@@ -158,41 +310,36 @@ export default function Transferencias() {
         setDeleting(true);
         try {
             await api.delete(`/transferencias/${deleteTarget.id}`);
-            toast.success('Transferencia eliminada.');
+            toast.success('Guía eliminada.');
             setDeleteTarget(null);
             await load();
-        } catch {
-            toast.error('No se pudo eliminar la transferencia.');
+        } catch (err) {
+            toast.error(err.response?.data?.message ?? 'No se pudo eliminar.');
         } finally {
             setDeleting(false);
         }
     };
 
+    // ── Filtros ──
     const applyFilters = () => {
         const next = {};
         if (filterEstado) next.estado = filterEstado;
         if (filterAlmacen) next.almacen = filterAlmacen;
         setActiveFilters(next);
     };
-
     const clearFilters = () => {
         setFilterEstado('');
         setFilterAlmacen('');
         setActiveFilters({});
     };
-
     const filtered = transferencias.filter((t) => {
         if (activeFilters.estado && t.estado !== activeFilters.estado) return false;
         if (activeFilters.almacen) {
-            const origen = t.almacen_origen_id ?? t.almacen_origen?.id;
-            const destino = t.almacen_destino_id ?? t.almacen_destino?.id;
-            if (String(origen) !== activeFilters.almacen && String(destino) !== activeFilters.almacen) {
-                return false;
-            }
+            const a = activeFilters.almacen;
+            if (String(t.almacen_origen_id) !== a && String(t.almacen_destino_id) !== a) return false;
         }
         return true;
     });
-
     const filterCount = Object.keys(activeFilters).length;
 
     const filters = (
@@ -203,10 +350,7 @@ export default function Transferencias() {
                 onChange={(e) => setFilterEstado(e.target.value)}
                 options={[
                     { value: '', label: 'Todos' },
-                    { value: 'pendiente', label: 'Pendiente' },
-                    { value: 'en_transito', label: 'En tránsito' },
-                    { value: 'recibida', label: 'Recibida' },
-                    { value: 'cancelada', label: 'Cancelada' },
+                    ...Object.entries(estadoInfo).map(([value, info]) => ({ value, label: info.label })),
                 ]}
                 className="w-40"
             />
@@ -214,135 +358,138 @@ export default function Transferencias() {
                 label="Almacén"
                 value={filterAlmacen}
                 onChange={(e) => setFilterAlmacen(e.target.value)}
-                options={[
-                    { value: '', label: 'Todos' },
-                    ...almacenes.map((a) => ({ value: String(a.id), label: a.nombre })),
-                ]}
+                options={[{ value: '', label: 'Todos' }, ...almacenes.map((a) => ({ value: String(a.id), label: a.nombre }))]}
                 className="w-48"
             />
-            <Button variant="primary" size="sm" onClick={applyFilters}>
-                Aplicar
-            </Button>
-            {filterCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    Limpiar
-                </Button>
-            )}
+            <Button variant="primary" size="sm" onClick={applyFilters}>Aplicar</Button>
+            {filterCount > 0 && <Button variant="ghost" size="sm" onClick={clearFilters}>Limpiar</Button>}
         </div>
     );
 
+    // ── Columnas ──
     const columns = [
         {
-            key: 'id',
-            label: '#',
-            render: (row) => <Badge variant="blue">#{String(row.id).padStart(3, '0')}</Badge>,
+            key: 'documento',
+            label: 'N° Guía',
+            width: '130px',
+            getSearchValue: (row) => row.documento,
+            render: (row) => <span className="font-semibold text-warm-900">{row.documento ?? `#${row.id}`}</span>,
+        },
+        {
+            key: 'fecha_inicio_traslado',
+            label: 'Fecha',
+            width: '100px',
+            render: (row) => fecha(row.fecha_inicio_traslado ?? row.created_at),
         },
         {
             key: 'ruta',
-            label: 'Trayecto',
+            label: 'Origen → Destino',
+            getSearchValue: (row) => `${row.almacen_origen?.nombre} ${row.almacen_destino?.nombre}`,
             render: (row) => (
                 <span className="inline-flex items-center gap-2 font-medium text-warm-900">
-                    <Repeat className="h-4 w-4 text-primary-600" />
-                    {row.almacen_origen?.nombre ?? '—'}
-                    <ArrowRight className="h-4 w-4 text-gray-400" />
-                    {row.almacen_destino?.nombre ?? '—'}
+                    <Repeat className="h-4 w-4 shrink-0 text-primary-600" />
+                    <span className="truncate">{row.almacen_origen?.nombre ?? '—'}</span>
+                    <ArrowRight className="h-3 w-3 shrink-0 text-gray-400" />
+                    <span className="truncate">{row.almacen_destino?.nombre ?? '—'}</span>
                 </span>
             ),
         },
         {
+            key: 'motivo_traslado',
+            label: 'Motivo',
+            width: '170px',
+            render: (row) => (
+                <span className="block truncate text-warm-500" title={MOTIVO_LABEL[row.motivo_traslado] ?? ''}>
+                    {MOTIVO_LABEL[row.motivo_traslado] ?? row.motivo_traslado ?? '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'transporte',
+            label: 'Transporte',
+            width: '160px',
+            searchable: false,
+            render: (row) => (
+                <span className="block truncate text-warm-500">
+                    {row.modalidad_transporte === 'publico'
+                        ? row.transportista_razon_social || 'Público'
+                        : row.vehiculo_placa
+                          ? `Propio · ${row.vehiculo_placa}`
+                          : 'Propio'}
+                </span>
+            ),
+        },
+        {
+            key: 'detalles_count',
+            label: 'Ítems',
+            width: '75px',
+            align: 'right',
+            searchable: false,
+            render: (row) => <Badge variant="blue">{row.detalles_count ?? row.detalles?.length ?? 0}</Badge>,
+        },
+        {
             key: 'estado',
             label: 'Estado',
+            width: '110px',
             render: (row) => {
                 const info = estadoInfo[row.estado] ?? { label: row.estado ?? '—', variant: 'gray' };
                 return <Badge variant={info.variant}>{info.label}</Badge>;
             },
         },
         {
-            key: 'fecha_envio',
-            label: 'Fecha envío',
-            render: (row) =>
-                row.fecha_envio ? (
-                    <span className="text-gray-700">{new Date(row.fecha_envio).toLocaleDateString('es-PE')}</span>
-                ) : (
-                    <span className="text-gray-400">—</span>
-                ),
-        },
-        {
-            key: 'observaciones',
-            label: 'Observaciones',
-            render: (row) => row.observaciones ?? <span className="text-gray-400">—</span>,
-        },
-        {
             type: 'actions',
             key: 'actions',
             label: 'Acciones',
-            actions: (row) => {
-                const busy = actionId === row.id;
-                return (
-                    <>
-                        {row.estado === 'pendiente' && (
-                            <>
-                                <button
-                                    aria-label="Enviar"
-                                    title="Enviar (descuenta de origen)"
-                                    disabled={busy}
-                                    onClick={() => runAccion(row, 'enviar', 'Traslado enviado. Stock descontado del origen.')}
-                                    className="rounded-md p-1.5 text-blue-600 transition hover:bg-blue-50 disabled:opacity-40"
-                                >
-                                    <Send className="h-4 w-4" />
-                                </button>
-                                <button
-                                    aria-label="Editar"
-                                    onClick={() => openEdit(row)}
-                                    className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 hover:text-primary-700"
-                                >
-                                    <Edit className="h-4 w-4" />
-                                </button>
-                                <button
-                                    aria-label="Anular"
-                                    title="Anular"
-                                    disabled={busy}
-                                    onClick={() => runAccion(row, 'anular', 'Traslado anulado.')}
-                                    className="rounded-md p-1.5 text-gray-500 transition hover:bg-gray-100 disabled:opacity-40"
-                                >
-                                    <Ban className="h-4 w-4" />
-                                </button>
-                                <button
-                                    aria-label="Eliminar"
-                                    onClick={() => setDeleteTarget(row)}
-                                    className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
-                            </>
-                        )}
-                        {row.estado === 'en_transito' && (
-                            <button
-                                aria-label="Recibir"
-                                title="Recibir (ingresa al destino)"
-                                disabled={busy}
-                                onClick={() => runAccion(row, 'recibir', 'Traslado recibido. Stock ingresado al destino.')}
-                                className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-green-600 transition hover:bg-green-50 disabled:opacity-40"
-                            >
-                                <PackageCheck className="h-4 w-4" />
-                                Recibir
-                            </button>
-                        )}
-                        {(row.estado === 'recibida' || row.estado === 'cancelada') && (
-                            <span className="text-xs text-gray-400">—</span>
-                        )}
-                    </>
-                );
-            },
+            width: '150px',
+            actions: (row) => (
+                <>
+                    {row.estado === 'pendiente' && (
+                        <button aria-label="Enviar" title="Enviar (descuenta stock del origen)" disabled={actionId === row.id}
+                            onClick={(e) => { e.stopPropagation(); runAccion(row, 'enviar', 'Guía enviada. Stock descontado del origen.'); }}
+                            className="rounded-md p-1.5 text-blue-600 transition hover:bg-blue-50 disabled:opacity-40">
+                            <Send className="h-4 w-4" />
+                        </button>
+                    )}
+                    {row.estado === 'en_transito' && (
+                        <button aria-label="Recibir" title="Recibir (ingresa stock al destino)" disabled={actionId === row.id}
+                            onClick={(e) => { e.stopPropagation(); runAccion(row, 'recibir', 'Guía recibida. Stock ingresado al destino.'); }}
+                            className="rounded-md p-1.5 text-green-600 transition hover:bg-green-50 disabled:opacity-40">
+                            <PackageCheck className="h-4 w-4" />
+                        </button>
+                    )}
+                    {row.estado === 'pendiente' && (
+                        <button aria-label="Anular" title="Anular" disabled={actionId === row.id}
+                            onClick={(e) => { e.stopPropagation(); runAccion(row, 'anular', 'Guía anulada.'); }}
+                            className="rounded-md p-1.5 text-gray-500 transition hover:bg-gray-100 disabled:opacity-40">
+                            <Ban className="h-4 w-4" />
+                        </button>
+                    )}
+                    <button aria-label="Editar" title={row.estado === 'pendiente' ? 'Editar datos de transporte' : 'Editar observaciones'}
+                        onClick={(e) => { e.stopPropagation(); openEdit(row); }}
+                        className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50">
+                        <Edit className="h-4 w-4" />
+                    </button>
+                    {row.estado === 'pendiente' && (
+                        <button aria-label="Eliminar" title="Eliminar"
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); }}
+                            className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50">
+                            <Trash2 className="h-4 w-4" />
+                        </button>
+                    )}
+                </>
+            ),
         },
     ];
+
+    const detalles = seleccionada?.detalles ?? [];
+    const esPublico = form.modalidad_transporte === 'publico';
 
     return (
         <Layout>
             <PageHeader
-                title="Traslados"
-                description="Transfiere stock entre almacenes"
-                actions={<CreateButton onClick={openCreate}>Nuevo traslado</CreateButton>}
+                title="Guías de Traslado"
+                description="Traslado de mercadería entre almacenes: guía de remisión interna numerada"
+                actions={<CreateButton onClick={openCreate}>Nueva guía</CreateButton>}
             />
 
             {error && <Alert variant="error" className="mb-4">{error}</Alert>}
@@ -351,153 +498,243 @@ export default function Transferencias() {
                 columns={columns}
                 rows={filtered}
                 loading={loading}
-                searchPlaceholder="Buscar traslados..."
+                searchPlaceholder="Buscar guías..."
                 filterable
                 filters={filters}
                 filterCount={filterCount}
+                onRowClick={(row) => setSeleccionada(row)}
+                rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
             />
 
-            {/* Modal crear/editar */}
+            {/* Detalle de la guía seleccionada */}
+            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-5 py-3">
+                    <h2 className="text-sm font-semibold text-warm-900">
+                        Detalle {seleccionada?.documento ? `de ${seleccionada.documento}` : ''}
+                    </h2>
+                    {seleccionada && (
+                        <span className="flex flex-wrap gap-3 text-xs text-warm-500">
+                            <span>Motivo: <strong className="text-warm-900">{MOTIVO_LABEL[seleccionada.motivo_traslado] ?? '—'}</strong></span>
+                            <span>Transporte: <strong className="text-warm-900">{seleccionada.modalidad_transporte === 'publico' ? 'Público' : 'Privado'}</strong></span>
+                            {seleccionada.vehiculo_placa && <span>Placa: <strong className="text-warm-900">{seleccionada.vehiculo_placa}</strong></span>}
+                            {seleccionada.conductor_nombre && <span>Conductor: <strong className="text-warm-900">{seleccionada.conductor_nombre}</strong></span>}
+                            {seleccionada.numero_bultos != null && <span>Bultos: <strong className="text-warm-900">{seleccionada.numero_bultos}</strong></span>}
+                            {seleccionada.peso_bruto_kg != null && <span>Peso: <strong className="text-warm-900">{num(seleccionada.peso_bruto_kg)} kg</strong></span>}
+                        </span>
+                    )}
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[820px] text-sm">
+                        <thead>
+                            <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                                <th className="w-12 px-3 py-2.5 text-center">#</th>
+                                <th className="w-28 px-3 py-2.5">Código</th>
+                                <th className="px-3 py-2.5">Producto</th>
+                                <th className="w-32 px-3 py-2.5">Marca</th>
+                                <th className="w-32 px-3 py-2.5">Unidad</th>
+                                <th className="w-28 px-3 py-2.5 text-right">Enviado</th>
+                                <th className="w-28 px-3 py-2.5 text-right">Recibido</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {detalles.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} className="px-3 py-10 text-center text-sm text-warm-500">
+                                        {seleccionada ? 'Esta guía no tiene productos.' : 'Selecciona una guía arriba para ver su detalle.'}
+                                    </td>
+                                </tr>
+                            )}
+                            {detalles.map((d, i) => {
+                                const producto = d.presentacion?.producto;
+                                return (
+                                    <tr key={d.id}>
+                                        <td className="px-3 py-2 text-center text-warm-500">{i + 1}</td>
+                                        <td className="px-3 py-2 text-warm-500">{producto?.codigo ?? '—'}</td>
+                                        <td className="px-3 py-2 font-semibold text-warm-900">{producto?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2 text-warm-500">{producto?.marca?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2 text-warm-500">{d.presentacion?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2 text-right font-semibold text-primary-600">{num(d.cantidad_enviada)}</td>
+                                        <td className="px-3 py-2 text-right text-warm-900">{d.cantidad_recibida != null ? num(d.cantidad_recibida) : '—'}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Modal de guía */}
             <Modal
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
-                title={editing ? 'Editar traslado' : 'Nuevo traslado'}
-                description={editing ? `Actualiza el estado del traslado #${editing.id}` : 'Transfiere stock entre dos almacenes'}
+                title={editing ? `Editar guía ${editing.documento ?? ''}` : 'Nueva guía de traslado'}
+                description={
+                    editing
+                        ? editing.estado === 'pendiente'
+                            ? 'Puedes completar los datos del transporte hasta enviarla.'
+                            : 'Una guía enviada solo admite cambios en observaciones.'
+                        : 'Documento interno numerado para mover mercadería entre almacenes.'
+                }
+                size="3xl"
                 footer={
                     <>
-                        <Button variant="secondary" onClick={() => setModalOpen(false)}>
-                            Cancelar
-                        </Button>
-                        <Button type="submit" form="transferencia-form" loading={saving}>
-                            {editing ? 'Guardar cambios' : 'Crear traslado'}
+                        <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancelar</Button>
+                        <Button type="submit" form="guia-form" loading={saving}>
+                            {editing ? 'Guardar' : 'Crear guía'}
                         </Button>
                     </>
                 }
             >
-                <form id="transferencia-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
-                    {editing ? (
-                        <Alert variant="info">
-                            El estado se maneja con los botones Enviar / Recibir de la tabla. Aquí solo
-                            puedes editar las observaciones.
-                        </Alert>
-                    ) : (
-                        <>
-                            <Select
-                                label="Almacén origen"
-                                name="almacen_origen_id"
-                                value={form.almacen_origen_id}
-                                onChange={(e) =>
-                                    setForm((prev) => ({ ...prev, almacen_origen_id: e.target.value }))
-                                }
-                                options={[
-                                    { value: '', label: 'Seleccione un almacén' },
-                                    ...almacenes.map((a) => ({
-                                        value: String(a.id),
-                                        label: a.nombre,
-                                    })),
-                                ]}
-                                error={formErrors.almacen_origen_id}
-                            />
-                            <Select
-                                label="Almacén destino"
-                                name="almacen_destino_id"
-                                value={form.almacen_destino_id}
-                                onChange={(e) =>
-                                    setForm((prev) => ({ ...prev, almacen_destino_id: e.target.value }))
-                                }
-                                options={[
-                                    { value: '', label: 'Seleccione un almacén' },
-                                    ...almacenes.map((a) => ({
-                                        value: String(a.id),
-                                        label: a.nombre,
-                                    })),
-                                ]}
-                                error={formErrors.almacen_destino_id}
-                            />
+                <form id="guia-form" onSubmit={handleSubmit} noValidate className="space-y-5">
+                    {/* Ruta y motivo */}
+                    <section>
+                        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-warm-500">Traslado</h3>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <Select label="Almacén origen" value={form.almacen_origen_id} disabled={Boolean(editing)}
+                                onChange={(e) => { setField('almacen_origen_id', e.target.value); setItems([]); setPanel({ ...panelVacio }); }}
+                                options={[{ value: '', label: 'Selecciona…' }, ...almacenes.map((a) => ({ value: String(a.id), label: a.nombre }))]}
+                                error={formErrors.almacen_origen_id} />
+                            <Select label="Almacén destino" value={form.almacen_destino_id} disabled={Boolean(editing)}
+                                onChange={(e) => setField('almacen_destino_id', e.target.value)}
+                                options={[{ value: '', label: 'Selecciona…' }, ...almacenes.filter((a) => String(a.id) !== String(form.almacen_origen_id)).map((a) => ({ value: String(a.id), label: a.nombre }))]}
+                                error={formErrors.almacen_destino_id} />
+                            <Input label="Fecha de inicio" type="date" value={form.fecha_inicio_traslado}
+                                onChange={(e) => setField('fecha_inicio_traslado', e.target.value)}
+                                disabled={editing && editing.estado !== 'pendiente'} error={formErrors.fecha_inicio_traslado} />
+                            <Select label="Motivo de traslado" value={form.motivo_traslado}
+                                onChange={(e) => setField('motivo_traslado', e.target.value)}
+                                options={MOTIVOS} disabled={editing && editing.estado !== 'pendiente'} error={formErrors.motivo_traslado} />
+                        </div>
+                    </section>
 
-                            <div>
-                                <div className="mb-1 flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-700">Productos</span>
-                                    <Button type="button" variant="ghost" size="sm" onClick={addDetalle}>
-                                        <Plus className="h-4 w-4" />
-                                        Agregar
-                                    </Button>
-                                </div>
-                                <div className="space-y-2">
-                                    {detalles.map((d, index) => (
-                                        <div key={index} className="flex items-start gap-2">
-                                            <Select
-                                                value={d.producto_presentacion_id}
-                                                onChange={(e) => {
-                                                    setDetalle(index, { producto_presentacion_id: e.target.value });
-                                                    if (formErrors.detalles) {
-                                                        setFormErrors((prev) => ({ ...prev, detalles: undefined }));
-                                                    }
-                                                }}
-                                                options={[
-                                                    { value: '', label: 'Producto — presentación' },
-                                                    ...presentacionesOptions,
-                                                ]}
-                                                className="flex-1"
-                                            />
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                step="any"
-                                                placeholder="Cant."
-                                                value={d.cantidad_enviada}
-                                                onChange={(e) => setDetalle(index, { cantidad_enviada: e.target.value })}
-                                                className="w-24"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => removeDetalle(index)}
-                                                disabled={detalles.length === 1}
-                                                aria-label="Quitar"
-                                                className="mt-1 rounded-md p-2 text-red-600 transition hover:bg-red-50 disabled:opacity-40"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                                {formErrors.detalles && (
-                                    <p className="mt-1 text-xs text-red-600">{formErrors.detalles}</p>
-                                )}
-                            </div>
-                        </>
+                    {/* Transporte */}
+                    <section>
+                        <h3 className="mb-2 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-warm-500">
+                            <Truck className="h-4 w-4" /> Transporte
+                        </h3>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <Select label="Modalidad" value={form.modalidad_transporte}
+                                onChange={(e) => setField('modalidad_transporte', e.target.value)}
+                                options={[{ value: 'privado', label: 'Privado (vehículo propio)' }, { value: 'publico', label: 'Público (empresa de transporte)' }]}
+                                disabled={editing && editing.estado !== 'pendiente'} />
+                            {esPublico && (
+                                <>
+                                    <Input label="Transportista (razón social)" value={form.transportista_razon_social}
+                                        onChange={(e) => setField('transportista_razon_social', e.target.value)}
+                                        error={formErrors.transportista_razon_social} className="sm:col-span-2" />
+                                    <Input label="RUC transportista" value={form.transportista_ruc} maxLength={11}
+                                        onChange={(e) => setField('transportista_ruc', e.target.value.replace(/\D/g, ''))}
+                                        error={formErrors.transportista_ruc} />
+                                </>
+                            )}
+                            <Input label="Placa del vehículo" placeholder="ABC-123" value={form.vehiculo_placa}
+                                onChange={(e) => setField('vehiculo_placa', e.target.value.toUpperCase())} error={formErrors.vehiculo_placa} />
+                            <Input label="Conductor" value={form.conductor_nombre}
+                                onChange={(e) => setField('conductor_nombre', e.target.value)} error={formErrors.conductor_nombre} />
+                            <Input label="DNI del conductor" value={form.conductor_documento}
+                                onChange={(e) => setField('conductor_documento', e.target.value)} error={formErrors.conductor_documento} />
+                            <Input label="Licencia" value={form.conductor_licencia}
+                                onChange={(e) => setField('conductor_licencia', e.target.value.toUpperCase())} error={formErrors.conductor_licencia} />
+                            <Input label="N° de bultos" type="number" min="0" value={form.numero_bultos}
+                                onChange={(e) => setField('numero_bultos', e.target.value)} error={formErrors.numero_bultos} />
+                            <Input label="Peso bruto (kg)" type="number" min="0" step="any" value={form.peso_bruto_kg}
+                                onChange={(e) => setField('peso_bruto_kg', e.target.value)} error={formErrors.peso_bruto_kg} />
+                        </div>
+                    </section>
+
+                    {/* Productos (solo al crear: una vez emitida, el detalle es fijo) */}
+                    {!editing && (
+                        <section>
+                            <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-warm-500">Productos a trasladar</h3>
+                            {!form.almacen_origen_id ? (
+                                <Alert variant="info">Elige el almacén de origen para ver sus productos con stock.</Alert>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px_120px_auto] md:items-end">
+                                        <SearchSelect
+                                            label="Producto"
+                                            value={panel.producto_id}
+                                            onChange={elegirProducto}
+                                            options={productosOptions}
+                                            placeholder="Buscar producto con stock en el origen…"
+                                            emptyText="Sin productos con stock en este almacén"
+                                        />
+                                        <Select
+                                            label="Unidad"
+                                            value={panel.producto_presentacion_id}
+                                            disabled={!panel.producto_id}
+                                            onChange={(e) => setPanel((p) => ({ ...p, producto_presentacion_id: e.target.value }))}
+                                            options={[
+                                                { value: '', label: panel.producto_id ? 'Unidad…' : '—' },
+                                                ...unidadesDe(panel.producto_id).map((u) => ({ value: u.value, label: `${u.label} (disp. ${num(u.disponible)})` })),
+                                            ]}
+                                        />
+                                        <Input label="Cantidad" type="number" min="0" step="any" value={panel.cantidad}
+                                            onChange={(e) => setPanel((p) => ({ ...p, cantidad: e.target.value }))} className="text-right" />
+                                        <Button type="button" onClick={agregarProducto} className="justify-center">
+                                            <Plus className="h-4 w-4" /> Agregar
+                                        </Button>
+                                    </div>
+
+                                    <div className="mt-3 overflow-x-auto rounded-lg border border-edge">
+                                        <table className="w-full min-w-[560px] text-sm">
+                                            <thead>
+                                                <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                                                    <th className="px-3 py-2">Producto</th>
+                                                    <th className="w-32 px-3 py-2">Unidad</th>
+                                                    <th className="w-24 px-3 py-2 text-right">Disp.</th>
+                                                    <th className="w-28 px-3 py-2 text-right">Cantidad</th>
+                                                    <th className="w-12 px-3 py-2" />
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {items.length === 0 && (
+                                                    <tr><td colSpan={5} className="px-3 py-6 text-center text-warm-500">Agrega productos arriba</td></tr>
+                                                )}
+                                                {items.map((it, i) => {
+                                                    const p = productoDe(it.producto_id);
+                                                    const u = unidadesDe(it.producto_id).find((x) => String(x.value) === String(it.producto_presentacion_id));
+                                                    const excede = u && Number(it.cantidad) > u.disponible;
+                                                    return (
+                                                        <tr key={i}>
+                                                            <td className="px-3 py-2 font-medium text-warm-900">{p?.nombre ?? '—'}</td>
+                                                            <td className="px-3 py-2 text-warm-500">{u?.label ?? '—'}</td>
+                                                            <td className="px-3 py-2 text-right text-warm-500">{u ? num(u.disponible) : '—'}</td>
+                                                            <td className="px-3 py-2">
+                                                                <Input type="number" min="0" step="any" value={it.cantidad}
+                                                                    onChange={(e) => setItem(i, { cantidad: e.target.value })}
+                                                                    error={excede ? 'Supera el stock' : undefined} className="text-right" />
+                                                            </td>
+                                                            <td className="px-3 py-2 text-center">
+                                                                <button type="button" onClick={() => quitarItem(i)} aria-label="Quitar"
+                                                                    className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50">
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {formErrors.detalles && <p className="mt-1 text-xs text-red-600">{formErrors.detalles}</p>}
+                                </>
+                            )}
+                        </section>
                     )}
-                    <Input
-                        label="Observaciones"
-                        name="observaciones"
-                        placeholder="Opcional"
-                        value={form.observaciones}
-                        onChange={(e) => setForm((prev) => ({ ...prev, observaciones: e.target.value }))}
-                    />
+
+                    <Input label="Observaciones" placeholder="Opcional" value={form.observaciones}
+                        onChange={(e) => setField('observaciones', e.target.value)} />
                 </form>
             </Modal>
 
-            {/* Modal eliminar */}
-            <Modal
-                open={Boolean(deleteTarget)}
-                onClose={() => setDeleteTarget(null)}
-                title="Eliminar traslado"
-                description={`¿Seguro que deseas eliminar el traslado #${deleteTarget?.id}?`}
-                size="sm"
-                footer={
-                    <>
-                        <Button variant="secondary" onClick={() => setDeleteTarget(null)}>
-                            Cancelar
-                        </Button>
-                        <Button variant="danger" loading={deleting} onClick={handleDelete}>
-                            Eliminar
-                        </Button>
-                    </>
-                }
-            >
-                <Alert variant="warning">
-                    El traslado se eliminará de forma permanente.
-                </Alert>
+            <Modal open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} title="Eliminar guía"
+                description={`¿Eliminar la guía ${deleteTarget?.documento ?? ''}?`} size="sm"
+                footer={<>
+                    <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+                    <Button variant="danger" loading={deleting} onClick={handleDelete}>Eliminar</Button>
+                </>}>
+                <Alert variant="warning">Solo se pueden eliminar guías pendientes; no afecta al stock.</Alert>
             </Modal>
         </Layout>
     );
