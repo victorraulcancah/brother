@@ -146,10 +146,10 @@ class _UtilidadesScreenState extends State<UtilidadesScreen> {
     final items = [
       ('Ventas', _money(_tot['ventas']), AppColors.textStrong),
       ('Costo', _money(_tot['costo']), AppColors.warning),
-      ('Util. bruta', _money(_tot['utilidad_bruta']), AppColors.info),
+      ('Util. bruta', _money(_tot['utilidad_bruta']), _n(_tot['utilidad_bruta']) < 0 ? AppColors.danger : AppColors.info),
       ('Gastos', _money(_tot['gastos']), AppColors.danger),
-      ('Utilidad neta', _money(_tot['utilidad_neta']), AppColors.success),
-      ('Margen', '${_tot['margen'] ?? 0}%', AppColors.primary),
+      ('Utilidad neta', _money(_tot['utilidad_neta']), _n(_tot['utilidad_neta']) < 0 ? AppColors.danger : AppColors.success),
+      ('Margen', '${_tot['margen'] ?? 0}%', _n(_tot['margen']) < 0 ? AppColors.danger : AppColors.primary),
     ];
     return GridView.count(
       crossAxisCount: 2,
@@ -182,56 +182,142 @@ class _UtilidadesScreenState extends State<UtilidadesScreen> {
     );
   }
 
+  /// Etiqueta corta del eje Y (12.5k, -3k, 250).
+  static String _compacto(double v) {
+    final a = v.abs();
+    final t = a >= 1000000
+        ? '${(a / 1000000).toStringAsFixed(1)}M'
+        : a >= 1000
+        ? '${(a / 1000).toStringAsFixed(a >= 10000 ? 0 : 1)}k'
+        : a.toStringAsFixed(0);
+    return v < 0 ? '-$t' : t;
+  }
+
   Widget _grafico() {
     final filas = _filas.take(12).toList();
     if (filas.isEmpty) {
       return const _Card('Utilidad neta', SizedBox(height: 60, child: Center(child: Text('Sin datos'))));
     }
-    final maxV = filas.map((f) => _n(f['utilidad_neta'])).fold<double>(0, (a, b) => b > a ? b : a);
+    // Igual que la web: ventas, costo y utilidad neta (que puede ser negativa).
+    double maxV = 0, minV = 0;
+    for (final f in filas) {
+      for (final v in [_n(f['ventas']), _n(f['costo']), _n(f['utilidad_neta'])]) {
+        if (v > maxV) maxV = v;
+        if (v < minV) minV = v;
+      }
+    }
+    if (maxV == 0 && minV == 0) maxV = 1;
+    final maxY = maxV * 1.15;
+    final minY = minV < 0 ? minV * 1.15 : 0.0;
+    final ancho = filas.length > 8 ? 4.0 : filas.length > 4 ? 6.0 : 9.0;
+
+    BarChartRodData rod(double v, Color c) => BarChartRodData(
+      fromY: 0,
+      toY: v,
+      color: c,
+      width: ancho,
+      borderRadius: v >= 0
+          ? const BorderRadius.vertical(top: Radius.circular(3))
+          : const BorderRadius.vertical(bottom: Radius.circular(3)),
+    );
+
+    Widget leyenda(Color c, String t) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 10, height: 10, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 4),
+        Text(t, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+      ],
+    );
+
     return _Card(
-      _agrupar == 'mes' ? 'Utilidad neta por mes' : 'Utilidad neta',
-      SizedBox(
-        height: 200,
-        child: BarChart(BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: maxV <= 0 ? 1 : maxV * 1.2,
-          gridData: const FlGridData(show: false),
-          borderData: FlBorderData(show: false),
-          titlesData: FlTitlesData(
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 22,
-                getTitlesWidget: (value, meta) {
-                  final i = value.toInt();
-                  if (i < 0 || i >= filas.length) return const SizedBox.shrink();
-                  final lbl = _etiquetaGrupo('${filas[i]['grupo']}', _agrupar);
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      _agrupar == 'mes' ? lbl.split(' ').first : '${i + 1}',
+      _agrupar == 'mes' ? 'Ventas, costo y utilidad por mes' : 'Ventas, costo y utilidad',
+      Column(
+        children: [
+          SizedBox(
+            height: 220,
+            child: BarChart(BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              maxY: maxY,
+              minY: minY,
+              groupsSpace: 8,
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: (maxY - minY) / 4,
+                getDrawingHorizontalLine: (_) => const FlLine(color: AppColors.border, strokeWidth: 1),
+              ),
+              // Línea del cero para leer los negativos.
+              extraLinesData: ExtraLinesData(
+                horizontalLines: [HorizontalLine(y: 0, color: AppColors.textMuted, strokeWidth: 1)],
+              ),
+              borderData: FlBorderData(show: false),
+              barTouchData: BarTouchData(
+                touchTooltipData: BarTouchTooltipData(
+                  getTooltipItem: (group, gi, rodData, ri) => BarTooltipItem(
+                    '${['Ventas', 'Costo', 'Utilidad'][ri]}: ${_money(rodData.toY)}',
+                    const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 44,
+                    interval: (maxY - minY) / 4,
+                    getTitlesWidget: (value, meta) => Text(
+                      _compacto(value),
                       style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
                     ),
-                  );
-                },
-              ),
-            ),
-          ),
-          barGroups: [
-            for (var i = 0; i < filas.length; i++)
-              BarChartGroupData(x: i, barRods: [
-                BarChartRodData(
-                  toY: _n(filas[i]['utilidad_neta']).clamp(0, double.infinity),
-                  color: AppColors.success,
-                  width: 14,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                  ),
                 ),
-              ]),
-          ],
-        )),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 22,
+                    getTitlesWidget: (value, meta) {
+                      final i = value.toInt();
+                      if (i < 0 || i >= filas.length) return const SizedBox.shrink();
+                      final lbl = _etiquetaGrupo('${filas[i]['grupo']}', _agrupar);
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          _agrupar == 'mes' ? lbl.split(' ').first : '${i + 1}',
+                          style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              barGroups: [
+                for (var i = 0; i < filas.length; i++)
+                  BarChartGroupData(
+                    x: i,
+                    barsSpace: 2,
+                    barRods: [
+                      rod(_n(filas[i]['ventas']), AppColors.primary),
+                      rod(_n(filas[i]['costo']), const Color(0xFFF0B27A)),
+                      rod(_n(filas[i]['utilidad_neta']), _n(filas[i]['utilidad_neta']) < 0 ? AppColors.danger : AppColors.success),
+                    ],
+                  ),
+              ],
+            )),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            children: [
+              leyenda(AppColors.primary, 'Ventas'),
+              leyenda(const Color(0xFFF0B27A), 'Costo'),
+              leyenda(AppColors.success, 'Utilidad neta'),
+              leyenda(AppColors.danger, 'Pérdida'),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -250,7 +336,10 @@ class _UtilidadesScreenState extends State<UtilidadesScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
               Text(_money(f['utilidad_neta']),
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.success)),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: _n(f['utilidad_neta']) < 0 ? AppColors.danger : AppColors.success,
+                  )),
             ],
           ),
           Padding(
