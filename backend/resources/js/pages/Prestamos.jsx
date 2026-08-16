@@ -5,6 +5,7 @@ import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import PdfViewerModal from '../components/PdfViewerModal';
+import ActionsMenu from '../components/ActionsMenu';
 import ProductoPickerModal from '../components/ProductoPickerModal';
 import { Alert, Badge, Button, DataTable, Input, Modal, SearchSelect, Select, Tabs } from '../components/ui';
 
@@ -420,33 +421,22 @@ export default function Prestamos() {
             },
         },
         {
-            type: 'actions', key: 'actions', label: 'Acciones', width: '120px',
+            type: 'actions', key: 'actions', label: 'Acc.', width: '70px',
             actions: (row) => (
-                <>
-                    <button aria-label="Imprimir" title="Imprimir / PDF"
-                        onClick={(e) => { e.stopPropagation(); setPdfTarget(row); }}
-                        className="rounded-md p-1.5 text-warm-600 transition hover:bg-gray-100 hover:text-warm-900">
-                        <Printer className="h-4 w-4" />
-                    </button>
-
-                    {row.estado !== 'devuelto' && (
-                        <button aria-label="Devolución" title="Registrar devolución"
-                            onClick={(e) => { e.stopPropagation(); openDevolucion(row); }}
-                            className="rounded-md p-1.5 text-amber-600 transition hover:bg-amber-50 hover:text-amber-700">
-                            <Undo2 className="h-4 w-4" />
-                        </button>
-                    )}
-                    <button aria-label="Editar" title="Editar"
-                        onClick={(e) => { e.stopPropagation(); openEdit(row); }}
-                        className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 hover:text-primary-700">
-                        <Edit className="h-4 w-4" />
-                    </button>
-                    <button aria-label="Eliminar" title="Eliminar (revierte el stock pendiente)"
-                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); }}
-                        className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700">
-                        <Trash2 className="h-4 w-4" />
-                    </button>
-                </>
+                <ActionsMenu
+                    items={[
+                        { label: 'Imprimir / PDF', icon: Printer, color: 'text-warm-600', onClick: () => setPdfTarget(row) },
+                        {
+                            label: 'Registrar devolución',
+                            icon: Undo2,
+                            color: 'text-amber-600',
+                            hidden: row.estado === 'devuelto',
+                            onClick: () => openDevolucion(row),
+                        },
+                        { label: 'Editar', icon: Edit, color: 'text-primary-600', onClick: () => openEdit(row) },
+                        { label: 'Eliminar', icon: Trash2, danger: true, title: 'Revierte el stock pendiente', onClick: () => setDeleteTarget(row) },
+                    ]}
+                />
             ),
         },
     ];
