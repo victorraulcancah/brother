@@ -5,6 +5,7 @@ import '../services/crud_service.dart';
 import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_form_section.dart';
+import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
@@ -137,6 +138,7 @@ class _RegistrarMovimientoCajaSheetState extends State<RegistrarMovimientoCajaSh
   final ApiService _api = ApiService();
   bool _loading = true;
   bool _saving = false;
+  String? _error;
 
   List<Map<String, dynamic>> _motivos = [];
   List<Map<String, dynamic>> _cajas = [];
@@ -169,20 +171,38 @@ class _RegistrarMovimientoCajaSheetState extends State<RegistrarMovimientoCajaSh
   }
 
   Future<void> _load() async {
+    // Cada carga va por separado: antes un Future.wait con un solo catch
+    // hacia que, si fallaba /cajas o /me (p. ej. un cajero sin permiso sobre
+    // /cajas), se perdieran tambien los motivos y el select saliera vacio.
     try {
-      final results = await Future.wait([
-        _api.get('${ApiEndpoints.motivosMovimiento}?ambito=caja'),
-        _api.get(ApiEndpoints.cajas),
-        _api.get(ApiEndpoints.me),
-      ]);
-      _motivos = _asList(results[0]);
-      _cajas = _asList(results[1]);
-      final me = results[2] is Map<String, dynamic> ? results[2] as Map<String, dynamic> : <String, dynamic>{};
-      _miCajaId = me['caja_id'] as int?;
-      final roles = (me['roles'] as List?)?.map((r) => (r as Map)['name']).toList() ?? [];
+      _motivos = _asList(
+        await _api.get('${ApiEndpoints.motivosMovimiento}?ambito=caja'),
+      );
+    } catch (_) {
+      _error = 'No se pudieron cargar los motivos.';
+    }
+
+    try {
+      final me = await _api.get(ApiEndpoints.me);
+      final mapa = me is Map<String, dynamic> ? me : <String, dynamic>{};
+      _miCajaId = int.tryParse('${mapa['caja_id']}');
+      final roles = (mapa['roles'] as List?)?.map((r) => (r as Map)['name']).toList() ?? [];
       _esSuperAdmin = roles.contains('super-admin');
       if (!_esSuperAdmin) _cajaId = _miCajaId;
-    } catch (_) {}
+    } catch (_) {
+      _error ??= 'No se pudo cargar tu usuario.';
+    }
+
+    // Solo el super-admin elige caja; para el resto /cajas puede no estar
+    // permitido y no debe tumbar el formulario.
+    if (_esSuperAdmin) {
+      try {
+        _cajas = _asList(await _api.get(ApiEndpoints.cajas));
+      } catch (_) {
+        _error ??= 'No se pudieron cargar las cajas.';
+      }
+    }
+
     if (mounted) setState(() => _loading = false);
   }
 
@@ -290,6 +310,10 @@ class _RegistrarMovimientoCajaSheetState extends State<RegistrarMovimientoCajaSh
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (_error != null) ...[
+                    AppMessage(text: _error!),
+                    const SizedBox(height: 12),
+                  ],
                   SegmentedButton<String>(
                     segments: const [
                       ButtonSegment(value: 'ingreso', label: Text('Ingreso'), icon: Icon(Icons.south_west)),
