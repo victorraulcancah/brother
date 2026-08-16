@@ -278,7 +278,7 @@ export default function RecepcionesCompra() {
                 id={pdfTarget?.id}
                 nombre={pdfTarget?.documento}
                 titulo="Recepción de compra"
-                formatos={['a4']}
+                formatos={['a4', 'ticket']}
             />
         </Layout>
     );

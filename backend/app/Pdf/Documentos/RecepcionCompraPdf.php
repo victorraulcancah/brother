@@ -14,7 +14,7 @@ class RecepcionCompraPdf implements DocumentoPdf
 
     public function formatos(): array
     {
-        return ['a4'];
+        return ['a4', 'ticket'];
     }
 
     public function datos(int $id): array
@@ -37,6 +37,10 @@ class RecepcionCompraPdf implements DocumentoPdf
             'recibida' => number_format((float) $d->cantidad_recibida, 2),
             'conforme' => number_format((float) $d->cantidad_conforme, 2),
             'rechazada' => number_format((float) $d->cantidad_rechazada, 2),
+            // Para el ticket (la recepción no maneja importes).
+            'nombre' => $d->presentacion?->producto?->nombre ?? '—',
+            'detalle' => 'Rec ' . number_format((float) $d->cantidad_recibida, 2) . ' ' . ($d->presentacion?->nombre ?? ''),
+            'importe' => 'Conf ' . number_format((float) $d->cantidad_conforme, 2),
         ])->all();
 
         return [

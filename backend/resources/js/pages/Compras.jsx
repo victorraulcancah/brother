@@ -347,7 +347,7 @@ export default function Compras() {
                 id={pdfTarget?.id}
                 nombre={pdfTarget?.numero_compra}
                 titulo="Compra"
-                formatos={['a4']}
+                formatos={['a4', 'ticket']}
             />
         </Layout>
     );

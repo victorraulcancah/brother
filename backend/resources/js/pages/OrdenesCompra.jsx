@@ -312,7 +312,7 @@ export default function OrdenesCompra() {
                 id={pdfTarget?.id}
                 nombre={pdfTarget?.codigo}
                 titulo="Orden de compra"
-                formatos={['a4']}
+                formatos={['a4', 'ticket']}
             />
         </Layout>
     );

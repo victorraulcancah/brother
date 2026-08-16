@@ -15,7 +15,7 @@ class OrdenCompraPdf implements DocumentoPdf
 
     public function formatos(): array
     {
-        return ['a4'];
+        return ['a4', 'ticket'];
     }
 
     public function datos(int $id): array
@@ -34,6 +34,10 @@ class OrdenCompraPdf implements DocumentoPdf
             'cantidad' => number_format((float) $d->cantidad, 2),
             'precio' => number_format((float) $d->precio_unitario, 2),
             'subtotal' => number_format((float) $d->subtotal, 2),
+            // Para el ticket (nombre + línea de detalle + importe).
+            'nombre' => $d->presentacion?->producto?->nombre ?? '—',
+            'detalle' => number_format((float) $d->cantidad, 2) . ' ' . ($d->presentacion?->nombre ?? '') . ' x ' . number_format((float) $d->precio_unitario, 2),
+            'importe' => number_format((float) $d->subtotal, 2),
         ])->all();
 
         $total = (float) $orden->detalles->sum('subtotal');
