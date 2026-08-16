@@ -5,6 +5,7 @@ import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
 import PdfViewerModal from '../components/PdfViewerModal';
+import ActionsMenu from '../components/ActionsMenu';
 import { Alert, Badge, Button, DataTable, Modal } from '../components/ui';
 
 const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(Number(n) || 0);
@@ -140,15 +141,19 @@ export default function RecepcionesCompra() {
             label: 'Acc.',
             width: '70px',
             actions: (row) => (
-                <button
-                    aria-label="Deshacer"
-                    title={row.activo ? 'Deshacer: revierte el stock ingresado' : 'Ya está deshecha'}
-                    disabled={!row.activo}
-                    onClick={() => setDeshacerTarget(row)}
-                    className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                >
-                    <Undo2 className="h-4 w-4" />
-                </button>
+                <ActionsMenu
+                    items={[
+                        { label: 'Imprimir / PDF', icon: Printer, color: 'text-warm-600', onClick: () => setPdfTarget(row) },
+                        {
+                            label: 'Deshacer',
+                            icon: Undo2,
+                            danger: true,
+                            disabled: !row.activo,
+                            title: row.activo ? 'Revierte el stock ingresado' : 'Ya está deshecha',
+                            onClick: () => setDeshacerTarget(row),
+                        },
+                    ]}
+                />
             ),
         },
     ];

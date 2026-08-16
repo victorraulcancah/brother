@@ -6,6 +6,7 @@ import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import PdfViewerModal from '../components/PdfViewerModal';
+import ActionsMenu from '../components/ActionsMenu';
 import RecepcionarCompraModal from '../components/RecepcionarCompraModal';
 import { Alert, Badge, Button, DataTable, Input, Modal } from '../components/ui';
 
@@ -157,75 +158,51 @@ export default function Compras() {
         {
             type: 'actions',
             key: 'actions',
-            label: 'Acciones',
-            // Cinco botones: el ancho por defecto (120px) los recortaba.
-            width: '230px',
+            label: 'Acc.',
+            width: '70px',
             actions: (row) => (
-                <>
-                    <button
-                        aria-label="Imprimir"
-                        title="Imprimir / PDF"
-                        onClick={() => setPdfTarget(row)}
-                        className="rounded-md p-1.5 text-warm-600 transition hover:bg-gray-100 hover:text-warm-900"
-                    >
-                        <Printer className="h-4 w-4" />
-                    </button>
-                    <button
-                        aria-label="Recepcionar"
-                        title={
-                            row.estado === 'anulada'
-                                ? 'No se puede recepcionar: está anulada'
-                                : row.estado === 'recepcionada'
-                                  ? 'Ya está totalmente recepcionada'
-                                  : 'Recepcionar (admite parciales)'
-                        }
-                        disabled={row.estado === 'anulada' || row.estado === 'recepcionada' || row.finalizado}
-                        onClick={() => setRecepcionarId(row.id)}
-                        className="rounded-md p-1.5 text-green-600 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                    >
-                        <PackageCheck className="h-4 w-4" />
-                    </button>
-                    <button
-                        aria-label="Finalizar"
-                        title={
-                            row.finalizado
-                                ? `Finalizada: ${row.motivo_finalizacion ?? ''}`
-                                : 'Finalizar: cerrar lo que ya no va a llegar'
-                        }
-                        disabled={row.estado === 'anulada' || row.finalizado || row.estado === 'recepcionada'}
-                        onClick={() => setFinalizarTarget(row)}
-                        className="rounded-md p-1.5 text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                    >
-                        <CheckCircle2 className="h-4 w-4" />
-                    </button>
-                    <button
-                        aria-label="Editar"
-                        title={row.estado === 'anulada' ? 'No se puede editar: está anulada' : 'Editar'}
-                        disabled={row.estado === 'anulada'}
-                        onClick={() => navigate(`/compras/${row.id}/editar`)}
-                        className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                    >
-                        <Pencil className="h-4 w-4" />
-                    </button>
-                    {row.estado !== 'anulada' && (
-                        <button
-                            aria-label="Anular"
-                            title="Anular"
-                            disabled={actionId === row.id}
-                            onClick={() => anular(row)}
-                            className="rounded-md p-1.5 text-gray-500 transition hover:bg-gray-100 disabled:opacity-40"
-                        >
-                            <Ban className="h-4 w-4" />
-                        </button>
-                    )}
-                    <button
-                        aria-label="Eliminar"
-                        onClick={() => setDeleteTarget(row)}
-                        className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700"
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </button>
-                </>
+                <ActionsMenu
+                    items={[
+                        { label: 'Imprimir / PDF', icon: Printer, color: 'text-warm-600', onClick: () => setPdfTarget(row) },
+                        {
+                            label: 'Recepcionar',
+                            icon: PackageCheck,
+                            color: 'text-green-600',
+                            disabled: row.estado === 'anulada' || row.estado === 'recepcionada' || row.finalizado,
+                            title:
+                                row.estado === 'anulada'
+                                    ? 'No se puede: está anulada'
+                                    : row.estado === 'recepcionada'
+                                      ? 'Ya está totalmente recepcionada'
+                                      : 'Recepcionar (admite parciales)',
+                            onClick: () => setRecepcionarId(row.id),
+                        },
+                        {
+                            label: 'Finalizar',
+                            icon: CheckCircle2,
+                            color: 'text-blue-600',
+                            disabled: row.estado === 'anulada' || row.finalizado || row.estado === 'recepcionada',
+                            title: row.finalizado ? `Finalizada: ${row.motivo_finalizacion ?? ''}` : 'Cerrar lo que ya no va a llegar',
+                            onClick: () => setFinalizarTarget(row),
+                        },
+                        {
+                            label: 'Editar',
+                            icon: Pencil,
+                            color: 'text-primary-600',
+                            disabled: row.estado === 'anulada',
+                            onClick: () => navigate(`/compras/${row.id}/editar`),
+                        },
+                        {
+                            label: 'Anular',
+                            icon: Ban,
+                            color: 'text-gray-500',
+                            hidden: row.estado === 'anulada',
+                            disabled: actionId === row.id,
+                            onClick: () => anular(row),
+                        },
+                        { label: 'Eliminar', icon: Trash2, danger: true, onClick: () => setDeleteTarget(row) },
+                    ]}
+                />
             ),
         },
     ];
