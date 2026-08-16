@@ -436,7 +436,7 @@ export default function ProductoPickerModal({
                                 key={producto.id}
                                 onClick={() => multiple && alternar(producto)}
                                 className={[
-                                    'flex items-center gap-3 border-l-4 px-3 py-2.5 transition',
+                                    'flex flex-wrap items-center gap-x-3 gap-y-2 border-l-4 px-3 py-2.5 transition',
                                     marcado
                                         ? 'border-l-primary-600 bg-primary-50/70'
                                         : 'border-l-transparent hover:bg-primary-50/40',
@@ -460,7 +460,7 @@ export default function ProductoPickerModal({
                                     <Package className="h-4 w-4" />
                                 </div>
 
-                                <div className="min-w-0 flex-1">
+                                <div className="min-w-0 flex-1 basis-40">
                                     <p className="truncate font-semibold text-warm-900">{producto.nombre}</p>
                                     <p className="truncate text-xs text-warm-500">
                                         Código: {producto.codigo ?? '—'}
@@ -485,7 +485,11 @@ export default function ProductoPickerModal({
                                 </div>
 
                                 {!sinUnidades && (
-                                    <div className="w-20 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  <div
+                                    className="flex w-full shrink-0 items-end gap-3 sm:w-auto"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <div className="w-20 shrink-0">
                                         <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-warm-500">
                                             Cant.
                                         </label>
@@ -496,13 +500,12 @@ export default function ProductoPickerModal({
                                             value={cantidades[String(producto.id)] ?? '1'}
                                             onChange={(e) => setCantidad(producto, e.target.value)}
                                             aria-label={`Cantidad de ${producto.nombre}`}
-                                            className="block w-full rounded-md border-0 px-2 py-1 text-center text-xs text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-primary-600"
+                                            // Mismo alto que el Select de al lado.
+                                            className="block w-full rounded-md border-0 px-3 py-2 text-center text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-primary-600"
                                         />
                                     </div>
-                                )}
 
-                                {!sinUnidades && (
-                                    <div className="w-36 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                    <div className="min-w-0 flex-1 sm:w-36 sm:flex-none">
                                         <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-warm-500">
                                             Unidad
                                         </label>
@@ -520,6 +523,7 @@ export default function ProductoPickerModal({
                                             }))}
                                         />
                                     </div>
+                                  </div>
                                 )}
 
                                 {!multiple && (
