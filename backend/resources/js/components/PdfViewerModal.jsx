@@ -98,12 +98,14 @@ export default function PdfViewerModal({
                     aria-hidden="true"
                 />
 
-                {/* Tarjeta del modal */}
+                {/* Tarjeta del modal: A4 ancho, ticket angosto (según su proporción) */}
                 <div
                     role="dialog"
                     aria-modal="true"
                     aria-label={titulo}
-                    className="relative z-10 flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+                    className={`relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${
+                        formato === 'ticket' ? 'max-w-md' : 'max-w-3xl'
+                    }`}
                 >
                     {/* Cabecera */}
                     <div className="flex items-center gap-3 border-b border-edge px-5 py-3">
@@ -139,8 +141,8 @@ export default function PdfViewerModal({
                         </button>
                     </div>
 
-                    {/* PDF */}
-                    <div className="relative flex-1 overflow-hidden bg-gray-100" style={{ minHeight: '55vh' }}>
+                    {/* PDF: se ajusta al ancho para no dejar franjas grises a los costados */}
+                    <div className="relative flex-1 overflow-hidden bg-gray-100" style={{ minHeight: '76vh' }}>
                         {loading && (
                             <div className="absolute inset-0 z-10 flex items-center justify-center">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
@@ -150,9 +152,9 @@ export default function PdfViewerModal({
                             <iframe
                                 ref={iframeRef}
                                 title={titulo}
-                                src={url}
-                                className="h-full w-full"
-                                style={{ minHeight: '55vh' }}
+                                src={`${url}#zoom=page-width&toolbar=1&navpanes=0`}
+                                className="h-full w-full border-0"
+                                style={{ minHeight: '76vh' }}
                             />
                         )}
                     </div>
