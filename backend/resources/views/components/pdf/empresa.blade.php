@@ -1,0 +1,44 @@
+@props(['empresa', 'formato' => 'a4'])
+
+@php
+    // El logo se guarda en storage/app/public; dompdf necesita la ruta física.
+    $logoPath = $empresa?->logo ? public_path('storage/' . ltrim($empresa->logo, '/')) : null;
+    $tieneLogo = $logoPath && file_exists($logoPath);
+@endphp
+
+@if ($formato === 'ticket')
+    <div class="center">
+        @if ($tieneLogo)
+            <img src="{{ $logoPath }}" style="max-height: 40px; max-width: 70%;"><br>
+        @endif
+        <span class="strong">{{ $empresa->razon_social ?? $empresa->nombre_comercial ?? 'Mi Empresa' }}</span><br>
+        @if ($empresa?->ruc)RUC {{ $empresa->ruc }}<br>@endif
+        @if ($empresa?->direccion)<span class="muted">{{ $empresa->direccion }}</span><br>@endif
+        @if ($empresa?->telefono)<span class="muted">Tel. {{ $empresa->telefono }}</span>@endif
+    </div>
+    <div class="sep"></div>
+@else
+    <table>
+        <tr>
+            <td style="width: 70px; vertical-align: top;">
+                @if ($tieneLogo)
+                    <img src="{{ $logoPath }}" style="max-height: 56px; max-width: 70px;">
+                @endif
+            </td>
+            <td style="vertical-align: top;">
+                <h2 class="strong" style="font-size: 13px; color: #5d2e00;">{{ $empresa->razon_social ?? $empresa->nombre_comercial ?? 'Mi Empresa' }}</h2>
+                @if ($empresa?->nombre_comercial && $empresa?->razon_social)
+                    <div class="muted">{{ $empresa->nombre_comercial }}</div>
+                @endif
+                <div>
+                    @if ($empresa?->ruc)<span class="strong">RUC {{ $empresa->ruc }}</span>@endif
+                    @if ($empresa?->direccion) · {{ $empresa->direccion }}@endif
+                </div>
+                <div class="muted">
+                    @if ($empresa?->telefono)Tel. {{ $empresa->telefono }}@endif
+                    @if ($empresa?->email) · {{ $empresa->email }}@endif
+                </div>
+            </td>
+        </tr>
+    </table>
+@endif

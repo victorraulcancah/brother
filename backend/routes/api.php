@@ -25,6 +25,7 @@ use App\Http\Controllers\MotivoMovimientoController;
 use App\Http\Controllers\MotivoTrasladoController;
 use App\Http\Controllers\MovimientoInventarioController;
 use App\Http\Controllers\NotaVentaController;
+use App\Http\Controllers\PdfController;
 use App\Http\Controllers\OrdenCompraController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProductoPresentacionController;
@@ -54,6 +55,9 @@ Route::middleware('auth:api')->group(function () {
 
     // Reportes
     Route::get('reportes/utilidades', [ReporteController::class, 'utilidades']);
+
+    // Documentos PDF (A4 / ticket). tipo definido en config/pdf.php
+    Route::get('pdf/{tipo}/{id}', [PdfController::class, 'show']);
 
     // Catálogo
     Route::apiResource('categorias', CategoriaController::class);
