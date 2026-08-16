@@ -7,11 +7,12 @@ import '../widgets/app_button.dart';
 import '../widgets/app_form_section.dart';
 import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/app_search_select.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/metodo_picker.dart';
-import '../widgets/product_lines_editor.dart';
+import '../widgets/producto_lineas_panel.dart';
 
 class _Pago {
   String tipo = 'efectivo';
@@ -44,9 +45,10 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
   bool get _editando => widget.compraId != null;
 
   List<Map<String, dynamic>> _proveedores = [];
+  List<Map<String, dynamic>> _productos = [];
+  Map<int, double> _stockPorProducto = {};
   List<Map<String, dynamic>> _cuentas = [];
   List<Map<String, dynamic>> _billeteras = [];
-  final List<AppSelectOption<int>> _presOptions = [];
 
   int? _proveedorId;
   String _tipoDoc = 'factura';
@@ -59,7 +61,7 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
   DateTime _fecha = DateTime.now();
   DateTime _vencimiento = DateTime.now();  // ignore: prefer_final_fields
 
-  final List<ProductLine> _lineas = [ProductLine(precio: '0')];
+  final List<LineaProducto> _lineas = [];
   final List<_Pago> _pagos = [_Pago()];
 
   @override
@@ -93,16 +95,19 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
         CrudService(_api, '${ApiEndpoints.productos}?per_page=500').getAll(),
         CrudService(_api, ApiEndpoints.cuentasBancarias).getAll(),
         CrudService(_api, ApiEndpoints.billeterasDigitales).getAll(),
+        CrudService(_api, ApiEndpoints.existencias).getAll(),
       ]);
       _proveedores = results[0];
+      _productos = results[1];
       _cuentas = results[2];
       _billeteras = results[3];
-      for (final p in results[1]) {
-        for (final pres in (p['presentaciones'] as List? ?? [])) {
-          if (pres['activo'] == false) continue;
-          _presOptions.add(AppSelectOption(pres['id'] as int, '${p['nombre']} — ${pres['nombre']}'));
-        }
+      // El stock vive por almacén: se acumula por producto (unidad base).
+      final st = <int, double>{};
+      for (final e in results[4]) {
+        final pid = e['producto_id'] as int;
+        st[pid] = (st[pid] ?? 0) + (double.tryParse('${e['stock_actual']}') ?? 0);
       }
+      _stockPorProducto = st;
 
       if (widget.ordenId != null) await _cargarDesdeOrden();
       if (widget.compraId != null) await _cargarCompra();
@@ -110,6 +115,18 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
       _error = 'No se pudieron cargar los datos.';
     }
     if (mounted) setState(() => _loading = false);
+  }
+
+  /// Producto dueño de una presentación (las líneas guardadas solo traen la presentación).
+  int? _productoDePresentacion(dynamic presId, [Map? presentacion]) {
+    final directo = int.tryParse('${presentacion?['producto_id'] ?? (presentacion?['producto'] as Map?)?['id']}');
+    if (directo != null) return directo;
+    for (final p in _productos) {
+      for (final pres in (p['presentaciones'] as List? ?? [])) {
+        if ('${pres['id']}' == '$presId') return p['id'] as int;
+      }
+    }
+    return null;
   }
 
   /// Transformar orden -> compra: se copian proveedor y lineas.
@@ -123,15 +140,17 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
     }
     _lineas.clear();
     for (final d in (orden['detalles'] as List? ?? [])) {
+      final productoId = _productoDePresentacion(d['producto_presentacion_id'], d['presentacion'] as Map?);
+      if (productoId == null) continue;
       _lineas.add(
-        ProductLine(
+        LineaProducto(
+          productoId: productoId,
           presentacionId: d['producto_presentacion_id'] as int?,
-          cantidad: '${d['cantidad']}',
-          precio: '${d['precio_unitario']}',
+          cantidad: '${double.tryParse('${d['cantidad']}') ?? 0}',
+          precio: '${double.tryParse('${d['precio_unitario']}') ?? 0}',
         ),
       );
     }
-    if (_lineas.isEmpty) _lineas.add(ProductLine(precio: '0'));
   }
 
   Future<void> _cargarCompra() async {
@@ -152,15 +171,17 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
     }
     _lineas.clear();
     for (final d in (compra['detalles'] as List? ?? [])) {
+      final productoId = _productoDePresentacion(d['producto_presentacion_id'], d['presentacion'] as Map?);
+      if (productoId == null) continue;
       _lineas.add(
-        ProductLine(
+        LineaProducto(
+          productoId: productoId,
           presentacionId: d['producto_presentacion_id'] as int?,
-          cantidad: '${d['cantidad']}',
-          precio: '${d['costo_unitario']}',
+          cantidad: '${double.tryParse('${d['cantidad']}') ?? 0}',
+          precio: '${double.tryParse('${d['costo_unitario']}') ?? 0}',
         ),
       );
     }
-    if (_lineas.isEmpty) _lineas.add(ProductLine(precio: '0'));
 
     final pagos = (compra['pagos'] as List? ?? []);
     if (pagos.isNotEmpty) {
@@ -261,11 +282,15 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
                   AppFormSection(
                     title: 'Datos del comprobante',
                     children: [
-                      AppSelect<int>(
+                      AppSearchSelect<int>(
                         label: 'Proveedor',
+                        hint: 'Buscar proveedor…',
                         icon: Icons.local_shipping_outlined,
                         value: _proveedorId,
-                        options: [for (final p in _proveedores) AppSelectOption(p['id'] as int, p['nombre'] as String? ?? '')],
+                        options: [
+                          for (final p in _proveedores)
+                            AppSearchOption<int>(p['id'] as int, p['nombre']?.toString() ?? '', keywords: '${p['ruc'] ?? ''}'),
+                        ],
                         onChanged: (v) => setState(() => _proveedorId = v),
                       ),
                       AppSelect<String>(
@@ -350,14 +375,13 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
                   ),
                   const SizedBox(height: 16),
                   AppFormSection(
-                    title: 'Productos',
+                    title: 'Buscar producto',
                     children: [
-                      ProductLinesEditor(
-                        lines: _lineas,
-                        options: _presOptions,
+                      ProductoLineasPanel(
+                        productos: _productos,
+                        stockPorProducto: _stockPorProducto,
+                        lineas: _lineas,
                         priceLabel: 'Costo',
-                        onAdd: () => setState(() => _lineas.add(ProductLine(precio: '0'))),
-                        onRemove: (i) => setState(() => _lineas.removeAt(i).dispose()),
                         onChanged: () => setState(() {}),
                       ),
                     ],

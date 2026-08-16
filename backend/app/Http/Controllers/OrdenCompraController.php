@@ -34,7 +34,12 @@ class OrdenCompraController extends Controller
     public function index()
     {
         return response()->json(
-            OrdenCompra::with(['proveedor:id,nombre', 'compras:id,orden_compra_id,correlativo,fecha'])
+            OrdenCompra::with([
+                'proveedor:id,nombre',
+                'compras:id,orden_compra_id,correlativo,fecha',
+                // Detalle para la segunda tabla de la lista.
+                'detalles.presentacion.producto.marca',
+            ])
                 ->withCount(['detalles', 'compras'])
                 ->latest('id')
                 ->get()
