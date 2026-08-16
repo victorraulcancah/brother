@@ -16,15 +16,24 @@
     </table>
     <div class="sep"></div>
 @else
-    <table class="box" style="margin: 6px 0;">
-        @foreach (array_chunk($items, 2, true) as $par)
+    @php
+        // Se reparten en dos columnas verticales (izq. / der.), como la
+        // factura/boleta de referencia. La primera mitad va a la izquierda.
+        $mitad = (int) ceil(count($items) / 2);
+        $izqK = array_keys(array_slice($items, 0, $mitad, true));
+        $izqV = array_values(array_slice($items, 0, $mitad, true));
+        $derK = array_keys(array_slice($items, $mitad, null, true));
+        $derV = array_values(array_slice($items, $mitad, null, true));
+        $filas = max(count($izqK), count($derK));
+    @endphp
+    <table class="marco" style="margin-bottom: 6px;">
+        @for ($i = 0; $i < $filas; $i++)
             <tr>
-                @foreach ($par as $label => $valor)
-                    <td style="width: 12%;" class="muted">{{ $label }}:</td>
-                    <td class="strong">{{ $valor }}</td>
-                @endforeach
-                @if (count($par) === 1)<td></td><td></td>@endif
+                <td class="strong upper" style="width: 13%;">{{ $izqK[$i] ?? '' }}</td>
+                <td style="width: 37%;">{{ isset($izqV[$i]) ? ': ' . $izqV[$i] : '' }}</td>
+                <td class="strong upper" style="width: 14%;">{{ $derK[$i] ?? '' }}</td>
+                <td style="width: 36%;">{{ isset($derV[$i]) ? ': ' . $derV[$i] : '' }}</td>
             </tr>
-        @endforeach
+        @endfor
     </table>
 @endif

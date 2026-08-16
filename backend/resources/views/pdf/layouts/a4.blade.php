@@ -4,47 +4,59 @@
     <meta charset="utf-8">
     <title>@yield('titulo', 'Documento')</title>
     <style>
-        @page { margin: 90px 34px 60px 34px; }
+        /* Contenido casi a todo el ancho, como una factura/boleta impresa. */
+        @page { margin: 22px 22px 40px 22px; }
         * { box-sizing: border-box; }
         body {
             font-family: 'DejaVu Sans', sans-serif;
             font-size: 10px;
-            color: #2b2b2b;
+            color: #1f1f1f;
             margin: 0;
         }
-        /* Cabecera y pie fijos en cada página */
-        header { position: fixed; top: -70px; left: 0; right: 0; height: 70px; }
-        footer { position: fixed; bottom: -44px; left: 0; right: 0; height: 44px; font-size: 8px; color: #8a8a8a; }
+        footer { position: fixed; bottom: -26px; left: 0; right: 0; height: 26px; font-size: 8px; color: #8a8a8a; }
         .pagina:after { content: "Página " counter(page) " de " counter(pages); }
 
         h1, h2, h3, p { margin: 0; }
-        .muted { color: #8a8a8a; }
+        .muted { color: #6b6b6b; }
         .strong { font-weight: bold; }
         .right { text-align: right; }
         .center { text-align: center; }
+        .upper { text-transform: uppercase; }
 
         table { width: 100%; border-collapse: collapse; }
+
+        /* Marco general de secciones (datos, son, observaciones) */
+        .marco { border: 1px solid #d9cfc4; }
+        .marco td { padding: 4px 8px; vertical-align: top; }
+
+        /* Recuadro de la cabecera: RUC / tipo de documento / número */
+        .docbox td { border: 1px solid #e0902f; padding: 5px 8px; text-align: center; }
+        .docbox .hl { background: #ef6c00; color: #fff; font-weight: bold; text-transform: uppercase; letter-spacing: .4px; }
+        .docbox .num { font-weight: bold; font-size: 12px; }
+
+        /* Tabla de ítems (encabezado de color, cuerpo con líneas suaves) */
+        .items { border: 1px solid #e0dad2; }
         .items th {
             background: #ef6c00; color: #fff; font-size: 9px; text-transform: uppercase;
-            letter-spacing: .3px; padding: 6px 6px; text-align: left;
+            letter-spacing: .3px; padding: 5px 6px; text-align: left;
         }
-        .items td { padding: 5px 6px; border-bottom: 1px solid #eee; }
-        .items tbody tr:nth-child(even) { background: #fafafa; }
+        .items td { padding: 4px 6px; border-bottom: 1px solid #eee; }
+        .items .filler td { padding: 5px 6px; }
 
-        .box { border: 1px solid #e0dad2; border-radius: 6px; padding: 8px 10px; }
-        .tag {
-            display: inline-block; border: 1.5px solid #ef6c00; border-radius: 6px;
-            padding: 6px 12px; color: #ef6c00; font-weight: bold;
-        }
+        /* Totales */
+        .totales td { padding: 5px 10px; border: 1px solid #e0dad2; }
+        .totales .lbl { text-align: right; font-weight: bold; text-transform: uppercase; }
+        .totales .tot { background: #ef6c00; color: #fff; border-color: #e0902f; }
     </style>
 </head>
 <body>
-    <header>
-        <x-pdf.empresa :empresa="$empresa" formato="a4" />
-    </header>
-
     <footer>
-        <x-pdf.pie :pieLegal="$pieLegal ?? null" :generadoEn="$generadoEn ?? null" formato="a4" />
+        <table>
+            <tr>
+                <td class="muted">{{ $pieLegal ?? '' }}</td>
+                <td class="right muted pagina" style="width: 140px;"></td>
+            </tr>
+        </table>
     </footer>
 
     <main>

@@ -6,84 +6,96 @@
     @php
         $anulada = $venta->estado === 'anulada';
         $clienteNombre = $venta->cliente?->nombre ?? $venta->cliente?->razon_social ?? 'Clientes varios';
+        $monedaTxt = $venta->moneda === 'USD' ? 'DÓLARES' : 'SOLES';
+        $pagoTxt = collect($pagos)->map(fn ($p) => $p['metodo'] . ' ' . $moneda . ' ' . $p['monto'])->join(', ');
     @endphp
 
-    <x-pdf.titulo
-        texto="NOTA DE VENTA"
-        :numero="$documento"
-        :estado="$anulada ? 'ANULADA' : null"
-        :formato="$formato" />
-
-    <x-pdf.tercero
-        titulo="Cliente"
-        :nombre="$clienteNombre"
-        :documento="$venta->cliente?->numero_documento"
-        :formato="$formato" />
-
-    <x-pdf.meta
-        :items="[
-            'Fecha' => optional($venta->fecha_emision)->format('d/m/Y'),
-            'Vendedor' => $venta->vendedor?->name,
-            'Almacén' => $venta->almacen?->nombre,
-            'Pago' => ucfirst($venta->tipo_pago),
-        ]"
-        :formato="$formato" />
-
     @if ($formato === 'ticket')
-        <x-pdf.items :filas="$filas" formato="ticket" />
-    @else
-        <x-pdf.items
-            :columnas="[
-                ['label' => '#', 'key' => 'n', 'width' => '24px'],
-                ['label' => 'Código', 'key' => 'codigo', 'width' => '70px'],
-                ['label' => 'Producto', 'key' => 'producto'],
-                ['label' => 'Unidad', 'key' => 'unidad', 'width' => '80px'],
-                ['label' => 'Cant.', 'key' => 'cantidad', 'align' => 'right', 'width' => '55px'],
-                ['label' => 'P.Unit', 'key' => 'precio', 'align' => 'right', 'width' => '70px'],
-                ['label' => 'Subtotal', 'key' => 'subtotal', 'align' => 'right', 'width' => '80px'],
+        {{-- === TICKET (80mm) === --}}
+        <x-pdf.titulo texto="NOTA DE VENTA" :numero="$documento" :estado="$anulada ? 'ANULADA' : null" formato="ticket" />
+
+        <x-pdf.tercero titulo="Cliente" :nombre="$clienteNombre" :documento="$venta->cliente?->numero_documento" formato="ticket" />
+
+        <x-pdf.meta
+            :items="[
+                'Fecha' => optional($venta->fecha_emision)->format('d/m/Y'),
+                'Vendedor' => $venta->vendedor?->name,
+                'Almacén' => $venta->almacen?->nombre,
+                'Pago' => ucfirst($venta->tipo_pago),
             ]"
-            :filas="$filas"
-            formato="a4" />
-    @endif
+            formato="ticket" />
 
-    <x-pdf.totales
-        :lineas="[
-            'Subtotal' => number_format((float) $venta->subtotal, 2),
-            'Descuento' => (float) $venta->descuento_total > 0 ? '-' . number_format((float) $venta->descuento_total, 2) : null,
-        ]"
-        :total="number_format((float) $venta->total, 2)"
-        :moneda="$moneda"
-        :enLetras="$enLetras"
-        :formato="$formato" />
+        <x-pdf.items :filas="$filas" formato="ticket" />
 
-    {{-- Pagos --}}
-    @if (count($pagos))
-        @if ($formato === 'ticket')
+        <x-pdf.totales
+            :lineas="['Subtotal' => number_format((float) $venta->subtotal, 2)]"
+            :total="number_format((float) $venta->total, 2)"
+            :moneda="$moneda"
+            :enLetras="$enLetras"
+            formato="ticket" />
+
+        @if (count($pagos))
             <table class="row">
                 @foreach ($pagos as $p)
                     <tr><td class="muted">{{ $p['metodo'] }}</td><td class="right">{{ $moneda }} {{ $p['monto'] }}</td></tr>
                 @endforeach
             </table>
             <div class="sep"></div>
-        @else
-            <div class="muted" style="margin: 2px 0 6px;">
-                Pago:
-                @foreach ($pagos as $p){{ $p['metodo'] }} {{ $moneda }} {{ $p['monto'] }}@if(!$loop->last) · @endif @endforeach
-            </div>
         @endif
-    @endif
 
-    @if ($venta->observaciones)
-        @if ($formato === 'ticket')
-            <div class="muted">Obs.: {{ $venta->observaciones }}</div>
-        @else
-            <div class="box" style="margin-top: 6px;"><span class="muted">Observaciones:</span> {{ $venta->observaciones }}</div>
+        @if ($venta->observaciones)<div class="muted">Obs.: {{ $venta->observaciones }}</div>@endif
+    @else
+        {{-- === A4 === --}}
+        <x-pdf.encabezado
+            :empresa="$empresa"
+            titulo="NOTA DE VENTA"
+            :numero="$documento"
+            :estado="$anulada ? 'ANULADA' : null" />
+
+        <x-pdf.meta
+            :items="[
+                'Cliente' => $clienteNombre,
+                'RUC/DNI' => $venta->cliente?->numero_documento ?: '—',
+                'Vendedor' => $venta->vendedor?->name ?: '—',
+                'Forma pago' => ucfirst($venta->tipo_pago),
+                'Moneda' => $monedaTxt,
+                'F. emisión' => optional($venta->fecha_emision)->format('d/m/Y'),
+                'Hora' => optional($venta->created_at)->format('H:i'),
+                'Almacén' => $venta->almacen?->nombre ?: '—',
+                'Estado' => $anulada ? 'ANULADA' : 'EMITIDA',
+            ]" />
+
+        <x-pdf.items
+            :columnas="[
+                ['label' => 'Ítem', 'key' => 'n', 'width' => '32px'],
+                ['label' => 'Código', 'key' => 'codigo', 'width' => '72px'],
+                ['label' => 'Cant.', 'key' => 'cantidad', 'align' => 'right', 'width' => '55px'],
+                ['label' => 'Unidad', 'key' => 'unidad', 'width' => '90px'],
+                ['label' => 'Descripción', 'key' => 'producto'],
+                ['label' => 'P. Uni.', 'key' => 'precio', 'align' => 'right', 'width' => '72px'],
+                ['label' => 'Importe', 'key' => 'subtotal', 'align' => 'right', 'width' => '80px'],
+            ]"
+            :filas="$filas"
+            :minFilas="8" />
+
+        <x-pdf.cierre
+            :observaciones="$venta->observaciones"
+            :lineas="[
+                'Subtotal' => number_format((float) $venta->subtotal, 2),
+                'Descuento' => (float) $venta->descuento_total > 0 ? '-' . number_format((float) $venta->descuento_total, 2) : null,
+            ]"
+            :total="number_format((float) $venta->total, 2)"
+            :moneda="$moneda"
+            :enLetras="$enLetras" />
+
+        @if ($pagoTxt)
+            <div class="muted" style="margin-top: 4px;">Pago: {{ $pagoTxt }}</div>
         @endif
-    @endif
 
-    @if ($anulada && $venta->motivo_anulacion)
-        <div class="box" style="margin-top: 6px; border-color: #d32f2f; color: #d32f2f;">
-            <span class="strong">ANULADA:</span> {{ $venta->motivo_anulacion }}
-        </div>
+        @if ($anulada && $venta->motivo_anulacion)
+            <table class="marco" style="margin-top: 6px; border-color: #d32f2f;">
+                <tr><td style="color: #d32f2f;"><span class="strong">ANULADA:</span> {{ $venta->motivo_anulacion }}</td></tr>
+            </table>
+        @endif
     @endif
 @endsection

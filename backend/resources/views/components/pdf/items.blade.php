@@ -1,4 +1,4 @@
-@props(['columnas' => [], 'filas' => [], 'formato' => 'a4'])
+@props(['columnas' => [], 'filas' => [], 'formato' => 'a4', 'minFilas' => 0])
 
 @php
     // Cada columna: ['label' => 'Cant.', 'key' => 'cantidad', 'align' => 'right', 'width' => '60px']
@@ -19,7 +19,7 @@
     </table>
     <div class="sep"></div>
 @else
-    <table class="items" style="margin: 8px 0;">
+    <table class="items" style="margin-bottom: 6px;">
         <thead>
             <tr>
                 @foreach ($columnas as $col)
@@ -31,7 +31,7 @@
             </tr>
         </thead>
         <tbody>
-            @forelse ($filas as $fila)
+            @foreach ($filas as $fila)
                 <tr>
                     @foreach ($columnas as $col)
                         <td @if(($col['align'] ?? '') === 'right') class="right" @endif>
@@ -39,9 +39,15 @@
                         </td>
                     @endforeach
                 </tr>
-            @empty
-                <tr><td colspan="{{ count($columnas) }}" class="center muted" style="padding: 16px;">Sin ítems</td></tr>
-            @endforelse
+            @endforeach
+
+            {{-- Filas vacías: la tabla mantiene el mismo tamaño haya muchos o
+                 pocos productos (como la boleta de referencia). --}}
+            @for ($i = count($filas); $i < $minFilas; $i++)
+                <tr class="filler">
+                    @foreach ($columnas as $col)<td>&nbsp;</td>@endforeach
+                </tr>
+            @endfor
         </tbody>
     </table>
 @endif
