@@ -48,6 +48,10 @@ class ProductoLineasPanel extends StatefulWidget {
   final double Function(Map<String, dynamic> presentacion)? precioDe;
   /// Muestra la lupa con filtros de stock (compras) o no (ventas).
   final bool stockFilter;
+  /// Solo ofrece productos con stock (> 0) en [stockPorProducto] (ventas, traslados).
+  final bool soloConStock;
+  /// Muestra el disponible convertido a cada unidad y marca las líneas que lo superan.
+  final bool mostrarDisponible;
 
   const ProductoLineasPanel({
     super.key,
@@ -58,7 +62,15 @@ class ProductoLineasPanel extends StatefulWidget {
     this.priceLabel = 'Precio',
     this.precioDe,
     this.stockFilter = true,
+    this.soloConStock = false,
+    this.mostrarDisponible = false,
   });
+
+  /// Disponible de una presentación (stock base convertido con su factor).
+  static double disponibleDe(Map<String, dynamic>? presentacion, double stockBase) {
+    final factor = double.tryParse('${presentacion?['factor_conversion'] ?? 1}') ?? 1;
+    return (stockBase / (factor <= 0 ? 1 : factor) * 100).floor() / 100;
+  }
 
   @override
   State<ProductoLineasPanel> createState() => _ProductoLineasPanelState();
@@ -103,8 +115,21 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
     return double.tryParse('${pres['precio_compra'] ?? 0}') ?? 0;
   }
 
+  List<Map<String, dynamic>> get _productosOfrecidos => widget.soloConStock
+      ? widget.productos.where((p) => (widget.stockPorProducto[p['id']] ?? 0) > 0).toList()
+      : widget.productos;
+
+  double _stockBaseDe(int? productoId) => widget.stockPorProducto[productoId] ?? 0;
+
+  double _disponible(int? productoId, Map<String, dynamic>? pres) =>
+      ProductoLineasPanel.disponibleDe(pres, _stockBaseDe(productoId));
+
+  String _labelUnidad(int? productoId, Map<String, dynamic> u) => widget.mostrarDisponible
+      ? '${u['nombre'] ?? ''} (disp. ${_fmt(_disponible(productoId, u))})'
+      : u['nombre']?.toString() ?? '';
+
   List<AppSearchOption<int>> get _productosOptions => [
-    for (final p in widget.productos)
+    for (final p in _productosOfrecidos)
       AppSearchOption<int>(
         p['id'] as int,
         p['nombre']?.toString() ?? '',
@@ -142,6 +167,10 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
     if (_presentacionId == null) return showAppSnackbar(context, 'Elige la unidad de medida.', type: AppSnackbarType.error);
     final cant = double.tryParse(_cantidad.text.trim()) ?? 0;
     if (cant <= 0) return showAppSnackbar(context, 'La cantidad debe ser mayor a 0.', type: AppSnackbarType.error);
+    if (widget.mostrarDisponible) {
+      final disp = _disponible(_productoId, _presentacionDe(_productoId, _presentacionId));
+      if (cant > disp) return showAppSnackbar(context, 'Solo hay ${_fmt(disp)} disponibles.', type: AppSnackbarType.error);
+    }
     _sumar(_productoId!, _presentacionId!, cant, double.tryParse(_precio.text.trim()) ?? 0);
     _limpiarPanel();
   }
@@ -161,7 +190,7 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
   Future<void> _abrirBuscador(String query) async {
     final sel = await showProductoPicker(
       context,
-      productos: widget.productos,
+      productos: _productosOfrecidos,
       stockPorProducto: widget.stockPorProducto,
       stockFilter: widget.stockFilter,
       initialQuery: query,
@@ -210,7 +239,12 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
                 ),
               ),
               if (widget.stockPorProducto.isNotEmpty)
-                AppBadge('Stock ${_fmt(stock!)}${abrev.isEmpty ? '' : ' $abrev'}', type: stock <= 0 ? AppBadgeType.danger : AppBadgeType.neutral),
+                AppBadge(
+                  widget.mostrarDisponible && _presentacionId != null
+                      ? 'Disp. ${_fmt(_disponible(_productoId, _presentacionDe(_productoId, _presentacionId)))}'
+                      : 'Stock ${_fmt(stock!)}${abrev.isEmpty ? '' : ' $abrev'}',
+                  type: (stock ?? 0) <= 0 ? AppBadgeType.danger : AppBadgeType.neutral,
+                ),
             ],
           ),
         ],
@@ -219,7 +253,7 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
           label: 'Unidad',
           icon: Icons.straighten,
           value: _presentacionId,
-          options: [for (final u in unidades) AppSelectOption<int>(u['id'] as int, u['nombre']?.toString() ?? '')],
+          options: [for (final u in unidades) AppSelectOption<int>(u['id'] as int, _labelUnidad(_productoId, u))],
           onChanged: _productoId == null ? null : _elegirUnidad,
         ),
         Row(
@@ -263,7 +297,14 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 24),
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
-            child: const Center(child: Text('Busca un producto arriba para agregarlo', style: TextStyle(color: AppColors.textMuted))),
+            child: Center(
+              child: Text(
+                widget.soloConStock && _productosOfrecidos.isEmpty
+                    ? 'No hay productos con stock en este almacén'
+                    : 'Busca un producto arriba para agregarlo',
+                style: const TextStyle(color: AppColors.textMuted),
+              ),
+            ),
           )
         else
           for (var i = 0; i < widget.lineas.length; i++) _lineaCard(i),
@@ -275,6 +316,8 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
     final l = widget.lineas[i];
     final p = _productoDe(l.productoId);
     final unidades = _unidadesDe(l.productoId);
+    final disp = _disponible(l.productoId, _presentacionDe(l.productoId, l.presentacionId));
+    final excede = widget.mostrarDisponible && l.presentacionId != null && l.cant > disp;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -316,7 +359,7 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
                   AppSelect<int>(
                     label: 'Unidad',
                     value: l.presentacionId,
-                    options: [for (final u in unidades) AppSelectOption<int>(u['id'] as int, u['nombre']?.toString() ?? '')],
+                    options: [for (final u in unidades) AppSelectOption<int>(u['id'] as int, _labelUnidad(l.productoId, u))],
                     // Cambiar la unidad trae el precio de esa presentación.
                     onChanged: (v) {
                       l.presentacionId = v;
@@ -332,6 +375,7 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
                           label: 'Cant.',
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           onChanged: (_) => widget.onChanged(),
+                          validator: (_) => excede ? 'Supera el stock' : null,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -355,6 +399,14 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
                       ),
                     ],
                   ),
+                  if (excede)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text('Solo hay ${_fmt(disp)} disponibles en esta unidad', style: const TextStyle(fontSize: 12, color: AppColors.danger)),
+                      ),
+                    ),
                 ],
               ),
             ),

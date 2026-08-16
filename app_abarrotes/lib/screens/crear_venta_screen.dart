@@ -9,10 +9,12 @@ import '../widgets/app_button.dart';
 import '../widgets/app_form_section.dart';
 import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/app_search_select.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/metodo_picker.dart';
+import '../widgets/producto_lineas_panel.dart';
 
 /// Venta al paso: no se identifica al comprador.
 const _clienteGenerico = 'Clientes varios';
@@ -32,23 +34,6 @@ class _Pago {
   final TextEditingController monto = TextEditingController();
   double get valor => double.tryParse(monto.text.trim()) ?? 0;
   void dispose() => monto.dispose();
-}
-
-/// Una línea de la venta: producto + unidad derivada + cantidad + precio.
-class _Linea {
-  int? productoId;
-  int? presentacionId;
-  final TextEditingController cantidad = TextEditingController(text: '1');
-  final TextEditingController precio = TextEditingController(text: '0');
-
-  double get cant => double.tryParse(cantidad.text.trim()) ?? 0;
-  double get precioVal => double.tryParse(precio.text.trim()) ?? 0;
-  double get subtotal => cant * precioVal;
-
-  void dispose() {
-    cantidad.dispose();
-    precio.dispose();
-  }
 }
 
 class CrearVentaScreen extends StatefulWidget {
@@ -74,9 +59,10 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
   int? _clienteId;
   int? _almacenId;
   String _tipoPago = 'contado';
+  DateTime _fecha = DateTime.now();
   final _observaciones = TextEditingController();
 
-  final List<_Linea> _lineas = [_Linea()];
+  final List<LineaProducto> _lineas = [];
   final List<_Pago> _pagos = [_Pago()];
   /// Off = un solo cobro que cubre el total. On = varios métodos.
   bool _mixto = false;
@@ -141,16 +127,6 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
     };
   }
 
-  /// Se vende lo que hay: solo productos con stock en el almacén elegido.
-  List<AppSelectOption<int>> get _productosOptions {
-    final stock = _stockDelAlmacen;
-    return [
-      for (final p in _productos)
-        if ((stock[p['id']] ?? 0) > 0)
-          AppSelectOption<int>(p['id'] as int, p['nombre']?.toString() ?? ''),
-    ];
-  }
-
   Map<String, dynamic>? _productoDe(int? id) {
     if (id == null) return null;
     for (final p in _productos) {
@@ -159,38 +135,16 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
     return null;
   }
 
-  /// Unidades derivadas del producto con el disponible ya convertido:
-  /// el stock vive en unidad base, no en paquetes.
-  List<({int id, String nombre, double factor, double precio, double disponible})>
-  _unidadesDe(int? productoId) {
-    final p = _productoDe(productoId);
-    if (p == null) return [];
-
-    final stockBase = _stockDelAlmacen[productoId] ?? 0;
-    return [
-      for (final pres in (p['presentaciones'] as List? ?? []))
-        if (pres['activo'] != false)
-          () {
-            final factor =
-                double.tryParse('${pres['factor_conversion']}') ?? 1;
-            return (
-              id: pres['id'] as int,
-              nombre: pres['nombre']?.toString() ?? '',
-              factor: factor,
-              precio: double.tryParse('${pres['precio_venta']}') ?? 0,
-              disponible: (stockBase / factor * 100).floor() / 100,
-            );
-          }(),
-    ];
-  }
-
-  ({int id, String nombre, double factor, double precio, double disponible})?
-  _unidadDe(_Linea l) {
-    for (final u in _unidadesDe(l.productoId)) {
-      if (u.id == l.presentacionId) return u;
+  Map<String, dynamic>? _presentacionDe(LineaProducto l) {
+    for (final pres in ((_productoDe(l.productoId)?['presentaciones'] as List?) ?? []).whereType<Map<String, dynamic>>()) {
+      if (pres['id'] == l.presentacionId) return pres;
     }
     return null;
   }
+
+  /// Disponible de la línea en su unidad (el stock vive en unidad base).
+  double _disponibleDe(LineaProducto l) =>
+      ProductoLineasPanel.disponibleDe(_presentacionDe(l), _stockDelAlmacen[l.productoId] ?? 0);
 
   double get _total => _lineas.fold(0, (acc, l) => acc + l.subtotal);
   bool get _esContado => _tipoPago == 'contado';
@@ -248,18 +202,18 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
 
     // El stock se descuenta al vender: se avisa antes de que falle el backend.
     for (final l in validas) {
-      final u = _unidadDe(l);
-      if (u != null && l.cant > u.disponible) {
+      final disp = _disponibleDe(l);
+      if (l.cant > disp) {
         final nombre = _productoDe(l.productoId)?['nombre'] ?? 'El producto';
         return showAppSnackbar(
           context,
-          '"$nombre" solo tiene ${_num(u.disponible)} disponibles',
+          '"$nombre" solo tiene ${_num(disp)} disponibles',
           type: AppSnackbarType.error,
         );
       }
     }
 
-    final fecha = DateTime.now().toIso8601String().substring(0, 10);
+    final fecha = _fecha.toIso8601String().substring(0, 10);
     final auth = context.read<AuthProvider>();
 
     setState(() => _saving = true);
@@ -357,15 +311,33 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
             AppFormSection(
               title: 'Datos de la venta',
               children: [
-                AppSelect<int>(
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.today_outlined),
+                  title: const Text('Fecha'),
+                  subtitle: Text(_fecha.toIso8601String().substring(0, 10)),
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: _fecha,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2100),
+                    );
+                    if (d != null) setState(() => _fecha = d);
+                  },
+                ),
+                AppSearchSelect<int>(
                   label: _esContado ? 'Cliente (opcional)' : 'Cliente',
+                  hint: _clienteGenerico,
                   icon: Icons.person_outline,
                   value: _clienteId,
                   options: [
                     for (final c in _clientes)
-                      AppSelectOption<int>(
+                      AppSearchOption<int>(
                         c['id'] as int,
-                        c['nombre']?.toString() ?? '',
+                        c['nombre']?.toString() ?? c['razon_social']?.toString() ?? '#${c['id']}',
+                        subtitle: c['numero_documento']?.toString(),
+                        keywords: '${c['numero_documento'] ?? ''}',
                       ),
                   ],
                   onChanged: (v) => setState(() => _clienteId = v),
@@ -403,9 +375,7 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
                     for (final l in _lineas) {
                       l.dispose();
                     }
-                    _lineas
-                      ..clear()
-                      ..add(_Linea());
+                    _lineas.clear();
                   }),
                 ),
                 AppSelect<String>(
@@ -428,14 +398,7 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
             const SizedBox(height: 12),
 
             AppFormSection(
-              title: 'Productos',
-              trailing: TextButton.icon(
-                onPressed: _almacenId == null
-                    ? null
-                    : () => setState(() => _lineas.add(_Linea())),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Agregar'),
-              ),
+              title: 'Buscar producto',
               children: [
                 if (_almacenId == null)
                   const Padding(
@@ -445,16 +408,21 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
                       style: TextStyle(color: AppColors.textMuted),
                     ),
                   )
-                else if (_productosOptions.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text(
-                      'Este almacén no tiene productos con stock.',
-                      style: TextStyle(color: AppColors.textMuted),
-                    ),
-                  )
                 else
-                  for (var i = 0; i < _lineas.length; i++) _lineaCard(i),
+                  ProductoLineasPanel(
+                    // Al cambiar de almacén el panel se reinicia con su stock.
+                    key: ValueKey(_almacenId),
+                    productos: _productos,
+                    stockPorProducto: _stockDelAlmacen,
+                    lineas: _lineas,
+                    priceLabel: 'Precio S/',
+                    // Se vende lo que hay, al precio de venta de la presentación.
+                    soloConStock: true,
+                    mostrarDisponible: true,
+                    stockFilter: false,
+                    precioDe: (pres) => double.tryParse('${pres['precio_venta'] ?? 0}') ?? 0,
+                    onChanged: () => setState(() {}),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -600,128 +568,6 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
       ],
     ),
   );
-
-  Widget _lineaCard(int index) {
-    final l = _lineas[index];
-    final unidades = _unidadesDe(l.productoId);
-    final u = _unidadDe(l);
-    final excede = u != null && l.cant > u.disponible;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Producto ${index + 1}',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                Text(
-                  _money(l.subtotal),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
-                ),
-                if (_lineas.length > 1)
-                  IconButton(
-                    icon: const Icon(
-                      Icons.remove_circle_outline,
-                      color: AppColors.danger,
-                      size: 20,
-                    ),
-                    onPressed: () =>
-                        setState(() => _lineas.removeAt(index).dispose()),
-                  ),
-              ],
-            ),
-            AppSelect<int>(
-              label: 'Producto',
-              value: l.productoId,
-              options: _productosOptions,
-              onChanged: (v) => setState(() {
-                l.productoId = v;
-                final us = _unidadesDe(v);
-                // Con una sola unidad derivada, se elige sola.
-                if (us.length == 1) {
-                  l.presentacionId = us.first.id;
-                  l.precio.text = us.first.precio.toStringAsFixed(2);
-                } else {
-                  l.presentacionId = null;
-                  l.precio.text = '0';
-                }
-              }),
-            ),
-            AppSelect<int>(
-              label: 'Unidad',
-              value: l.presentacionId,
-              options: [
-                for (final x in unidades) AppSelectOption<int>(x.id, x.nombre),
-              ],
-              onChanged: (v) => setState(() {
-                l.presentacionId = v;
-                for (final x in unidades) {
-                  if (x.id == v) l.precio.text = x.precio.toStringAsFixed(2);
-                }
-              }),
-            ),
-            if (u != null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    'Disponible: ${_num(u.disponible)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ),
-              ),
-            Row(
-              children: [
-                Expanded(
-                  child: AppTextField(
-                    controller: l.cantidad,
-                    label: 'Cantidad',
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    onChanged: (_) => setState(() {}),
-                    validator: (_) => excede ? 'Sin stock' : null,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: AppTextField(
-                    controller: l.precio,
-                    label: 'Precio S/',
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ),
-              ],
-            ),
-            if (excede)
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Supera el stock disponible',
-                  style: TextStyle(fontSize: 12, color: AppColors.danger),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _pagoCard(int index) {
     final p = _pagos[index];
