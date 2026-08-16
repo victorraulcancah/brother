@@ -16,6 +16,9 @@ class MovimientoCajaController extends Controller
         'motivo:id,nombre,tipo,es_sistema',
         'cuentaBancaria:id,alias,numero_cuenta',
         'billetera:id,nombre',
+        // Solo la caja de la apertura: cargar la apertura entera (montos,
+        // fechas, estado) por cada movimiento engordaba el JSON sin uso.
+        'apertura:id,caja_id',
         'apertura.caja:id,nombre',
     ];
 

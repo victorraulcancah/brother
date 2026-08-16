@@ -52,11 +52,20 @@ class ApiService {
 
   Future<dynamic> get(String path) async {
     await _loadSavedData();
-    final response = await _client.get(
-      Uri.parse('$_baseUrl$path'),
-      headers: _headers,
-    );
-    return _handleResponse(response);
+    // En el emulador el body de respuestas grandes llega a veces troceado y
+    // el JSON no cierra ("Unexpected end of input" / "Unexpected character"
+    // en posiciones aleatorias). Un reintento lo resuelve casi siempre.
+    for (var intento = 0; ; intento++) {
+      final response = await _client.get(
+        Uri.parse('$_baseUrl$path'),
+        headers: _headers,
+      );
+      try {
+        return _handleResponse(response);
+      } on FormatException {
+        if (intento >= 2) rethrow;
+      }
+    }
   }
 
   Future<Map<String, dynamic>> post(
@@ -97,14 +106,27 @@ class ApiService {
     return result is Map<String, dynamic> ? result : <String, dynamic>{};
   }
 
+  /// Cuerpo decodificado siempre como UTF-8. `response.body` usa el charset
+  /// de la cabecera y, si falta, cae a Latin-1: con tildes y enes en el JSON
+  /// la longitud se desfasa y el parser corta el texto antes del final
+  /// ("Unexpected end of input"). Decodificar los bytes crudos lo evita.
+  String _bodyUtf8(http.Response response) =>
+      utf8.decode(response.bodyBytes, allowMalformed: true);
+
   dynamic _handleResponse(http.Response response) {
+    final body = _bodyUtf8(response);
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.body.isEmpty) return <String, dynamic>{};
-      return jsonDecode(response.body);
+      if (body.trim().isEmpty) return <String, dynamic>{};
+      return jsonDecode(body);
     }
-    final errorBody = response.body.isNotEmpty
-        ? jsonDecode(response.body)
-        : {'error': 'Error ${response.statusCode}'};
+    dynamic errorBody;
+    try {
+      errorBody = body.trim().isNotEmpty
+          ? jsonDecode(body)
+          : {'error': 'Error ${response.statusCode}'};
+    } catch (_) {
+      errorBody = {'error': 'Error ${response.statusCode}'};
+    }
     throw ApiException(
       statusCode: response.statusCode,
       message:

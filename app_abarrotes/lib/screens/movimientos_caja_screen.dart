@@ -30,6 +30,7 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
   late final CrudService _crud;
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -39,12 +40,23 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _items = await _crud.getAll();
-    } catch (_) {}
+    } catch (e) {
+      // Antes se tragaba el error y la lista salia como "vacia".
+      _error = 'No se pudieron cargar los movimientos: $e';
+    }
     if (mounted) setState(() => _loading = false);
   }
+
+  /// Los mapas anidados del JSON no siempre son `Map<String, dynamic>`;
+  /// un cast duro ahi tumba el render de toda la lista.
+  Map<String, dynamic>? _map(dynamic v) =>
+      v is Map ? v.cast<String, dynamic>() : null;
 
   Future<void> _registrar() async {
     final ok = await Navigator.push<bool>(
@@ -65,6 +77,8 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Padding(padding: const EdgeInsets.all(16), child: AppMessage(text: _error!))
           : _items.isEmpty
           ? const Center(child: Text('No hay movimientos de caja'))
           : ListView.builder(
@@ -73,18 +87,18 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
               itemBuilder: (context, index) {
                 final item = _items[index];
                 final esIngreso = item['tipo'] == 'ingreso';
-                final apertura = item['apertura'] as Map<String, dynamic>?;
-                final caja = apertura?['caja'] as Map<String, dynamic>?;
-                final cuenta = item['cuenta_bancaria'] as Map<String, dynamic>?;
-                final billetera = item['billetera'] as Map<String, dynamic>?;
+                final apertura = _map(item['apertura']);
+                final caja = _map(apertura?['caja']);
+                final cuenta = _map(item['cuenta_bancaria']);
+                final billetera = _map(item['billetera']);
                 final metodoTxt = cuenta != null
                     ? 'Transf. · ${cuenta['alias'] ?? cuenta['numero_cuenta'] ?? ''}'
                     : billetera != null
-                    ? (billetera['nombre'] as String? ?? 'Billetera')
+                    ? (billetera['nombre']?.toString() ?? 'Billetera')
                     : 'Efectivo';
-                final motivo = item['motivo'] as Map<String, dynamic>?;
+                final motivo = _map(item['motivo']);
                 return DataCard(
-                  title: '${item['fecha'] ?? ''}',
+                  title: '${item['fecha'] ?? ''}'.split('T').first,
                   rows: [
                     DataCardRow(
                       label: 'Tipo',
@@ -93,8 +107,8 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
                         type: esIngreso ? AppBadgeType.success : AppBadgeType.danger,
                       ),
                     ),
-                    DataCardRow.text('Caja', caja?['nombre'] as String? ?? '—'),
-                    DataCardRow.text('Motivo', motivo?['nombre'] as String? ?? '—'),
+                    DataCardRow.text('Caja', caja?['nombre']?.toString() ?? '—'),
+                    DataCardRow.text('Motivo', motivo?['nombre']?.toString() ?? '—'),
                     DataCardRow.text('Método', metodoTxt),
                     if ((item['numero_operacion'] ?? '').toString().isNotEmpty)
                       DataCardRow.text('N° Operación', '${item['numero_operacion']}'),
