@@ -106,15 +106,34 @@ class _MovimientosCajaScreenState extends State<MovimientosCajaScreen> {
   }
 }
 
-class RegistrarMovimientoCajaScreen extends StatefulWidget {
+/// Pantalla completa: envuelve la hoja del formulario en un scaffold.
+class RegistrarMovimientoCajaScreen extends StatelessWidget {
   final String? tipoInicial;
   const RegistrarMovimientoCajaScreen({super.key, this.tipoInicial});
 
   @override
-  State<RegistrarMovimientoCajaScreen> createState() => _RegistrarMovimientoCajaScreenState();
+  Widget build(BuildContext context) {
+    return AppScaffold(
+      title: 'Registrar Movimiento',
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: RegistrarMovimientoCajaSheet(tipoInicial: tipoInicial),
+      ),
+    );
+  }
 }
 
-class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaScreen> {
+/// Formulario de ingreso/egreso de caja. Sirve dentro de una pantalla o de un
+/// modal: hace Navigator.pop(context, true) al guardar.
+class RegistrarMovimientoCajaSheet extends StatefulWidget {
+  final String? tipoInicial;
+  const RegistrarMovimientoCajaSheet({super.key, this.tipoInicial});
+
+  @override
+  State<RegistrarMovimientoCajaSheet> createState() => _RegistrarMovimientoCajaSheetState();
+}
+
+class _RegistrarMovimientoCajaSheetState extends State<RegistrarMovimientoCajaSheet> {
   final ApiService _api = ApiService();
   bool _loading = true;
   bool _saving = false;
@@ -261,14 +280,15 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
   @override
   Widget build(BuildContext context) {
     final sinCaja = !_esSuperAdmin && _miCajaId == null;
-    return AppScaffold(
-      title: 'Registrar Movimiento',
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   SegmentedButton<String>(
                     segments: const [
@@ -363,8 +383,6 @@ class _RegistrarMovimientoCajaScreenState extends State<RegistrarMovimientoCajaS
                       onPressed: _guardar,
                     ),
                 ],
-              ),
-            ),
-    );
+              );
   }
 }

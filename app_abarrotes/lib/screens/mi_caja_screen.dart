@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
+import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
@@ -54,9 +55,12 @@ class _MiCajaScreenState extends State<MiCajaScreen> {
       ((_data?['movimientos'] as List?) ?? []).cast<Map<String, dynamic>>();
 
   Future<void> _registrar(String tipo) async {
-    final ok = await Navigator.push<bool>(
+    // Modal en vez de pantalla aparte: es un registro rapido y se vuelve
+    // enseguida al resumen de la caja.
+    final ok = await showAppModal<bool>(
       context,
-      MaterialPageRoute(builder: (_) => RegistrarMovimientoCajaScreen(tipoInicial: tipo)),
+      title: tipo == 'ingreso' ? 'Nuevo ingreso' : 'Nuevo gasto',
+      child: RegistrarMovimientoCajaSheet(tipoInicial: tipo),
     );
     if (ok == true) _load();
   }
