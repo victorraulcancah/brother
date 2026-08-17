@@ -107,6 +107,11 @@ class _PdfSheetState extends State<_PdfSheet> {
                 // Clave por formato: al cambiar A4/Ticket vuelve a pedir los bytes.
                 key: ValueKey(_formato),
                 build: (_) => _bytes(),
+                // El preview rasteriza la página a bitmap: el ticket (80mm) es
+                // muy angosto y a DPI bajo se ve borroso al estirarlo. Se sube
+                // el DPI para que la imagen tenga más píxeles (el ticket más,
+                // porque se amplía más). Imprimir/compartir usa el PDF vectorial.
+                dpi: _formato == 'ticket' ? 260 : 160,
                 canChangePageFormat: false,
                 canChangeOrientation: false,
                 canDebug: false,
