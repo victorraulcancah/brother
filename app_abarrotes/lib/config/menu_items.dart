@@ -49,7 +49,6 @@ class AppMenu {
         MenuLink(icon: Icons.inventory_2_outlined, label: 'Productos', route: AppRoutes.productos),
         MenuLink(icon: Icons.category_outlined, label: 'Categorías', route: AppRoutes.categorias),
         MenuLink(icon: Icons.sell_outlined, label: 'Marcas', route: AppRoutes.marcas),
-        MenuLink(icon: Icons.style_outlined, label: 'Sub-marcas', route: AppRoutes.subMarcas),
         MenuLink(icon: Icons.straighten, label: 'Unidades de medida', route: AppRoutes.unidades),
       ],
     ),

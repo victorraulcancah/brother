@@ -293,8 +293,8 @@ export default function ProductoPickerModal({
             {/* Buscador, filtros y marcados quedan fijos mientras se recorre la lista. */}
             <div className="sticky -top-4 z-10 -mx-6 space-y-3 bg-white px-6 pb-4 pt-1">
                 {/* Buscador y rango de stock comparten fila: el texto ocupa la mitad. */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className={stockFilter ? 'sm:col-span-2' : 'sm:col-span-2 lg:col-span-4'}>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <div className={stockFilter ? 'col-span-2' : 'col-span-2 lg:col-span-4'}>
                         <label className="mb-1 block text-xs font-medium text-gray-700">Buscar</label>
                         <div className="relative">
                             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -336,7 +336,7 @@ export default function ProductoPickerModal({
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     <SearchSelect
                         value={filtros.categoria}
                         // Cambiar de categoría invalida la sub-categoría elegida.

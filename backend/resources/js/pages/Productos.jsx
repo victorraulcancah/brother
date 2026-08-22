@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Edit, Package, Plus, PlusCircle, Save, Trash2 } from 'lucide-react';
+import { Edit, Eye, Package, Plus, PlusCircle, Save, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
@@ -51,6 +51,7 @@ export default function Productos() {
     const [saving, setSaving] = useState(false);
 
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [detalle, setDetalle] = useState(null);
     const [deleting, setDeleting] = useState(false);
 
     const [quick, setQuick] = useState(null); // { tipo }
@@ -391,6 +392,14 @@ export default function Productos() {
             label: 'Acciones',
             actions: (row) => (
                 <>
+                    <button
+                        aria-label="Ver detalle"
+                        title="Ver detalle"
+                        onClick={() => setDetalle(row)}
+                        className="rounded-md p-1.5 text-blue-600 transition hover:bg-blue-50 hover:text-blue-700"
+                    >
+                        <Eye className="h-4 w-4" />
+                    </button>
                     <button
                         aria-label="Editar"
                         onClick={() => openEdit(row)}
@@ -845,6 +854,84 @@ export default function Productos() {
                 }
             >
                 <Alert variant="warning">Se eliminarán también sus unidades derivadas.</Alert>
+            </Modal>
+
+            {/* Detalle de solo lectura */}
+            <Modal
+                open={Boolean(detalle)}
+                onClose={() => setDetalle(null)}
+                title={detalle?.nombre ?? 'Detalle del producto'}
+                description={detalle?.codigo ? `Código ${detalle.codigo}` : undefined}
+                size="lg"
+                footer={
+                    <Button variant="secondary" onClick={() => setDetalle(null)}>Cerrar</Button>
+                }
+            >
+                {detalle && (
+                    <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+                            {[
+                                ['Código', detalle.codigo],
+                                ['Cód. barras', detalle.codigo_barras],
+                                ['Marca', detalle.marca?.nombre],
+                                ['Sub-marca', detalle.sub_marca?.nombre],
+                                ['Categoría', detalle.categoria?.nombre],
+                                ['Sub-categoría', detalle.sub_categoria?.nombre],
+                                ['Unidad base', detalle.unidad_medida?.nombre],
+                                ['Precio base', detalle.precio_base != null ? `S/ ${Number(detalle.precio_base).toFixed(2)}` : null],
+                                ['Stock mín.', detalle.stock_minimo],
+                                ['Stock máx.', detalle.stock_maximo],
+                            ].map(([label, valor]) => (
+                                <div key={label}>
+                                    <p className="text-xs uppercase tracking-wide text-warm-500">{label}</p>
+                                    <p className="font-medium text-warm-900">{valor ?? '—'}</p>
+                                </div>
+                            ))}
+                            <div>
+                                <p className="text-xs uppercase tracking-wide text-warm-500">Estado</p>
+                                {detalle.activo ? <Badge variant="green">Activo</Badge> : <Badge variant="red">Inactivo</Badge>}
+                            </div>
+                        </div>
+
+                        {detalle.descripcion && (
+                            <div>
+                                <p className="text-xs uppercase tracking-wide text-warm-500">Descripción</p>
+                                <p className="text-sm text-warm-900">{detalle.descripcion}</p>
+                            </div>
+                        )}
+
+                        <div>
+                            <p className="mb-2 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-warm-500">
+                                <Package className="h-4 w-4 text-primary-600" /> Unidades derivadas
+                            </p>
+                            <div className="overflow-x-auto rounded-lg border border-edge">
+                                <table className="w-full min-w-[420px] text-sm">
+                                    <thead>
+                                        <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                                            <th className="px-3 py-2">Unidad</th>
+                                            <th className="px-3 py-2 text-right">Factor</th>
+                                            <th className="px-3 py-2 text-right">P. compra</th>
+                                            <th className="px-3 py-2 text-right">P. venta</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {(detalle.presentaciones ?? []).length === 0 && (
+                                            <tr><td colSpan={4} className="px-3 py-4 text-center text-warm-500">Sin unidades derivadas</td></tr>
+                                        )}
+                                        {(detalle.presentaciones ?? []).map((pres) => (
+                                            <tr key={pres.id}>
+                                                <td className="px-3 py-2 font-medium text-warm-900">{pres.nombre}</td>
+                                                <td className="px-3 py-2 text-right text-warm-500">{Number(pres.factor_conversion)}</td>
+                                                <td className="px-3 py-2 text-right">S/ {Number(pres.precio_compra ?? 0).toFixed(2)}</td>
+                                                <td className="px-3 py-2 text-right font-semibold text-primary-600">S/ {Number(pres.precio_venta ?? 0).toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </Layout>
     );

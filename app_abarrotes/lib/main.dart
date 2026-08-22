@@ -32,7 +32,6 @@ import 'screens/register_screen.dart';
 import 'screens/roles_screen.dart';
 import 'screens/solicitudes_compra_screen.dart';
 import 'screens/splash_screen.dart';
-import 'screens/submarcas_screen.dart';
 import 'screens/tomas_inventario_screen.dart';
 import 'screens/unidades_screen.dart';
 import 'screens/usuarios_screen.dart';
@@ -66,7 +65,6 @@ class MyApp extends StatelessWidget {
           AppRoutes.productos: (_) => const ProductosScreen(),
           AppRoutes.categorias: (_) => const CategoriasScreen(),
           AppRoutes.marcas: (_) => const MarcasScreen(),
-          AppRoutes.subMarcas: (_) => const SubMarcasScreen(),
           AppRoutes.unidades: (_) => const UnidadesScreen(),
           AppRoutes.proveedores: (_) => const ProveedoresScreen(),
           AppRoutes.ordenesCompra: (_) => const OrdenesCompraScreen(),

@@ -53,7 +53,6 @@ export const navigation = [
             { label: 'Productos', icon: Package, to: '/productos' },
             { label: 'Categorías', icon: Tags, to: '/categorias' },
             { label: 'Marcas', icon: BadgeDollarSign, to: '/marcas' },
-            { label: 'Sub-marcas', icon: BadgeDollarSign, to: '/sub-marcas' },
             { label: 'Unidades de medida', icon: Ruler, to: '/unidades-medida' },
         ],
     },
