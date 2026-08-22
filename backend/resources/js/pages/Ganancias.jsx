@@ -59,11 +59,11 @@ export default function Ganancias() {
     const columns = useMemo(() => {
         const cols = [
             {
-                key: 'rank', label: '#', width: 48, sortable: false,
+                key: 'rank', label: '#', width: 48, sortable: false, mobile: 'prefix',
                 render: (_, i) => <span className="text-warm-400">{i + 1}</span>,
             },
             {
-                key: 'grupo', label: tabActual.col,
+                key: 'grupo', label: tabActual.col, mobile: 'title',
                 render: (r) => (
                     <div className="min-w-0">
                         <p className="truncate font-medium text-warm-900">{r.grupo}</p>

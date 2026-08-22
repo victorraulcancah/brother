@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { Fragment, useId, useMemo, useState } from 'react';
 import {
     ArrowDownRight, ArrowUpRight, ChevronDown, ChevronUp, ChevronsUpDown, Minus, Search,
 } from 'lucide-react';
@@ -388,8 +388,14 @@ export function ShareBar({ value, color = 'bg-green-500' }) {
 
 /**
  * Tabla de reporte con encabezado fijo, orden por columna, búsqueda y totales.
+ * En móvil (< md) se muestra como lista de tarjetas, igual que DataTable.
+ *
  * columns: [{ key, label, align: 'left' | 'right', width, className, sortable,
- *            render(row, index), total(totales), sortValue(row), searchValue(row) }]
+ *            render(row, index), total(totales), sortValue(row), searchValue(row),
+ *            mobile: 'title' | 'prefix' | 'hidden' }]
+ *  - mobile 'title'  → título de la tarjeta (si no hay, la primera columna).
+ *  - mobile 'prefix' → se muestra como insignia delante del título (p. ej. el #).
+ *  - mobile 'hidden' → no se muestra en la tarjeta.
  */
 export function ReportTable({
     columns, rows = [], totales = null, keyField = 'grupo', searchable = true,
@@ -398,6 +404,12 @@ export function ReportTable({
 }) {
     const [q, setQ] = useState('');
     const [sort, setSort] = useState(defaultSort);
+
+    const ordenables = columns.filter((c) => c.sortable !== false);
+    const tituloCol = columns.find((c) => c.mobile === 'title') ?? columns.find((c) => !c.mobile);
+    const prefijoCols = columns.filter((c) => c.mobile === 'prefix');
+    const cuerpoCols = columns.filter((c) => c !== tituloCol && c.mobile !== 'prefix' && c.mobile !== 'hidden');
+    const celda = (c, r, i) => (c.render ? c.render(r, i) : r[c.key]);
 
     const filtradas = useMemo(() => {
         const t = q.trim().toLowerCase();
@@ -424,10 +436,17 @@ export function ReportTable({
     const toggleSort = (key) =>
         setSort((s) => (s?.key === key ? (s.dir === 'desc' ? { key, dir: 'asc' } : null) : { key, dir: 'desc' }));
 
+    const barraEscritorio = searchable || toolbar;
+    const sinFilas = (
+        <p className="px-3 py-10 text-center text-sm text-warm-400">
+            {rows.length ? 'Sin resultados para la búsqueda.' : emptyText}
+        </p>
+    );
+
     return (
         <div>
-            {(searchable || toolbar) && (
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            {(barraEscritorio || ordenables.length > 0) && (
+                <div className={cn('mb-3 flex flex-wrap items-center justify-between gap-3', !barraEscritorio && 'md:hidden')}>
                     {searchable ? (
                         <div className="relative w-full sm:w-72">
                             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -439,13 +458,84 @@ export function ReportTable({
                             />
                         </div>
                     ) : (
-                        <span />
+                        <span className="hidden md:block" />
                     )}
-                    {toolbar}
+                    <div className="flex w-full items-center gap-2 sm:w-auto">
+                        {/* En móvil no hay encabezado clicable: el orden se elige aquí. */}
+                        {ordenables.length > 0 && (
+                            <select
+                                aria-label="Ordenar por"
+                                value={sort ? `${sort.key}:${sort.dir}` : ''}
+                                onChange={(e) => {
+                                    const [key, dir] = e.target.value.split(':');
+                                    setSort(key ? { key, dir } : null);
+                                }}
+                                className="block w-full rounded-md border-0 py-2 pl-3 pr-8 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-primary-600 sm:w-auto md:hidden"
+                            >
+                                <option value="">Orden original</option>
+                                {ordenables.map((c) => (
+                                    <Fragment key={c.key}>
+                                        <option value={`${c.key}:desc`}>{c.label} ↓</option>
+                                        <option value={`${c.key}:asc`}>{c.label} ↑</option>
+                                    </Fragment>
+                                ))}
+                            </select>
+                        )}
+                        {toolbar}
+                    </div>
                 </div>
             )}
+
+            {/* Móvil: tarjetas */}
             <div
-                className={cn('overflow-auto rounded-lg border border-edge transition', loading && 'opacity-50')}
+                className={cn('space-y-3 overflow-y-auto rounded-lg border border-edge bg-gray-50 p-3 transition md:hidden', loading && 'opacity-50')}
+                style={{ maxHeight }}
+            >
+                {ordenadas.length === 0 && sinFilas}
+                {ordenadas.map((r, i) => (
+                    <div key={r[keyField] ?? i} className="rounded-xl border border-edge bg-white p-4 shadow-sm">
+                        <div className="flex items-start gap-2">
+                            {prefijoCols.map((c) => (
+                                <span key={c.key} className="shrink-0 rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-semibold text-warm-500">
+                                    {celda(c, r, i)}
+                                </span>
+                            ))}
+                            <div className="min-w-0 flex-1 text-sm font-semibold text-warm-900">
+                                {tituloCol ? celda(tituloCol, r, i) : null}
+                            </div>
+                        </div>
+                        {cuerpoCols.length > 0 && (
+                            <dl className="mt-2 space-y-1">
+                                {cuerpoCols.map((c) => (
+                                    <div key={c.key} className="flex items-center justify-between gap-3 text-sm">
+                                        <dt className="shrink-0 text-xs text-gray-500">{c.label}</dt>
+                                        <dd className={cn('min-w-0 truncate text-right tabular-nums text-gray-800', c.className)}>
+                                            {celda(c, r, i)}
+                                        </dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        )}
+                    </div>
+                ))}
+                {totales && rows.length > 0 && (
+                    <div className="rounded-xl border border-primary-200 bg-primary-50/60 p-4 shadow-sm">
+                        <div className="text-sm font-bold text-warm-900">Total</div>
+                        <dl className="mt-2 space-y-1">
+                            {cuerpoCols.filter((c) => c.total).map((c) => (
+                                <div key={c.key} className="flex items-center justify-between gap-3 text-sm">
+                                    <dt className="shrink-0 text-xs text-warm-600">{c.label}</dt>
+                                    <dd className="min-w-0 truncate text-right font-bold tabular-nums text-warm-900">{c.total(totales)}</dd>
+                                </div>
+                            ))}
+                        </dl>
+                    </div>
+                )}
+            </div>
+
+            {/* Escritorio / tablet: tabla */}
+            <div
+                className={cn('hidden overflow-auto rounded-lg border border-edge transition md:block', loading && 'opacity-50')}
                 style={{ maxHeight }}
             >
                 <table className="w-full min-w-[720px] text-sm">
@@ -478,9 +568,7 @@ export function ReportTable({
                     <tbody className="divide-y divide-gray-100 bg-white">
                         {ordenadas.length === 0 && (
                             <tr>
-                                <td colSpan={columns.length} className="px-3 py-10 text-center text-warm-400">
-                                    {rows.length ? 'Sin resultados para la búsqueda.' : emptyText}
-                                </td>
+                                <td colSpan={columns.length}>{sinFilas}</td>
                             </tr>
                         )}
                         {ordenadas.map((r, i) => (
@@ -490,7 +578,7 @@ export function ReportTable({
                                         key={c.key}
                                         className={cn('px-3 py-2 text-warm-800', c.align === 'right' && 'text-right tabular-nums', c.className)}
                                     >
-                                        {c.render ? c.render(r, i) : r[c.key]}
+                                        {celda(c, r, i)}
                                     </td>
                                 ))}
                             </tr>
