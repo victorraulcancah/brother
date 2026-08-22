@@ -34,6 +34,7 @@ import {
     Lock,
     BarChart3,
     LineChart,
+    TrendingUp,
 } from 'lucide-react';
 
 export const navigation = [
@@ -97,6 +98,7 @@ export const navigation = [
         label: 'Reportes',
         icon: BarChart3,
         children: [
+            { label: 'Ganancias', icon: TrendingUp, to: '/reportes/ganancias' },
             { label: 'Utilidades', icon: LineChart, to: '/reportes/utilidades' },
         ],
     },

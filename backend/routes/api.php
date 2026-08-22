@@ -55,6 +55,7 @@ Route::middleware('auth:api')->group(function () {
 
     // Reportes
     Route::get('reportes/utilidades', [ReporteController::class, 'utilidades']);
+    Route::get('reportes/ganancias', [ReporteController::class, 'ganancias']);
 
     // Documentos PDF (A4 / ticket). tipo definido en config/pdf.php
     Route::get('pdf/{tipo}/{id}', [PdfController::class, 'show']);

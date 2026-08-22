@@ -39,6 +39,7 @@ import MotivosMovimiento from './pages/MotivosMovimiento';
 import CuentasPorCobrar from './pages/CuentasPorCobrar';
 import CuentasPorPagar from './pages/CuentasPorPagar';
 import Utilidades from './pages/Utilidades';
+import Ganancias from './pages/Ganancias';
 import EnConstruccion from './pages/EnConstruccion';
 
 const routes = [
@@ -80,6 +81,7 @@ const routes = [
     { path: '/cuentas-por-cobrar', element: <CuentasPorCobrar /> },
     { path: '/cuentas-por-pagar', element: <CuentasPorPagar /> },
     { path: '/reportes/utilidades', element: <Utilidades /> },
+    { path: '/reportes/ganancias', element: <Ganancias /> },
 ];
 
 createRoot(document.getElementById('root')).render(
