@@ -72,9 +72,14 @@ class ReporteController extends Controller
                 'grupo' => $r->grupo,
                 'ventas' => $vtas,
                 'costo' => $costo,
+                // Ganancia = lo que se gana en la venta (ventas − costo), antes de gastos.
+                'ganancia' => $bruta,
                 'utilidad_bruta' => $bruta,
                 'gastos' => $gastos,
+                // Utilidad = ganancia − gastos operativos (lo que realmente queda).
                 'utilidad_neta' => $neta,
+                // % de ganancia (marcado sobre el costo) y margen (sobre ventas).
+                'margen_ganancia' => $costo > 0 ? round($bruta / $costo * 100, 1) : 0,
                 'margen' => $vtas > 0 ? round($neta / $vtas * 100, 1) : 0,
             ];
         });
@@ -87,10 +92,12 @@ class ReporteController extends Controller
         $tot = [
             'ventas' => round($filas->sum('ventas'), 2),
             'costo' => round($filas->sum('costo'), 2),
+            'ganancia' => round($filas->sum('ganancia'), 2),
             'utilidad_bruta' => round($filas->sum('utilidad_bruta'), 2),
             'gastos' => round($filas->sum('gastos'), 2),
             'utilidad_neta' => round($filas->sum('utilidad_neta'), 2),
         ];
+        $tot['margen_ganancia'] = $tot['costo'] > 0 ? round($tot['ganancia'] / $tot['costo'] * 100, 1) : 0;
         $tot['margen'] = $tot['ventas'] > 0 ? round($tot['utilidad_neta'] / $tot['ventas'] * 100, 1) : 0;
 
         return response()->json([

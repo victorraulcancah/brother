@@ -226,6 +226,8 @@ export default function Compras() {
                 searchPlaceholder="Buscar compras..."
                 onRowClick={(row) => setSeleccionada(row)}
                 rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
+                height="34vh"
+                dense
             />
 
             {/* Detalle de la compra seleccionada */}
@@ -238,20 +240,21 @@ export default function Compras() {
                         {detalles.length} {detalles.length === 1 ? 'producto' : 'productos'}
                     </span>
                 </div>
-                <div className="overflow-x-auto">
+                {/* Alto fijo: el detalle siempre ocupa lo mismo, haya 1 o 20 productos. */}
+                <div className="overflow-auto" style={{ height: '30vh' }}>
                     <table className="w-full min-w-[900px] text-sm">
-                        <thead>
+                        <thead className="sticky top-0 z-10">
                             <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
-                                <th className="w-12 px-3 py-2.5 text-center">#</th>
-                                <th className="w-28 px-3 py-2.5">Código</th>
-                                <th className="px-3 py-2.5">Producto</th>
-                                <th className="w-32 px-3 py-2.5">Marca</th>
-                                <th className="w-28 px-3 py-2.5">Unidad</th>
-                                <th className="w-20 px-3 py-2.5 text-right">Cant.</th>
-                                <th className="w-24 px-3 py-2.5 text-right">Costo</th>
-                                <th className="w-28 px-3 py-2.5 text-right">Subtotal</th>
-                                <th className="w-24 px-3 py-2.5 text-right" title="Cantidad recepcionada">Recib.</th>
-                                <th className="w-24 px-3 py-2.5 text-right">Pend.</th>
+                                <th className="w-12 px-3 py-1.5 text-center">#</th>
+                                <th className="w-28 px-3 py-1.5">Código</th>
+                                <th className="px-3 py-1.5">Producto</th>
+                                <th className="w-32 px-3 py-1.5">Marca</th>
+                                <th className="w-28 px-3 py-1.5">Unidad</th>
+                                <th className="w-20 px-3 py-1.5 text-right">Cant.</th>
+                                <th className="w-24 px-3 py-1.5 text-right">Costo</th>
+                                <th className="w-28 px-3 py-1.5 text-right">Subtotal</th>
+                                <th className="w-24 px-3 py-1.5 text-right" title="Cantidad recepcionada">Recib.</th>
+                                <th className="w-24 px-3 py-1.5 text-right">Pend.</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -269,17 +272,17 @@ export default function Compras() {
                                 const producto = d.presentacion?.producto;
                                 return (
                                     <tr key={d.id}>
-                                        <td className="px-3 py-2 text-center text-warm-500">{i + 1}</td>
-                                        <td className="px-3 py-2 text-warm-500">{producto?.codigo ?? '—'}</td>
-                                        <td className="px-3 py-2 font-semibold text-warm-900">{producto?.nombre ?? '—'}</td>
-                                        <td className="px-3 py-2 text-warm-500">{producto?.marca?.nombre ?? '—'}</td>
-                                        <td className="px-3 py-2 text-warm-500">{d.presentacion?.nombre ?? '—'}</td>
-                                        <td className="px-3 py-2 text-right text-warm-900">{num(d.cantidad)}</td>
-                                        <td className="px-3 py-2 text-right text-warm-900">{money(d.costo_unitario)}</td>
-                                        <td className="px-3 py-2 text-right font-semibold text-primary-600">{money(d.subtotal)}</td>
-                                        <td className="px-3 py-2 text-right text-green-600">{num(d.recibido)}</td>
+                                        <td className="px-3 py-1.5 text-center text-warm-500">{i + 1}</td>
+                                        <td className="px-3 py-1.5 text-warm-500">{producto?.codigo ?? '—'}</td>
+                                        <td className="px-3 py-1.5 font-semibold text-warm-900">{producto?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-1.5 text-warm-500">{producto?.marca?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-1.5 text-warm-500">{d.presentacion?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-1.5 text-right text-warm-900">{num(d.cantidad)}</td>
+                                        <td className="px-3 py-1.5 text-right text-warm-900">{money(d.costo_unitario)}</td>
+                                        <td className="px-3 py-1.5 text-right font-semibold text-primary-600">{money(d.subtotal)}</td>
+                                        <td className="px-3 py-1.5 text-right text-green-600">{num(d.recibido)}</td>
                                         <td
-                                            className={`px-3 py-2 text-right font-medium ${
+                                            className={`px-3 py-1.5 text-right font-medium ${
                                                 Number(d.pendiente) > 0 ? 'text-amber-600' : 'text-warm-500'
                                             }`}
                                         >

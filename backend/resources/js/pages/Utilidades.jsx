@@ -65,9 +65,9 @@ export default function Utilidades() {
     );
 
     const exportCsv = () => {
-        const headers = ['Grupo', 'Ventas', 'Costo', 'Utilidad bruta', 'Gastos', 'Utilidad neta', 'Margen %'];
+        const headers = ['Grupo', 'Ventas', 'Costo', 'Ganancia', '% Ganancia', 'Gastos', 'Utilidad neta', 'Margen %'];
         const rows = filas.map((f) => [
-            etiquetaGrupo(f.grupo, agrupar), f.ventas, f.costo, f.utilidad_bruta, f.gastos, f.utilidad_neta, f.margen,
+            etiquetaGrupo(f.grupo, agrupar), f.ventas, f.costo, f.ganancia, f.margen_ganancia, f.gastos, f.utilidad_neta, f.margen,
         ]);
         const csv = [headers, ...rows].map((r) => r.join(';')).join('\n');
         const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -120,11 +120,12 @@ export default function Utilidades() {
                 </div>
             ) : (
                 <>
-                    {/* Totales */}
-                    <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+                    {/* Totales. Ganancia = Ventas − Costo; Utilidad = Ganancia − Gastos. */}
+                    <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-6">
                         <TotalCard label="Ventas" value={money(tot.ventas)} />
                         <TotalCard label="Costo" value={money(tot.costo)} accent="text-amber-600" />
-                        <TotalCard label="Utilidad bruta" value={money(tot.utilidad_bruta)} accent="text-blue-600" />
+                        <TotalCard label="Ganancia" value={money(tot.ganancia)} accent="text-blue-600" />
+                        <TotalCard label="% Ganancia" value={`${tot.margen_ganancia ?? 0}%`} accent="text-blue-600" />
                         <TotalCard label="Gastos" value={money(tot.gastos)} accent="text-red-600" />
                         <TotalCard label="Utilidad neta" value={money(tot.utilidad_neta)} accent="text-green-600" />
                     </div>
@@ -164,22 +165,24 @@ export default function Utilidades() {
                                         <th className="px-3 py-2.5">{agrupar === 'mes' ? 'Mes' : agrupar === 'producto' ? 'Producto' : 'Categoría'}</th>
                                         <th className="px-3 py-2.5 text-right">Ventas</th>
                                         <th className="px-3 py-2.5 text-right">Costo</th>
-                                        <th className="px-3 py-2.5 text-right">Util. bruta</th>
+                                        <th className="px-3 py-2.5 text-right">Ganancia</th>
+                                        <th className="px-3 py-2.5 text-right">% Gan.</th>
                                         {agrupar === 'mes' && <th className="px-3 py-2.5 text-right">Gastos</th>}
-                                        <th className="px-3 py-2.5 text-right">Util. neta</th>
+                                        <th className="px-3 py-2.5 text-right">Utilidad</th>
                                         <th className="px-3 py-2.5 text-right">Margen</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {filas.length === 0 && (
-                                        <tr><td colSpan={7} className="px-3 py-10 text-center text-warm-400">Sin datos en el rango.</td></tr>
+                                        <tr><td colSpan={8} className="px-3 py-10 text-center text-warm-400">Sin datos en el rango.</td></tr>
                                     )}
                                     {filas.map((f) => (
                                         <tr key={f.grupo} className="hover:bg-gray-50">
                                             <td className="px-3 py-2 font-medium text-warm-900">{etiquetaGrupo(f.grupo, agrupar)}</td>
                                             <td className="px-3 py-2 text-right">{money(f.ventas)}</td>
                                             <td className="px-3 py-2 text-right text-amber-600">{money(f.costo)}</td>
-                                            <td className="px-3 py-2 text-right text-blue-600">{money(f.utilidad_bruta)}</td>
+                                            <td className="px-3 py-2 text-right text-blue-600">{money(f.ganancia)}</td>
+                                            <td className="px-3 py-2 text-right text-blue-600">{f.margen_ganancia}%</td>
                                             {agrupar === 'mes' && <td className="px-3 py-2 text-right text-red-600">{money(f.gastos)}</td>}
                                             <td className="px-3 py-2 text-right font-semibold text-green-600">{money(f.utilidad_neta)}</td>
                                             <td className="px-3 py-2 text-right">{f.margen}%</td>
@@ -192,7 +195,8 @@ export default function Utilidades() {
                                             <td className="px-3 py-2.5">Total</td>
                                             <td className="px-3 py-2.5 text-right">{money(tot.ventas)}</td>
                                             <td className="px-3 py-2.5 text-right">{money(tot.costo)}</td>
-                                            <td className="px-3 py-2.5 text-right">{money(tot.utilidad_bruta)}</td>
+                                            <td className="px-3 py-2.5 text-right">{money(tot.ganancia)}</td>
+                                            <td className="px-3 py-2.5 text-right">{tot.margen_ganancia}%</td>
                                             {agrupar === 'mes' && <td className="px-3 py-2.5 text-right">{money(tot.gastos)}</td>}
                                             <td className="px-3 py-2.5 text-right text-green-700">{money(tot.utilidad_neta)}</td>
                                             <td className="px-3 py-2.5 text-right">{tot.margen}%</td>

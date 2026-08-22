@@ -66,6 +66,8 @@ export default function DataTable({
     maxHeight = '60vh',
     /** Alto fijo: la tabla lo mantiene aunque haya pocas filas. */
     height = null,
+    /** Filas más bajas (menos padding vertical). */
+    dense = false,
 }) {
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search, 300);
@@ -272,7 +274,8 @@ export default function DataTable({
                                                     key={col.key}
                                                     scope="col"
                                                     className={cn(
-                                                        'px-4 py-3 text-xs font-semibold uppercase tracking-wide',
+                                                        'px-4 text-xs font-semibold uppercase tracking-wide',
+                                                        dense ? 'py-2' : 'py-3',
                                                         col.align === 'right' && 'text-right',
                                                         col.headerClassName,
                                                     )}
@@ -324,7 +327,8 @@ export default function DataTable({
                                                         className={cn(
                                                             // overflow-hidden: con table-fixed, un contenido largo
                                                             // se montaba sobre la columna siguiente.
-                                                            'overflow-hidden px-4 py-3 align-middle text-gray-700',
+                                                            'overflow-hidden px-4 align-middle text-gray-700',
+                                                            dense ? 'py-2' : 'py-3',
                                                             col.align === 'right' && 'text-right',
                                                         )}
                                                     >

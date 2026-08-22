@@ -143,10 +143,12 @@ class _UtilidadesScreenState extends State<UtilidadesScreen> {
   }
 
   Widget _totales() {
+    // Ganancia = Ventas − Costo; Utilidad = Ganancia − Gastos.
     final items = [
       ('Ventas', _money(_tot['ventas']), AppColors.textStrong),
       ('Costo', _money(_tot['costo']), AppColors.warning),
-      ('Util. bruta', _money(_tot['utilidad_bruta']), _n(_tot['utilidad_bruta']) < 0 ? AppColors.danger : AppColors.info),
+      ('Ganancia', _money(_tot['ganancia']), _n(_tot['ganancia']) < 0 ? AppColors.danger : AppColors.info),
+      ('% Ganancia', '${_tot['margen_ganancia'] ?? 0}%', _n(_tot['margen_ganancia']) < 0 ? AppColors.danger : AppColors.info),
       ('Gastos', _money(_tot['gastos']), AppColors.danger),
       ('Utilidad neta', _money(_tot['utilidad_neta']), _n(_tot['utilidad_neta']) < 0 ? AppColors.danger : AppColors.success),
       ('Margen', '${_tot['margen'] ?? 0}%', _n(_tot['margen']) < 0 ? AppColors.danger : AppColors.primary),
@@ -348,7 +350,7 @@ class _UtilidadesScreenState extends State<UtilidadesScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Ventas ${_money(f['ventas'])} · Costo ${_money(f['costo'])}'
+                    'Ventas ${_money(f['ventas'])} · Costo ${_money(f['costo'])} · Ganancia ${_money(f['ganancia'])}'
                     '${_agrupar == 'mes' ? ' · Gastos ${_money(f['gastos'])}' : ''}',
                     style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                   ),
