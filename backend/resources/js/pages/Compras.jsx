@@ -115,9 +115,9 @@ export default function Compras() {
             key: 'proveedor',
             label: 'Proveedor',
             render: (row) => (
-                <span className="inline-flex items-center gap-2 font-medium text-warm-900">
-                    <ShoppingBag className="h-4 w-4 text-primary-600" />
-                    {row.proveedor?.nombre ?? '—'}
+                <span className="flex items-center gap-2 font-medium text-warm-900">
+                    <ShoppingBag className="h-4 w-4 shrink-0 text-primary-600" />
+                    <span className="truncate">{row.proveedor?.nombre ?? '—'}</span>
                 </span>
             ),
         },
@@ -148,9 +148,9 @@ export default function Compras() {
             render: (row) => {
                 const info = estadoCompra[row.estado] ?? { label: row.estado ?? '—', variant: 'gray' };
                 return (
-                    <div className="flex flex-wrap items-center gap-1">
+                    <div className="flex items-center gap-1 whitespace-nowrap">
                         <Badge variant={info.variant}>{info.label}</Badge>
-                        {row.finalizado && <Badge variant="blue">Finalizada</Badge>}
+                        {row.finalizado && <Badge variant="blue">Final.</Badge>}
                     </div>
                 );
             },
