@@ -272,15 +272,15 @@ export default function Compras() {
                                 const producto = d.presentacion?.producto;
                                 return (
                                     <tr key={d.id}>
-                                        <td className="px-3 py-1.5 text-center text-warm-500">{i + 1}</td>
-                                        <td className="px-3 py-1.5 text-warm-500">{producto?.codigo ?? '—'}</td>
-                                        <td className="px-3 py-1.5 font-semibold text-warm-900">{producto?.nombre ?? '—'}</td>
-                                        <td className="px-3 py-1.5 text-warm-500">{producto?.marca?.nombre ?? '—'}</td>
-                                        <td className="px-3 py-1.5 text-warm-500">{d.presentacion?.nombre ?? '—'}</td>
-                                        <td className="px-3 py-1.5 text-right text-warm-900">{num(d.cantidad)}</td>
-                                        <td className="px-3 py-1.5 text-right text-warm-900">{money(d.costo_unitario)}</td>
-                                        <td className="px-3 py-1.5 text-right font-semibold text-primary-600">{money(d.subtotal)}</td>
-                                        <td className="px-3 py-1.5 text-right text-green-600">{num(d.recibido)}</td>
+                                        <td className="px-3 py-2 text-center text-warm-500">{i + 1}</td>
+                                        <td className="px-3 py-2 text-warm-500">{producto?.codigo ?? '—'}</td>
+                                        <td className="px-3 py-2 font-semibold text-warm-900">{producto?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2 text-warm-500">{producto?.marca?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2 text-warm-500">{d.presentacion?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2 text-right text-warm-900">{num(d.cantidad)}</td>
+                                        <td className="px-3 py-2 text-right text-warm-900">{money(d.costo_unitario)}</td>
+                                        <td className="px-3 py-2 text-right font-semibold text-primary-600">{money(d.subtotal)}</td>
+                                        <td className="px-3 py-2 text-right text-green-600">{num(d.recibido)}</td>
                                         <td
                                             className={`px-3 py-1.5 text-right font-medium ${
                                                 Number(d.pendiente) > 0 ? 'text-amber-600' : 'text-warm-500'

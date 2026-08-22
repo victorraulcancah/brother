@@ -187,6 +187,8 @@ export default function RecepcionesCompra() {
                 searchPlaceholder="Buscar recepciones..."
                 onRowClick={(row) => setSeleccionada(row)}
                 rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
+                height="34vh"
+                dense
             />
 
             {/* Detalle de la recepción seleccionada */}
@@ -199,21 +201,21 @@ export default function RecepcionesCompra() {
                         {detalles.length} {detalles.length === 1 ? 'línea' : 'líneas'}
                     </span>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-auto" style={{ height: '30vh' }}>
                     <table className="w-full min-w-[1080px] text-sm">
-                        <thead>
+                        <thead className="sticky top-0 z-10">
                             <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
-                                <th className="px-3 py-2.5 text-center">#</th>
-                                <th className="px-3 py-2.5">Cod. Producto</th>
-                                <th className="px-3 py-2.5">Producto</th>
-                                <th className="px-3 py-2.5">Marca</th>
-                                <th className="px-3 py-2.5">Unidad Derivada</th>
-                                <th className="px-3 py-2.5 text-right">Cant.</th>
-                                <th className="px-3 py-2.5 text-right">Pedida</th>
-                                <th className="px-3 py-2.5 text-right" title="Cantidad total recepcionada">Total Recep.</th>
-                                <th className="px-3 py-2.5 text-right" title="Cantidad finalizada">Finaliz.</th>
-                                <th className="px-3 py-2.5 text-right">Stock Ant.</th>
-                                <th className="px-3 py-2.5 text-right">Stock Nuevo</th>
+                                <th className="px-3 py-1.5 text-center">#</th>
+                                <th className="px-3 py-1.5">Cod. Producto</th>
+                                <th className="px-3 py-1.5">Producto</th>
+                                <th className="px-3 py-1.5">Marca</th>
+                                <th className="px-3 py-1.5">Unidad Derivada</th>
+                                <th className="px-3 py-1.5 text-right">Cant.</th>
+                                <th className="px-3 py-1.5 text-right">Pedida</th>
+                                <th className="px-3 py-1.5 text-right" title="Cantidad total recepcionada">Total Recep.</th>
+                                <th className="px-3 py-1.5 text-right" title="Cantidad finalizada">Finaliz.</th>
+                                <th className="px-3 py-1.5 text-right">Stock Ant.</th>
+                                <th className="px-3 py-1.5 text-right">Stock Nuevo</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">

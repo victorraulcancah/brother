@@ -217,6 +217,8 @@ export default function OrdenesCompra() {
                 filterCount={filterCount}
                 onRowClick={(row) => setSeleccionada(row)}
                 rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
+                height="34vh"
+                dense
             />
 
             {/* Detalle de la orden seleccionada */}
@@ -237,18 +239,18 @@ export default function OrdenesCompra() {
                         </span>
                     )}
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-auto" style={{ height: '30vh' }}>
                     <table className="w-full min-w-[820px] text-sm">
-                        <thead>
+                        <thead className="sticky top-0 z-10">
                             <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
-                                <th className="w-12 px-3 py-2.5 text-center">#</th>
-                                <th className="w-28 px-3 py-2.5">Código</th>
-                                <th className="px-3 py-2.5">Producto</th>
-                                <th className="w-32 px-3 py-2.5">Marca</th>
-                                <th className="w-32 px-3 py-2.5">Unidad</th>
-                                <th className="w-24 px-3 py-2.5 text-right">Cant.</th>
-                                <th className="w-28 px-3 py-2.5 text-right">P. Unit.</th>
-                                <th className="w-32 px-3 py-2.5 text-right">Subtotal</th>
+                                <th className="w-12 px-3 py-1.5 text-center">#</th>
+                                <th className="w-28 px-3 py-1.5">Código</th>
+                                <th className="px-3 py-1.5">Producto</th>
+                                <th className="w-32 px-3 py-1.5">Marca</th>
+                                <th className="w-32 px-3 py-1.5">Unidad</th>
+                                <th className="w-24 px-3 py-1.5 text-right">Cant.</th>
+                                <th className="w-28 px-3 py-1.5 text-right">P. Unit.</th>
+                                <th className="w-32 px-3 py-1.5 text-right">Subtotal</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -279,8 +281,8 @@ export default function OrdenesCompra() {
                         {(seleccionada?.detalles ?? []).length > 0 && (
                             <tfoot>
                                 <tr className="border-t border-edge bg-gray-50">
-                                    <td colSpan={7} className="px-3 py-2.5 text-right text-xs font-bold uppercase tracking-wide text-primary-700">Total</td>
-                                    <td className="px-3 py-2.5 text-right text-base font-extrabold text-warm-900">
+                                    <td colSpan={7} className="px-3 py-1.5 text-right text-xs font-bold uppercase tracking-wide text-primary-700">Total</td>
+                                    <td className="px-3 py-1.5 text-right text-base font-extrabold text-warm-900">
                                         {money(seleccionada.detalles.reduce((s, d) => s + (Number(d.cantidad) || 0) * (Number(d.precio_unitario) || 0), 0))}
                                     </td>
                                 </tr>
