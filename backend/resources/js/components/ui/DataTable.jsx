@@ -121,6 +121,21 @@ export default function DataTable({
         document.body.removeChild(el);
     }, []);
 
+    // Solo se reserva el hueco de la barra cuando el cuerpo realmente tiene
+    // scroll; si no, quedaba una franja blanca a la derecha.
+    const bodyRef = useRef(null);
+    const [hasScroll, setHasScroll] = useState(false);
+    useEffect(() => {
+        const el = bodyRef.current;
+        if (!el) return;
+        const check = () => setHasScroll(el.scrollHeight > el.clientHeight + 1);
+        check();
+        const ro = new ResizeObserver(check);
+        ro.observe(el);
+        return () => ro.disconnect();
+    });
+    const gutter = hasScroll ? scrollbarW : 0;
+
     // Ancho por columna (para alinear encabezado y cuerpo con table-fixed).
     const colWidth = (col) => col.width ?? (col.type === 'actions' ? '120px' : col.key === 'id' ? '72px' : undefined);
 
@@ -260,7 +275,7 @@ export default function DataTable({
                           <div style={{ minWidth: minTableWidth }}>
                             {/* Encabezado fijo (fuera del scroll vertical). Reserva el hueco de la
                                 barra y lo pinta del mismo color para que no quede un espacio en blanco. */}
-                            <div className="bg-primary-600" style={{ paddingRight: scrollbarW }}>
+                            <div className="bg-primary-600" style={{ paddingRight: gutter }}>
                                 <table className="w-full table-fixed text-left text-sm">
                                     <colgroup>
                                         {visibleColumns.map((col) => (
@@ -289,8 +304,9 @@ export default function DataTable({
                             </div>
                             {/* Cuerpo desplazable: la barra de scroll aparece solo aquí. */}
                             <div
+                                ref={bodyRef}
                                 className="overflow-y-auto"
-                                style={{ height: height ?? undefined, maxHeight: height ?? maxHeight, scrollbarGutter: 'stable' }}
+                                style={{ height: height ?? undefined, maxHeight: height ?? maxHeight }}
                             >
                                 <table className="w-full table-fixed text-left text-sm">
                                     <colgroup>
