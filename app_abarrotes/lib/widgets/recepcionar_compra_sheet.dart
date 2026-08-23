@@ -8,6 +8,7 @@ import 'app_form_section.dart';
 import 'app_message.dart';
 import 'app_select.dart';
 import 'app_text_field.dart';
+import '../utils/almacenes.dart';
 
 /// Registra una recepción contra una compra. Admite recepción parcial:
 /// cada línea trae su pendiente y se recibe lo que realmente llegó.
@@ -183,13 +184,7 @@ class _RecepcionarCompraSheetState extends State<RecepcionarCompraSheet> {
                 label: 'Almacén receptor',
                 icon: Icons.warehouse_outlined,
                 value: _almacenId,
-                options: [
-                  for (final a in _almacenes)
-                    AppSelectOption<int>(
-                      a['id'] as int,
-                      a['nombre']?.toString() ?? '',
-                    ),
-                ],
+                options: opcionesAlmacen(_almacenes, _almacenId),
                 onChanged: (v) => setState(() => _almacenId = v),
               ),
               AppTextField(

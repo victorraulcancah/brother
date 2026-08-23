@@ -18,6 +18,7 @@ import '../widgets/app_text_field.dart';
 import '../widgets/app_toggle.dart';
 import '../widgets/data_card.dart';
 import '../widgets/pdf_viewer_sheet.dart';
+import '../utils/almacenes.dart';
 
 String _money(dynamic v) =>
     'S/ ${(double.tryParse('${v ?? 0}') ?? 0).toStringAsFixed(2)}';
@@ -805,13 +806,7 @@ class _AjusteFormSheetState extends State<_AjusteFormSheet> {
                 label: 'Almacén',
                 icon: Icons.warehouse_outlined,
                 value: _almacenId,
-                options: [
-                  for (final a in widget.almacenes)
-                    AppSelectOption<int>(
-                      a['id'] as int,
-                      a['nombre']?.toString() ?? '',
-                    ),
-                ],
+                options: opcionesAlmacen(widget.almacenes, _almacenId),
                 // Cambiar de almacén invalida los productos ya elegidos.
                 onChanged: (v) => setState(() {
                   _almacenId = v;

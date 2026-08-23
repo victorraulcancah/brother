@@ -74,6 +74,34 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
   String? _filtroTipo;
   String? _filtroAlmacen;
 
+  /// Unidad elegida en cada fila para expresar la cantidad: { id: nombre }.
+  final Map<int, String> _unidadPorFila = {};
+
+  /// Formatos activos del producto de esa fila, del más chico al más grande.
+  List<Map<String, dynamic>> _formatosDe(Map<String, dynamic> m) {
+    final lista = (((m['producto'] as Map?)?['presentaciones'] as List?) ?? [])
+        .whereType<Map>()
+        .where((p) => p['activo'] != false && '${p['nombre'] ?? ''}'.trim().isNotEmpty)
+        .map((p) => Map<String, dynamic>.from(p))
+        .toList();
+    lista.sort((a, b) => (double.tryParse('${a['factor_conversion']}') ?? 1)
+        .compareTo(double.tryParse('${b['factor_conversion']}') ?? 1));
+    return lista;
+  }
+
+  /// Cuántas unidades base vale la unidad elegida: una salida de 100 kg son
+  /// 2 sacos de 50. Sin elección vale 1 y se muestra en unidad base.
+  double _factorDeFila(Map<String, dynamic> m) {
+    final elegida = _unidadPorFila[m['id']];
+    if (elegida == null) return 1;
+    for (final f in _formatosDe(m)) {
+      if ('${f['nombre']}'.trim() == elegida) {
+        return double.tryParse('${f['factor_conversion']}') ?? 1;
+      }
+    }
+    return 1;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -189,10 +217,13 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
                             final cantidad =
                                 (double.tryParse('${m['cantidad'] ?? 0}') ?? 0)
                                     .abs();
-                            final unidad =
-                                (producto?['unidad_base']
-                                        as Map?)?['abreviatura'] ??
-                                '';
+                            final base =
+                                (producto?['unidad_base'] as Map?)?['nombre']
+                                        ?.toString() ??
+                                    'Unidad base';
+                            final formatos = _formatosDe(m);
+                            final factor = _factorDeFila(m);
+                            final unidad = _unidadPorFila[m['id']] ?? base;
                             final doc = m['documento_referencia_tipo'];
 
                             return DataCard(
@@ -234,10 +265,41 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
                                           ?.toString() ??
                                       '—',
                                 ),
+                                if (formatos.isNotEmpty)
+                                  DataCardRow(
+                                    label: 'Ver en',
+                                    value: DropdownButton<String>(
+                                      value: _unidadPorFila[m['id']],
+                                      hint: Text('$base (base)',
+                                          style: const TextStyle(fontSize: 13)),
+                                      isDense: true,
+                                      underline: const SizedBox.shrink(),
+                                      style: const TextStyle(
+                                          fontSize: 13, color: AppColors.textStrong),
+                                      items: [
+                                        DropdownMenuItem<String>(
+                                          value: null,
+                                          child: Text('$base (base)'),
+                                        ),
+                                        for (final f in formatos)
+                                          DropdownMenuItem<String>(
+                                            value: '${f['nombre']}'.trim(),
+                                            child: Text('${f['nombre']}'.trim()),
+                                          ),
+                                      ],
+                                      onChanged: (v) => setState(() {
+                                        if (v == null) {
+                                          _unidadPorFila.remove(m['id']);
+                                        } else {
+                                          _unidadPorFila[m['id']] = v;
+                                        }
+                                      }),
+                                    ),
+                                  ),
                                 DataCardRow(
                                   label: esEntrada ? 'Ingreso' : 'Salida',
                                   value: Text(
-                                    '${esEntrada ? '+' : '−'} ${_num(cantidad)} $unidad',
+                                    '${esEntrada ? '+' : '−'} ${_num(cantidad / factor)} $unidad',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                       color: esEntrada
@@ -248,7 +310,9 @@ class _MovimientosScreenState extends State<MovimientosScreen> {
                                 ),
                                 DataCardRow.text(
                                   'Stock ant. → act.',
-                                  '${_num(m['stock_anterior'])} → ${_num(m['saldo_stock'])}',
+                                  '${_num((double.tryParse('${m['stock_anterior'] ?? 0}') ?? 0) / factor)}'
+                                  ' → '
+                                  '${_num((double.tryParse('${m['saldo_stock'] ?? 0}') ?? 0) / factor)}',
                                 ),
                                 DataCardRow.text(
                                   'Costo ant. → act.',

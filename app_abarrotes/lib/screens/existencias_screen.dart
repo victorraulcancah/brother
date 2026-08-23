@@ -45,6 +45,9 @@ class _ExistenciasScreenState extends State<ExistenciasScreen> {
   String _busqueda = '';
   String? _filtroStock;
 
+  /// Unidad elegida en cada fila para expresar su stock: { id de la fila: nombre }.
+  final Map<int, String> _unidadPorFila = {};
+
   @override
   void initState() {
     super.initState();
@@ -137,9 +140,35 @@ class _ExistenciasScreenState extends State<ExistenciasScreen> {
     );
   }
 
+  /// Formatos activos del producto de esa fila, del más chico al más grande.
+  List<Map<String, dynamic>> _formatosDe(Map<String, dynamic> e) {
+    final lista = (((e['producto'] as Map?)?['presentaciones'] as List?) ?? [])
+        .whereType<Map>()
+        .where((p) => p['activo'] != false && '${p['nombre'] ?? ''}'.trim().isNotEmpty)
+        .map((p) => Map<String, dynamic>.from(p))
+        .toList();
+    lista.sort((a, b) => (double.tryParse('${a['factor_conversion']}') ?? 1)
+        .compareTo(double.tryParse('${b['factor_conversion']}') ?? 1));
+    return lista;
+  }
+
+  /// Cuántas unidades base vale la unidad elegida en esa fila (1 = base).
+  double _factorDeFila(Map<String, dynamic> e) {
+    final elegida = _unidadPorFila[e['id']];
+    if (elegida == null) return 1;
+    for (final f in _formatosDe(e)) {
+      if ('${f['nombre']}'.trim() == elegida) {
+        return double.tryParse('${f['factor_conversion']}') ?? 1;
+      }
+    }
+    return 1;
+  }
+
   AppBadge _badgeStock(Map<String, dynamic> e) {
     final i = _info(e);
-    final texto = _num(i.stock);
+    // El semáforo se decide con los valores base (así están los mínimos);
+    // lo que cambia es cómo se muestra la cantidad.
+    final texto = _num(i.stock / _factorDeFila(e));
     if (i.stock <= 0) return AppBadge(texto, type: AppBadgeType.danger);
     if (i.minimo > 0 && i.stock <= i.minimo) {
       return AppBadge(texto, type: AppBadgeType.warning);
@@ -325,9 +354,12 @@ class _ExistenciasScreenState extends State<ExistenciasScreen> {
                           itemBuilder: (context, index) {
                             final e = _visibles[index];
                             final p = e['producto'] as Map?;
-                            final unidad =
-                                (p?['unidad_base'] as Map?)?['abreviatura'] ??
-                                '';
+                            final base =
+                                (p?['unidad_base'] as Map?)?['nombre']?.toString() ??
+                                'Unidad base';
+                            final formatos = _formatosDe(e);
+                            final factor = _factorDeFila(e);
+                            final unidad = _unidadPorFila[e['id']] ?? base;
                             final i = _info(e);
                             final costo =
                                 double.tryParse('${e['costo_promedio']}') ?? 0;
@@ -352,21 +384,54 @@ class _ExistenciasScreenState extends State<ExistenciasScreen> {
                                           ?.toString() ??
                                       '—',
                                 ),
+                                // Cada producto tiene sus formatos: la unidad se
+                                // elige aquí y las cantidades se muestran en ella.
+                                if (formatos.isNotEmpty)
+                                  DataCardRow(
+                                    label: 'Ver en',
+                                    value: DropdownButton<String>(
+                                      value: _unidadPorFila[e['id']],
+                                      hint: Text('$base (base)',
+                                          style: const TextStyle(fontSize: 13)),
+                                      isDense: true,
+                                      underline: const SizedBox.shrink(),
+                                      style: const TextStyle(
+                                          fontSize: 13, color: AppColors.textStrong),
+                                      items: [
+                                        DropdownMenuItem<String>(
+                                          value: null,
+                                          child: Text('$base (base)'),
+                                        ),
+                                        for (final f in formatos)
+                                          DropdownMenuItem<String>(
+                                            value: '${f['nombre']}'.trim(),
+                                            child: Text('${f['nombre']}'.trim()),
+                                          ),
+                                      ],
+                                      onChanged: (v) => setState(() {
+                                        if (v == null) {
+                                          _unidadPorFila.remove(e['id']);
+                                        } else {
+                                          _unidadPorFila[e['id']] = v;
+                                        }
+                                      }),
+                                    ),
+                                  ),
                                 DataCardRow(
                                   label: 'Stock ($unidad)',
                                   value: _badgeStock(e),
                                 ),
                                 DataCardRow.text(
                                   'Reservado',
-                                  _num(e['stock_reservado']),
+                                  _num((double.tryParse('${e['stock_reservado'] ?? 0}') ?? 0) / factor),
                                 ),
                                 DataCardRow.text(
                                   'Disponible',
-                                  _num(e['stock_disponible']),
+                                  _num((double.tryParse('${e['stock_disponible'] ?? 0}') ?? 0) / factor),
                                 ),
                                 DataCardRow.text(
                                   'Mín. / Máx.',
-                                  '${_num(i.minimo)} / ${_num(i.maximo)}',
+                                  '${_num(i.minimo / factor)} / ${_num(i.maximo / factor)}',
                                 ),
                                 DataCardRow.text(
                                   'Costo prom.',

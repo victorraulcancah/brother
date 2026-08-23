@@ -14,6 +14,7 @@ import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/data_card.dart';
 import '../widgets/product_lines_editor.dart';
+import '../utils/almacenes.dart';
 
 class TomasInventarioScreen extends StatefulWidget {
   const TomasInventarioScreen({super.key});
@@ -277,7 +278,7 @@ class _CrearTomaScreenState extends State<_CrearTomaScreen> {
                         label: 'Almacén',
                         icon: Icons.warehouse_outlined,
                         value: _almacenId,
-                        options: [for (final a in _almacenes) AppSelectOption(a['id'] as int, a['nombre'] as String? ?? '')],
+                        options: opcionesAlmacen(_almacenes, _almacenId),
                         onChanged: (v) => setState(() => _almacenId = v),
                       ),
                     ],

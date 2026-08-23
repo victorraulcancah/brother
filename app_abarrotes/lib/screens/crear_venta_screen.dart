@@ -15,6 +15,7 @@ import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/metodo_picker.dart';
 import '../widgets/producto_lineas_panel.dart';
+import '../utils/almacenes.dart';
 
 /// Venta al paso: no se identifica al comprador.
 const _clienteGenerico = 'Clientes varios';
@@ -362,13 +363,7 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
                   label: 'Almacén',
                   icon: Icons.warehouse_outlined,
                   value: _almacenId,
-                  options: [
-                    for (final a in _almacenes)
-                      AppSelectOption<int>(
-                        a['id'] as int,
-                        a['nombre']?.toString() ?? '',
-                      ),
-                  ],
+                  options: opcionesAlmacen(_almacenes, _almacenId),
                   // El stock es de otro almacén: las líneas dejan de valer.
                   onChanged: (v) => setState(() {
                     _almacenId = v;

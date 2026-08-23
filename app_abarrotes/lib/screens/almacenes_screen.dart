@@ -101,13 +101,88 @@ class _AlmacenesScreenState extends State<AlmacenesScreen> {
     }
   }
 
+  /// Explica por qué no se puede borrar y ofrece desactivarlo.
+  Future<void> _avisarNoSePuedeEliminar(
+    Map<String, dynamic> item,
+    ApiException e,
+  ) async {
+    final cuerpo = e.errors ?? const {};
+    final motivos = ((cuerpo['motivos'] as List?) ?? []).map((x) => '$x').toList();
+    final puedeDesactivar = cuerpo['puede_desactivar'] == true;
+
+    final desactivar = await showAppModal<bool>(
+      context,
+      title: 'No se puede eliminar',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(e.detalle, style: const TextStyle(color: AppColors.textMuted)),
+          if (motivos.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text('Está siendo usado por',
+                style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
+            const SizedBox(height: 4),
+            ...motivos.map((m) => Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text('•  $m'),
+                )),
+          ],
+          const SizedBox(height: 16),
+          if (puedeDesactivar)
+            SizedBox(
+              width: double.infinity,
+              child: PrimaryButton(
+                label: 'Desactivar almacén',
+                onPressed: () => Navigator.pop(context, true),
+              ),
+            )
+          else
+            const Text('Este almacén ya está desactivado.',
+                style: TextStyle(color: AppColors.textMuted)),
+        ],
+      ),
+    );
+
+    if (desactivar == true) await _cambiarActivo(item, false);
+  }
+
+  /// Desactivar no es eliminar: apaga el almacén y conserva su historial.
+  Future<void> _cambiarActivo(Map<String, dynamic> item, bool activo) async {
+    try {
+      await _crud.update(item['id'], {
+        'nombre': item['nombre'],
+        'codigo': item['codigo'],
+        'tipo': item['tipo'],
+        'direccion': item['direccion'],
+        'activo': activo,
+      });
+      await _load();
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          activo
+              ? '"${item['nombre']}" está activo de nuevo.'
+              : '"${item['nombre']}" quedó desactivado. Su historial se conserva.',
+          type: AppSnackbarType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(context, 'Error: $e', type: AppSnackbarType.error);
+      }
+    }
+  }
+
   Future<void> _eliminar(Map<String, dynamic> item) async {
     final ok = await showAppConfirmDialog(
       context,
       title: 'Eliminar almacén',
       message:
-          '¿Eliminar "${item['nombre']}"? '
-          'Las existencias y movimientos asociados quedarán sin referencia.',
+          '¿Eliminar "${item['nombre']}"?\n'
+          'Solo se puede si está vacío: sin stock ni movimientos. '
+          'Si tiene historial, se te ofrecerá desactivarlo.',
     );
     if (!ok) return;
 
@@ -120,6 +195,15 @@ class _AlmacenesScreenState extends State<AlmacenesScreen> {
           'Almacén eliminado',
           type: AppSnackbarType.error,
         );
+      }
+    } on ApiException catch (e) {
+      // 409: tiene historial. No es un fallo, es que corresponde desactivar.
+      if (e.statusCode == 409 && mounted) {
+        await _avisarNoSePuedeEliminar(item, e);
+        return;
+      }
+      if (mounted) {
+        showAppSnackbar(context, 'Error: ${e.detalle}', type: AppSnackbarType.error);
       }
     } catch (e) {
       if (mounted) {
@@ -211,6 +295,12 @@ class _AlmacenesScreenState extends State<AlmacenesScreen> {
                                   color: AppColors.primary,
                                   tooltip: 'Editar',
                                   onTap: () => _openForm(item: item),
+                                ),
+                                DataCardAction(
+                                  icon: activo ? Icons.power_settings_new : Icons.power_off,
+                                  color: activo ? AppColors.warning : AppColors.success,
+                                  tooltip: activo ? 'Desactivar' : 'Activar',
+                                  onTap: () => _cambiarActivo(item, !activo),
                                 ),
                                 DataCardAction(
                                   icon: Icons.delete_outline,

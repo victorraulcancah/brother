@@ -17,6 +17,7 @@ import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/data_card.dart';
 import '../widgets/pdf_viewer_sheet.dart';
+import '../utils/almacenes.dart';
 
 String _num(dynamic v) {
   final n = double.tryParse('${v ?? 0}') ?? 0;
@@ -665,7 +666,7 @@ class _PrestamoFormSheetState extends State<_PrestamoFormSheet> {
                 label: 'Almacén',
                 icon: Icons.warehouse_outlined,
                 value: _almacenId,
-                options: [for (final a in widget.almacenes) AppSelectOption<int>(a['id'] as int, a['nombre']?.toString() ?? '')],
+                options: opcionesAlmacen(widget.almacenes, _almacenId),
                 onChanged: _editando
                     ? null
                     : (v) => setState(() {
