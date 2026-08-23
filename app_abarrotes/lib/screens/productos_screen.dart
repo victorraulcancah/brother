@@ -7,13 +7,13 @@ import '../widgets/app_badge.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_form_section.dart';
+import '../utils/unidades.dart';
 import '../widgets/app_list_header.dart';
 import '../widgets/app_message.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_select.dart';
 import '../widgets/app_snackbar.dart';
-import '../widgets/app_text_area.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_toggle.dart';
 import '../widgets/data_card.dart';
@@ -276,29 +276,31 @@ class _ProductoWizardState extends State<_ProductoWizard> {
   final _formKey1 = GlobalKey<FormState>();
   final _formKey2 = GlobalKey<FormState>();
 
-  // Step 1 fields
-  late final TextEditingController _codigo;
+  // Paso 1: datos del producto
   late final TextEditingController _nombre;
+  late final TextEditingController _codigoBarras;
   int? _categoriaId;
+  int? _subCategoriaId;
   int? _marcaId;
   int? _subMarcaId;
-  int? _unidadId;
+  bool _activo = true;
+
+  // Paso 2: cómo lo compro
   int? _unidadCompraId;
-  int? _unidadBaseId;
-  late final TextEditingController _factorCompra;
+  int? _unidadContenidoId;
+  late final TextEditingController _cantidadCompra;
+  late final TextEditingController _precioCompra;
 
-  // Step 2: presentaciones
-  final List<_PresentacionEntry> _presentaciones = [];
+  // Paso 2: cómo lo vendo
+  final List<_VentaEntry> _ventas = [];
 
-  // Step 3 fields
-  late final TextEditingController _precio;
-  late final TextEditingController _codigoBarras;
+  // Campos que ya no se piden pero se conservan al editar (los genera o los
+  // mantiene el backend): código, descripción de ticket y niveles de stock.
+  late final TextEditingController _codigo;
   late final TextEditingController _descripcionTicket;
   late final TextEditingController _stockMinimo;
   late final TextEditingController _stockMaximo;
-  int? _subCategoriaId;
   late final TextEditingController _descripcion;
-  bool _activo = true;
 
   int? _relId(String directField, String relField) {
     final i = widget.initial;
@@ -315,103 +317,166 @@ class _ProductoWizardState extends State<_ProductoWizard> {
     super.initState();
     final i = widget.initial;
     String txt(dynamic v) => v == null ? '' : '$v';
-    _codigo = TextEditingController(text: txt(i?['codigo']));
+
     _nombre = TextEditingController(text: txt(i?['nombre']));
-    _precio = TextEditingController(text: i?['precio_base']?.toString() ?? '');
     _codigoBarras = TextEditingController(text: txt(i?['codigo_barras']));
-    _descripcionTicket = TextEditingController(
-      text: txt(i?['descripcion_ticket']),
-    );
-    _stockMinimo = TextEditingController(
-      text: i?['stock_minimo']?.toString() ?? '',
-    );
-    _stockMaximo = TextEditingController(
-      text: i?['stock_maximo']?.toString() ?? '',
-    );
+    _codigo = TextEditingController(text: txt(i?['codigo']));
+    _descripcionTicket = TextEditingController(text: txt(i?['descripcion_ticket']));
+    _stockMinimo = TextEditingController(text: i?['stock_minimo']?.toString() ?? '');
+    _stockMaximo = TextEditingController(text: i?['stock_maximo']?.toString() ?? '');
     _descripcion = TextEditingController(text: txt(i?['descripcion']));
-    _factorCompra = TextEditingController(text: i?['factor_compra_base']?.toString() ?? '1');
 
     _categoriaId = _relId('categoria_id', 'categoria');
     _subCategoriaId = _relId('sub_categoria_id', 'sub_categoria');
     _marcaId = _relId('marca_id', 'marca');
     _subMarcaId = _relId('sub_marca_id', 'sub_marca');
-    _unidadId = _relId('unidad_medida_id', 'unidad_medida');
-    _unidadCompraId = _relId('unidad_compra_id', 'unidad_compra');
-    _unidadBaseId = _relId('unidad_base_id', 'unidad_base');
     _activo = i?['activo'] == true || i == null;
 
-    if (i != null) {
-      final pres = i['presentaciones'];
-      if (pres is List) {
-        for (final p in pres) {
-          _presentaciones.add(_PresentacionEntry(
-            nombreCtrl: TextEditingController(text: txt(p['nombre'])),
-            codigoCtrl: TextEditingController(text: txt(p['codigo_barras'])),
-            costoCtrl: TextEditingController(text: (p['precio_compra'] ?? '').toString()),
-            margenCtrl: TextEditingController(text: (p['margen'] ?? '').toString()),
-            precioCtrl: TextEditingController(text: (p['precio_venta'] ?? '').toString()),
-            factorCtrl: TextEditingController(text: (p['factor_conversion'] ?? '1').toString()),
-            unidadBaseId: int.tryParse('${p['unidad_base']?['id']}'),
-          ));
-        }
+    // Se reconstruye "compro / vendo" desde lo guardado.
+    final baseId = _relId('unidad_medida_id', 'unidad_medida');
+    final contenido = describirContenido(widget.unidades, baseId, i?['factor_compra_base']);
+    _unidadCompraId = _relId('unidad_compra_id', 'unidad_compra');
+    _unidadContenidoId = contenido.unidadContenidoId;
+    _cantidadCompra = TextEditingController(text: contenido.cantidad);
+
+    final pres = (i?['presentaciones'] is List) ? i!['presentaciones'] as List : const [];
+    final factorCompra = double.tryParse('${i?['factor_compra_base']}') ?? 0;
+
+    // El precio de compra no se guarda tal cual: se deduce del costo unitario.
+    double precioTotal = 0;
+    for (final p in pres) {
+      final factor = double.tryParse('${p['factor_conversion']}') ?? 1;
+      final costo = double.tryParse('${p['precio_compra']}') ?? 0;
+      if (factor > 0 && costo > 0) {
+        precioTotal = (costo / factor) * factorCompra;
+        break;
       }
     }
+    _precioCompra = TextEditingController(
+      text: precioTotal > 0 ? sinCerosSobrantes(precioTotal, 2) : '',
+    );
+
+    for (final p in pres) {
+      _ventas.add(_VentaEntry(
+        unidadId: int.tryParse('${p['unidad_base']?['id']}'),
+        margenCtrl: TextEditingController(text: txt(p['margen'])),
+        precioCtrl: TextEditingController(text: txt(p['precio_venta'])),
+      ));
+    }
+    if (_ventas.isEmpty) _ventas.add(_VentaEntry.vacia());
   }
 
   @override
   void dispose() {
-    _codigo.dispose();
     _nombre.dispose();
-    _precio.dispose();
     _codigoBarras.dispose();
+    _codigo.dispose();
     _descripcionTicket.dispose();
     _stockMinimo.dispose();
     _stockMaximo.dispose();
     _descripcion.dispose();
-    _factorCompra.dispose();
-    for (final p in _presentaciones) {
-      p.dispose();
+    _cantidadCompra.dispose();
+    _precioCompra.dispose();
+    for (final v in _ventas) {
+      v.dispose();
     }
     super.dispose();
   }
 
+  // ---- Cálculo ----
+
+  CompraInput get _compra => CompraInput(
+        unidadCompraId: _unidadCompraId,
+        cantidad: double.tryParse(_cantidadCompra.text.trim()) ?? 0,
+        unidadContenidoId: _unidadContenidoId,
+        precio: double.tryParse(_precioCompra.text.trim()) ?? 0,
+      );
+
+  CalculoUnidades get _calculo => calcularPresentaciones(
+        unidades: widget.unidades,
+        compra: _compra,
+        ventas: _ventas.map((v) => v.aInput()).toList(),
+      );
+
+  String _nombreUnidad(int? id) => nombreUnidad(widget.unidades, id);
+
+  String _money(double n) => 'S/ ${sinCerosSobrantes(n, 4)}';
+
+  /// El % y el precio son dos vistas del mismo dato: al mover uno se recalcula
+  /// el otro sobre el costo de esa fila.
+  void _onPrecioVentaEditado(_VentaEntry v, String valor) {
+    final costo = _calculo.filaDe(v.unidadId)?.precioCompra ?? 0;
+    final precio = double.tryParse(valor.trim());
+    if (costo > 0 && precio != null) {
+      v.margenCtrl.text = sinCerosSobrantes((precio / costo - 1) * 100, 1);
+    }
+    setState(() {});
+  }
+
+  void _onMargenEditado(_VentaEntry v) {
+    // Se limpia el precio para que vuelva a derivarse del %.
+    v.precioCtrl.text = '';
+    setState(() {});
+  }
+
+  // ---- Guardar ----
+
   void _guardar() {
-    if (!_formKey1.currentState!.validate()) return;
-    if (_presentaciones.isEmpty) {
-      showAppSnackbar(context, 'Debe agregar al menos una presentación', type: AppSnackbarType.warning);
+    if (!_formKey1.currentState!.validate()) {
+      setState(() => _step = 0);
       return;
     }
     if (!_formKey2.currentState!.validate()) return;
 
-    final presData = _presentaciones.map((p) => {
-      'nombre': p.nombreCtrl.text.trim(),
-      'codigo_barras': p.codigoCtrl.text.trim().isEmpty ? null : p.codigoCtrl.text.trim(),
-      'precio_compra': double.tryParse(p.costoCtrl.text.trim()) ?? 0,
-      'margen': double.tryParse(p.margenCtrl.text.trim()) ?? 0,
-      'precio_venta': double.tryParse(p.precioCtrl.text.trim()) ?? 0,
-      'factor_conversion': double.tryParse(p.factorCtrl.text.trim()) ?? 1,
-      'unidad_base_id': p.unidadBaseId,
-    }).toList();
+    final calculo = _calculo;
+
+    if (_unidadCompraId == null || _compra.cantidad <= 0 || _unidadContenidoId == null) {
+      showAppSnackbar(context, 'Completa cómo compras el producto',
+          type: AppSnackbarType.warning);
+      return;
+    }
+    if (calculo.filas.isEmpty) {
+      showAppSnackbar(context, 'Agrega al menos un formato de venta',
+          type: AppSnackbarType.warning);
+      return;
+    }
+    final elegidas = _ventas.where((v) => v.unidadId != null).map((v) => v.unidadId).toList();
+    if (elegidas.toSet().length != elegidas.length) {
+      showAppSnackbar(context, 'Hay formatos de venta repetidos',
+          type: AppSnackbarType.warning);
+      return;
+    }
+
+    final presData = calculo.filas
+        .map((f) => {
+              'nombre': _nombreUnidad(f.unidadId),
+              'unidad_base_id': f.unidadId,
+              'factor_conversion': f.factor,
+              'precio_compra': double.parse(f.precioCompra.toStringAsFixed(4)),
+              'margen': f.margen,
+              'precio_venta': double.parse(f.precioVenta.toStringAsFixed(4)),
+              'cantidad_complementaria': 0,
+            })
+        .toList();
+
+    String? vacioANulo(String s) => s.trim().isEmpty ? null : s.trim();
 
     Navigator.pop(context, {
-      'codigo': _codigo.text.trim(),
-      'codigo_barras': _codigoBarras.text.trim().isEmpty
-          ? null
-          : _codigoBarras.text.trim(),
+      // Vacío al crear: el backend genera PROD001, PROD002…
+      'codigo': vacioANulo(_codigo.text),
+      'codigo_barras': vacioANulo(_codigoBarras.text),
       'nombre': _nombre.text.trim(),
-      'descripcion_ticket': _descripcionTicket.text.trim().isEmpty
-          ? null
-          : _descripcionTicket.text.trim(),
+      'descripcion_ticket': vacioANulo(_descripcionTicket.text),
       'categoria_id': _categoriaId,
       'sub_categoria_id': _subCategoriaId,
       'marca_id': _marcaId,
       'sub_marca_id': _subMarcaId,
-      'unidad_medida_id': _unidadId,
+      // La unidad base es el formato de venta más pequeño, calculado solo.
+      'unidad_medida_id': calculo.baseId,
+      'unidad_base_id': calculo.baseId,
       'unidad_compra_id': _unidadCompraId,
-      'unidad_base_id': _unidadBaseId,
-      'factor_compra_base': double.tryParse(_factorCompra.text.trim()) ?? 1,
+      'factor_compra_base': calculo.factorCompraBase,
       'descripcion': _descripcion.text.trim(),
-      'precio_base': double.tryParse(_precio.text.trim()) ?? 0,
       'stock_minimo': double.tryParse(_stockMinimo.text.trim()) ?? 0,
       'stock_maximo': double.tryParse(_stockMaximo.text.trim()) ?? 0,
       'activo': _activo,
@@ -419,19 +484,15 @@ class _ProductoWizardState extends State<_ProductoWizard> {
     });
   }
 
-  void _agregarPresentacion() {
-    setState(() {
-      _presentaciones.add(_PresentacionEntry(
-        nombreCtrl: TextEditingController(),
-        codigoCtrl: TextEditingController(),
-        precioCtrl: TextEditingController(),
-        factorCtrl: TextEditingController(text: '1'),
-      ));
-    });
-  }
-
   List<AppSelectOption<int>> _opts(List<Map<String, dynamic>> list) => list
       .map((e) => AppSelectOption<int>(e['id'] as int, e['nombre']?.toString() ?? ''))
+      .toList();
+
+  List<AppSelectOption<int>> get _optsUnidades => widget.unidades
+      .map((u) => AppSelectOption<int>(
+            u['id'] as int,
+            u['abreviatura'] != null ? '${u['nombre']} (${u['abreviatura']})' : '${u['nombre']}',
+          ))
       .toList();
 
   /// Sub-categorías de la categoría elegida; sin categoría, ninguna.
@@ -442,18 +503,7 @@ class _ProductoWizardState extends State<_ProductoWizard> {
         .toList();
   }
 
-  double _unidadFactor(int? id) {
-    final u = widget.unidades.firstWhere((e) => e['id'] == id, orElse: () => <String, dynamic>{});
-    return double.tryParse('${u['factor_base'] ?? 1}') ?? 1;
-  }
-
-  // Al elegir la unidad de una presentación, auto-sugiere el factor a la unidad base (editable).
-  void _setPresUnidad(_PresentacionEntry p, int? id) {
-    p.unidadBaseId = id;
-    final base = _unidadFactor(_unidadBaseId);
-    final f = base > 0 ? _unidadFactor(id) / base : _unidadFactor(id);
-    p.factorCtrl.text = f == f.roundToDouble() ? f.toInt().toString() : f.toStringAsFixed(4);
-  }
+  // ---- Interfaz ----
 
   @override
   Widget build(BuildContext context) {
@@ -482,7 +532,7 @@ class _ProductoWizardState extends State<_ProductoWizard> {
         children: [
           _stepIndicator(0, 'Datos'),
           const Expanded(child: Divider()),
-          _stepIndicator(1, 'Presentaciones'),
+          _stepIndicator(1, 'Compra y venta'),
         ],
       ),
     );
@@ -505,11 +555,14 @@ class _ProductoWizardState extends State<_ProductoWizard> {
               border: Border.all(color: color),
             ),
             child: Center(
-              child: Text('${index + 1}', style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
+              child: Text('${index + 1}',
+                  style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: color, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+          Text(label,
+              style: TextStyle(
+                  color: color, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
         ],
       ),
     );
@@ -524,26 +577,20 @@ class _ProductoWizardState extends State<_ProductoWizard> {
             title: 'Identificación',
             children: [
               AppTextField(
-                controller: _codigo,
-                label: 'Código / SKU',
-                icon: Icons.qr_code_2,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese el código' : null,
-              ),
-              AppTextField(
-                controller: _codigoBarras,
-                label: 'Código de barras',
-                icon: Icons.barcode_reader,
-              ),
-              AppTextField(
                 controller: _nombre,
-                label: 'Nombre del producto',
+                label: 'Producto',
                 icon: Icons.inventory_2_outlined,
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese el nombre' : null,
               ),
               AppTextField(
-                controller: _descripcionTicket,
-                label: 'Descripción para ticket',
-                icon: Icons.receipt_long_outlined,
+                controller: _codigoBarras,
+                label: 'Código de barras (opcional)',
+                icon: Icons.barcode_reader,
+              ),
+              AppToggle(
+                label: 'Producto activo',
+                value: _activo,
+                onChanged: (v) => setState(() => _activo = v),
               ),
             ],
           ),
@@ -563,7 +610,7 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                 }),
               ),
               AppSelect<int>(
-                label: 'Sub-categoría',
+                label: 'Sub-categoría (opcional)',
                 icon: Icons.account_tree_outlined,
                 value: _subCategoriaId,
                 options: _opts(_subCategoriasDeCategoria()),
@@ -586,39 +633,6 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                 options: _opts(widget.subMarcas),
                 onChanged: (v) => setState(() => _subMarcaId = v),
               ),
-              AppSelect<int>(
-                label: 'Unidad de medida',
-                icon: Icons.straighten,
-                value: _unidadId,
-                options: _opts(widget.unidades),
-                onChanged: (v) => setState(() => _unidadId = v),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          AppFormSection(
-            title: 'Unidades y Conversión',
-            children: [
-              AppSelect<int>(
-                label: 'Unidad de compra (opcional)',
-                icon: Icons.shopping_bag_outlined,
-                value: _unidadCompraId,
-                options: _opts(widget.unidades),
-                onChanged: (v) => setState(() => _unidadCompraId = v),
-              ),
-              AppSelect<int>(
-                label: 'Unidad base (inventario)',
-                icon: Icons.straighten,
-                value: _unidadBaseId,
-                options: _opts(widget.unidades),
-                onChanged: (v) => setState(() => _unidadBaseId = v),
-              ),
-              AppTextField(
-                controller: _factorCompra,
-                label: '1 unidad compra = ? unidad base',
-                icon: Icons.calculate,
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-              ),
             ],
           ),
         ],
@@ -627,51 +641,89 @@ class _ProductoWizardState extends State<_ProductoWizard> {
   }
 
   Widget _buildStep2() {
+    final calculo = _calculo;
+
     return Form(
       key: _formKey2,
       child: Column(
         children: [
           AppFormSection(
-            title: 'Presentaciones',
-            trailing: TextButton.icon(
-              onPressed: _agregarPresentacion,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Agregar'),
-            ),
+            title: 'Cómo lo compro',
             children: [
-              if (_presentaciones.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('Agregue al menos una presentación (ej: 500g, 1kg, 3L)',
-                    style: TextStyle(color: AppColors.textMuted)),
+              AppSelect<int>(
+                label: 'Compro por',
+                icon: Icons.shopping_bag_outlined,
+                value: _unidadCompraId,
+                options: _optsUnidades,
+                onChanged: (v) => setState(() => _unidadCompraId = v),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      controller: _cantidadCompra,
+                      label: 'Que trae',
+                      icon: Icons.numbers,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: AppSelect<int>(
+                      label: 'De',
+                      value: _unidadContenidoId,
+                      options: _optsUnidades,
+                      onChanged: (v) => setState(() => _unidadContenidoId = v),
+                    ),
+                  ),
+                ],
+              ),
+              AppTextField(
+                controller: _precioCompra,
+                label: 'Precio de compra (S/)',
+                icon: Icons.attach_money,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setState(() {}),
+              ),
+              if (calculo.baseId != null && calculo.factorCompraBase > 0)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _unidadCompraId != null
+                        ? '1 ${_nombreUnidad(_unidadCompraId)} = '
+                            '${sinCerosSobrantes(calculo.factorCompraBase, 2)} '
+                            '${_nombreUnidad(calculo.baseId)}'
+                            '${calculo.costoBase > 0 ? '\nCosto por ${_nombreUnidad(calculo.baseId).toLowerCase()}: ${_money(calculo.costoBase)}' : ''}'
+                        : 'Elige en qué unidad compras el producto.',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  ),
                 ),
-              ..._presentaciones.asMap().entries.map((entry) => _buildPresentacionCard(entry.key, entry.value)),
             ],
           ),
           const SizedBox(height: 12),
           AppFormSection(
-            title: 'Precio y detalle',
+            title: 'Cómo lo vendo',
+            trailing: TextButton.icon(
+              onPressed: () => setState(() => _ventas.add(_VentaEntry.vacia())),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Agregar'),
+            ),
             children: [
-              AppTextField(
-                controller: _precio,
-                label: 'Precio base (S/)',
-                icon: Icons.attach_money,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ..._ventas.asMap().entries.map((e) => _buildVentaCard(e.key, e.value)),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  'El costo de cada formato sale de tu precio de compra. El precio de venta se '
+                  'calcula con el % de ganancia; si escribes uno a mano, manda el tuyo.',
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                ),
               ),
-              AppTextField(
-                controller: _stockMinimo,
-                label: 'Stock mínimo',
-                icon: Icons.trending_down,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              AppTextField(
-                controller: _stockMaximo,
-                label: 'Stock máximo',
-                icon: Icons.trending_up,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              AppTextArea(controller: _descripcion, label: 'Descripción'),
-              AppToggle(label: 'Activo', value: _activo, onChanged: (v) => setState(() => _activo = v)),
             ],
           ),
         ],
@@ -679,7 +731,9 @@ class _ProductoWizardState extends State<_ProductoWizard> {
     );
   }
 
-  Widget _buildPresentacionCard(int index, _PresentacionEntry p) {
+  Widget _buildVentaCard(int index, _VentaEntry v) {
+    final fila = _calculo.filaDe(v.unidadId);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -688,82 +742,64 @@ class _ProductoWizardState extends State<_ProductoWizard> {
           children: [
             Row(
               children: [
-                Text('Presentación ${index + 1}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline, color: AppColors.danger, size: 20),
-                  onPressed: () => setState(() => _presentaciones.removeAt(index)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            AppTextField(
-              controller: p.nombreCtrl,
-              label: 'Nombre (ej: 500g, 1kg, 3L)',
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-            ),
-            const SizedBox(height: 8),
-            AppTextField(controller: p.codigoCtrl, label: 'Código barras'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: AppTextField(
-                    controller: p.costoCtrl,
-                    label: 'Costo S/',
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    // El precio de venta sale del costo y el margen.
-                    onChanged: (_) => setState(p.recalcularPrecio),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: AppTextField(
-                    controller: p.margenCtrl,
-                    label: 'Margen %',
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    onChanged: (_) => setState(p.recalcularPrecio),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: AppTextField(
-                    controller: p.precioCtrl,
-                    label: 'Precio venta S/',
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
                 Expanded(
                   child: AppSelect<int>(
-                    label: 'Unidad',
-                    value: p.unidadBaseId,
-                    options: _opts(widget.unidades),
-                    onChanged: (v) => setState(() => _setPresUnidad(p, v)),
+                    label: 'Vendo por',
+                    value: v.unidadId,
+                    options: _optsUnidades,
+                    onChanged: (nuevo) => setState(() => v.unidadId = nuevo),
+                  ),
+                ),
+                if (_ventas.length > 1)
+                  IconButton(
+                    icon: const Icon(Icons.remove_circle_outline,
+                        color: AppColors.danger, size: 20),
+                    onPressed: () => setState(() {
+                      _ventas.removeAt(index).dispose();
+                    }),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: AppTextField(
+                    controller: v.margenCtrl,
+                    label: '% ganancia',
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => _onMargenEditado(v),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: AppTextField(
-                    controller: p.factorCtrl,
-                    label: 'Equivale a (base)',
+                    controller: v.precioCtrl,
+                    label: 'Precio de venta',
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                    onChanged: (valor) => _onPrecioVentaEditado(v, valor),
                   ),
                 ),
               ],
             ),
+            if (fila != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Me cuesta ${_money(fila.precioCompra)}',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  Text(
+                    'Ganas ${_money(fila.ganancia)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: fila.ganancia < 0 ? AppColors.danger : AppColors.success,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -804,40 +840,33 @@ class _ProductoWizardState extends State<_ProductoWizard> {
   }
 }
 
-class _PresentacionEntry {
-  final TextEditingController nombreCtrl;
-  final TextEditingController codigoCtrl;
-  final TextEditingController costoCtrl;
+/// Un formato de venta en edición.
+class _VentaEntry {
+  int? unidadId;
   final TextEditingController margenCtrl;
   final TextEditingController precioCtrl;
-  final TextEditingController factorCtrl;
-  int? unidadBaseId;
 
-  _PresentacionEntry({
-    required this.nombreCtrl,
-    required this.codigoCtrl,
+  _VentaEntry({
+    this.unidadId,
+    required this.margenCtrl,
     required this.precioCtrl,
-    required this.factorCtrl,
-    TextEditingController? costoCtrl,
-    TextEditingController? margenCtrl,
-    this.unidadBaseId,
-  }) : costoCtrl = costoCtrl ?? TextEditingController(),
-       margenCtrl = margenCtrl ?? TextEditingController();
+  });
 
-  /// Precio de venta = costo + margen%, como lo calcula la web.
-  void recalcularPrecio() {
-    final costo = double.tryParse(costoCtrl.text.trim()) ?? 0;
-    final margen = double.tryParse(margenCtrl.text.trim()) ?? 0;
-    if (costo <= 0) return;
-    precioCtrl.text = (costo * (1 + margen / 100)).toStringAsFixed(2);
-  }
+  factory _VentaEntry.vacia() => _VentaEntry(
+        margenCtrl: TextEditingController(text: '25'),
+        precioCtrl: TextEditingController(),
+      );
+
+  VentaInput aInput() => VentaInput(
+        unidadId: unidadId,
+        margen: double.tryParse(margenCtrl.text.trim()),
+        precioVenta: precioCtrl.text.trim().isEmpty
+            ? null
+            : double.tryParse(precioCtrl.text.trim()),
+      );
 
   void dispose() {
-    nombreCtrl.dispose();
-    codigoCtrl.dispose();
-    costoCtrl.dispose();
     margenCtrl.dispose();
     precioCtrl.dispose();
-    factorCtrl.dispose();
   }
 }
