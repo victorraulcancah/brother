@@ -9,5 +9,5 @@ class AppConfig {
   static const String appName = 'BRAVA';
 
   /// Base de la API (Laravel). En producción se cambia solo aquí.
-  static const String apiBaseUrl = 'http://10.0.2.2:8000/api';
+  static const String apiBaseUrl = 'http://83.147.39.58:10066/api';
 }
