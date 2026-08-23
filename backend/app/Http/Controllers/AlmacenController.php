@@ -61,7 +61,8 @@ class AlmacenController extends Controller
             $query->where('almacen_id', $request->integer('almacen_id'));
         }
 
-        return response()->json($query->get());
+        // Lo último cargado primero, igual que en el resto de listados.
+        return response()->json($query->latest('id')->get());
     }
 
     public function store(Request $request)
