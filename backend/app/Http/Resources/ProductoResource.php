@@ -20,6 +20,9 @@ class ProductoResource extends JsonResource
             'sub_categoria' => new CategoriaResource($this->whenLoaded('subCategoria')),
             'unidad_medida' => new UnidadMedidaResource($this->whenLoaded('unidadMedida')),
             'unidad_compra' => new UnidadMedidaResource($this->whenLoaded('unidadCompra')),
+            // El id va suelto porque el listado no carga la relación y el
+            // formulario lo necesita para reconstruir "compro por…" al editar.
+            'unidad_compra_id' => $this->unidad_compra_id,
             'unidad_base' => new UnidadMedidaResource($this->whenLoaded('unidadBase')),
             'factor_compra_base' => $this->factor_compra_base,
             'descripcion' => $this->descripcion,

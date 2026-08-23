@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Edit, Eye, Package, Plus, PlusCircle, Save, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
+import { calcularPresentaciones, describirContenido } from '../lib/unidades';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
+
+/** Soles con hasta 4 decimales: el costo por gramo puede ser S/ 0.0028. */
+const money = (n) =>
+    new Intl.NumberFormat('es-PE', {
+        style: 'currency',
+        currency: 'PEN',
+        maximumFractionDigits: 4,
+    }).format(Number(n) || 0);
 
 const emptyProducto = {
     codigo: '',
@@ -22,16 +31,16 @@ const emptyProducto = {
     activo: true,
 };
 
-const nuevaDerivada = () => ({
-    unidad_base_id: '',
-    factor_conversion: '1',
-    precio_compra: '',
-    margen: '',
-    precio_venta: '',
-    producto_complementario_id: '',
-    cantidad_complementaria: '',
-    codigo_barras: '',
+/** Cómo se compra el producto: "un saco que trae 50 kilos, a S/ 140". */
+const compraVacia = () => ({
+    unidad_compra_id: '',
+    cantidad: '',
+    unidad_contenido_id: '',
+    precio: '',
 });
+
+/** Un formato en que se vende: "por kilo, con 25% de ganancia". */
+const ventaVacia = () => ({ unidad_id: '', margen: '25', precio_venta: '' });
 
 export default function Productos() {
     const toast = useToast();
@@ -46,7 +55,8 @@ export default function Productos() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState(emptyProducto);
-    const [derivadas, setDerivadas] = useState([nuevaDerivada()]);
+    const [compra, setCompra] = useState(compraVacia);
+    const [ventas, setVentas] = useState([ventaVacia()]);
     const [errors, setErrors] = useState({});
     const [saving, setSaving] = useState(false);
 
@@ -97,16 +107,14 @@ export default function Productos() {
         value: String(u.id),
         label: u.abreviatura ? `${u.nombre} (${u.abreviatura})` : u.nombre,
     }));
-    const unidadFactor = (id) =>
-        Number(unidades.find((u) => String(u.id) === String(id))?.factor_base) || 1;
     const unidadNombre = (id) => unidades.find((u) => String(u.id) === String(id))?.nombre ?? '';
-    const unidadAbrev = (id) => unidades.find((u) => String(u.id) === String(id))?.abreviatura ?? '';
 
     // ---- Abrir / editar ----
     const openCreate = () => {
         setEditing(null);
         setForm(emptyProducto);
-        setDerivadas([nuevaDerivada()]);
+        setCompra(compraVacia());
+        setVentas([ventaVacia()]);
         setErrors({});
         setModalOpen(true);
     };
@@ -130,24 +138,37 @@ export default function Productos() {
             stock_maximo: prod.stock_maximo ?? '',
             activo: prod.activo !== false,
         });
+        // Se reconstruye "compro / vendo" desde lo guardado.
+        const baseId = relId('unidad_medida_id', 'unidad_medida');
+        const contenido = describirContenido(unidades, baseId, prod.factor_compra_base);
+        const unidadCompraId = relId('unidad_compra_id', 'unidad_compra');
         const pres = Array.isArray(prod.presentaciones) ? prod.presentaciones : [];
-        setDerivadas(
+        const precioCompraTotal = pres.find(
+            (p) => Number(p.factor_conversion) === Number(prod.factor_compra_base),
+        )?.precio_compra;
+
+        setCompra({
+            unidad_compra_id: unidadCompraId,
+            cantidad: contenido.cantidad,
+            unidad_contenido_id: contenido.unidad_contenido_id,
+            // Si no se vendía el envase entero, se deduce del costo por unidad base.
+            precio:
+                precioCompraTotal != null
+                    ? String(precioCompraTotal)
+                    : String(
+                          (Number(pres[0]?.precio_compra ?? 0) /
+                              (Number(pres[0]?.factor_conversion) || 1)) *
+                              (Number(prod.factor_compra_base) || 0) || '',
+                      ),
+        });
+        setVentas(
             pres.length
                 ? pres.map((p) => ({
-                      unidad_base_id: p.unidad_base?.id ? String(p.unidad_base.id) : '',
-                      factor_conversion: String(p.factor_conversion ?? '1'),
-                      precio_compra: p.precio_compra != null ? String(p.precio_compra) : '',
+                      unidad_id: p.unidad_base?.id ? String(p.unidad_base.id) : '',
                       margen: p.margen != null ? String(p.margen) : '',
                       precio_venta: p.precio_venta != null ? String(p.precio_venta) : '',
-                      producto_complementario_id: p.producto_complementario_id
-                          ? String(p.producto_complementario_id)
-                          : '',
-                      cantidad_complementaria:
-                          p.cantidad_complementaria != null ? String(p.cantidad_complementaria) : '',
-                      codigo_barras: p.codigo_barras ?? '',
-                      _nombre: p.nombre ?? '',
                   }))
-                : [nuevaDerivada()],
+                : [ventaVacia()],
         );
         setErrors({});
         setModalOpen(true);
@@ -159,49 +180,27 @@ export default function Productos() {
         setErrors((prev) => ({ ...prev, [field]: undefined }));
     };
 
-    // ---- Filas de unidades derivadas ----
-    const addDerivada = () => setDerivadas((prev) => [...prev, nuevaDerivada()]);
-    const removeDerivada = (index) =>
-        setDerivadas((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
+    // ---- Formatos de venta ----
+    const setCompraField = (campo) => (e) =>
+        setCompra((prev) => ({ ...prev, [campo]: e.target.value }));
 
-    const setDerivadaField = (index, field, value) =>
-        setDerivadas((prev) => prev.map((d, i) => (i === index ? { ...d, [field]: value } : d)));
-
-    // Al elegir la unidad de la fila, el factor a la unidad base se calcula solo (editable).
-    const setDerivadaUnidad = (index, unidadId) => {
-        const base = unidadFactor(form.unidad_medida_id);
-        const factor = base > 0 ? +(unidadFactor(unidadId) / base).toFixed(3) : unidadFactor(unidadId);
-        setDerivadas((prev) =>
-            prev.map((d, i) =>
-                i === index ? { ...d, unidad_base_id: unidadId, factor_conversion: String(factor) } : d,
-            ),
-        );
-    };
-
-    // Precio venta = precio compra * (1 + margen/100).
-    const recomputeVenta = (index, patch) => {
-        setDerivadas((prev) =>
-            prev.map((d, i) => {
-                if (i !== index) return d;
-                const next = { ...d, ...patch };
-                const compra = Number(next.precio_compra);
-                const margen = Number(next.margen);
-                if (!Number.isNaN(compra) && next.precio_compra !== '' && next.margen !== '' && !Number.isNaN(margen)) {
-                    next.precio_venta = (compra * (1 + margen / 100)).toFixed(2);
-                }
-                return next;
+    const addVenta = () => setVentas((prev) => [...prev, ventaVacia()]);
+    const removeVenta = (index) =>
+        setVentas((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
+    const setVentaField = (index, campo, valor) =>
+        setVentas((prev) =>
+            prev.map((v, i) => {
+                if (i !== index) return v;
+                // Al cambiar el % se recalcula el precio; al escribir el precio, manda el precio.
+                if (campo === 'margen') return { ...v, margen: valor, precio_venta: '' };
+                return { ...v, [campo]: valor };
             }),
         );
-    };
 
-    const productoOptions = useMemo(
-        () => [
-            { value: '', label: 'Ninguno' },
-            ...productos
-                .filter((p) => !editing || String(p.id) !== String(editing.id))
-                .map((p) => ({ value: String(p.id), label: p.nombre })),
-        ],
-        [productos, editing],
+    // Todo el cálculo (unidad base, factores y costos) sale de compra + ventas.
+    const calculo = useMemo(
+        () => calcularPresentaciones({ unidades, compra, ventas }),
+        [unidades, compra, ventas],
     );
 
     // ---- Guardar ----
@@ -209,37 +208,30 @@ export default function Productos() {
         const next = {};
         // El código ya no se pide en el formulario: lo genera el servidor.
         if (!form.nombre.trim()) next.nombre = 'Ingrese el nombre';
-        if (!form.unidad_medida_id) next.unidad_medida_id = 'Seleccione la unidad de medida';
-        if (derivadas.length === 0) next.derivadas = 'Agregue al menos una unidad derivada';
-        derivadas.forEach((d, i) => {
-            if (!d.factor_conversion || Number(d.factor_conversion) <= 0) {
-                next[`der.${i}.factor`] = 'Factor > 0';
-            }
-        });
+        if (!compra.unidad_compra_id) next.compra_unidad = 'Indique en qué compra el producto';
+        if (!(Number(compra.cantidad) > 0)) next.compra_cantidad = 'Indique cuánto trae';
+        if (!compra.unidad_contenido_id) next.compra_contenido = 'Indique la unidad del contenido';
+        if (ventas.filter((v) => v.unidad_id).length === 0) {
+            next.ventas = 'Agregue al menos un formato de venta';
+        }
+        const repetidas = ventas.map((v) => String(v.unidad_id)).filter(Boolean);
+        if (new Set(repetidas).size !== repetidas.length) {
+            next.ventas = 'Hay formatos de venta repetidos';
+        }
         setErrors(next);
         return Object.keys(next).length === 0;
     };
 
     const buildPresentaciones = () =>
-        derivadas.map((d, i) => {
-            const nombre =
-                (d._nombre && d._nombre.trim()) ||
-                unidadNombre(d.unidad_base_id) ||
-                `Presentación ${i + 1}`;
-            const p = {
-                nombre,
-                factor_conversion: Number(d.factor_conversion),
-                precio_compra: d.precio_compra === '' ? 0 : Number(d.precio_compra),
-                margen: d.margen === '' ? 0 : Number(d.margen),
-                precio_venta: d.precio_venta === '' ? 0 : Number(d.precio_venta),
-                cantidad_complementaria:
-                    d.cantidad_complementaria === '' ? 0 : Number(d.cantidad_complementaria),
-            };
-            if (d.unidad_base_id) p.unidad_base_id = d.unidad_base_id;
-            if (d.producto_complementario_id) p.producto_complementario_id = d.producto_complementario_id;
-            if (d.codigo_barras && d.codigo_barras.trim()) p.codigo_barras = d.codigo_barras.trim();
-            return p;
-        });
+        calculo.filas.map((f, i) => ({
+            nombre: unidadNombre(f.unidad_id) || `Presentación ${i + 1}`,
+            unidad_base_id: f.unidad_id,
+            factor_conversion: f.factor,
+            precio_compra: +f.precio_compra.toFixed(4),
+            margen: f.margen,
+            precio_venta: +f.precio_venta.toFixed(4),
+            cantidad_complementaria: 0,
+        }));
 
     const handleSave = async () => {
         if (!validate()) return;
@@ -252,8 +244,10 @@ export default function Productos() {
         const payload = {
             codigo: form.codigo.trim(),
             nombre: form.nombre.trim(),
-            unidad_medida_id: form.unidad_medida_id,
-            unidad_base_id: form.unidad_medida_id,
+            // La unidad base es el formato de venta más pequeño, calculado solo.
+            unidad_medida_id: calculo.baseId,
+            unidad_base_id: calculo.baseId,
+            unidad_compra_id: compra.unidad_compra_id || undefined,
             activo: form.activo,
             codigo_barras: str(form.codigo_barras),
             descripcion_ticket: str(form.descripcion_ticket),
@@ -261,7 +255,7 @@ export default function Productos() {
             sub_categoria_id: form.sub_categoria_id || undefined,
             marca_id: form.marca_id || undefined,
             sub_marca_id: form.sub_marca_id || undefined,
-            factor_compra_base: num(form.factor_compra_base),
+            factor_compra_base: calculo.factorCompraBase || undefined,
             stock_minimo: num(form.stock_minimo),
             stock_maximo: num(form.stock_maximo),
             presentaciones: buildPresentaciones(),
@@ -455,7 +449,6 @@ export default function Productos() {
         </div>
     );
 
-    const baseAbrev = unidadAbrev(form.unidad_medida_id) || 'base';
 
     return (
         <Layout>
@@ -618,199 +611,171 @@ export default function Productos() {
                         </div>
                     </section>
 
-                    {/* Unidad base y stock */}
+                    {/* Cómo lo compro */}
                     <section>
                         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                            Unidad base e inventario
+                            Cómo lo compro
                         </h3>
                         <div className="grid gap-4 sm:grid-cols-4">
                             <FieldWithAdd onAdd={() => setQuick({ tipo: 'unidad' })}>
                                 <Select
-                                    label="U. de medida (base)"
-                                    value={form.unidad_medida_id}
-                                    onChange={setField('unidad_medida_id')}
-                                    options={[{ value: '', label: 'Unidad base' }, ...unidadOptions]}
-                                    error={errors.unidad_medida_id}
+                                    label="Compro por"
+                                    value={compra.unidad_compra_id}
+                                    onChange={setCompraField('unidad_compra_id')}
+                                    options={[{ value: '', label: 'Ej. Saco, Caja…' }, ...unidadOptions]}
+                                    error={errors.compra_unidad}
                                 />
                             </FieldWithAdd>
                             <Input
-                                label="Unid. contenidas"
-                                type="number"
-                                step="any"
-                                min="0.001"
-                                value={form.factor_compra_base}
-                                onChange={setField('factor_compra_base')}
-                            />
-                            <Input
-                                label="Stock mín."
+                                label="Que trae"
                                 type="number"
                                 step="any"
                                 min="0"
-                                value={form.stock_minimo}
-                                onChange={setField('stock_minimo')}
+                                placeholder="50"
+                                value={compra.cantidad}
+                                onChange={setCompraField('cantidad')}
+                                error={errors.compra_cantidad}
+                            />
+                            <Select
+                                label="De"
+                                value={compra.unidad_contenido_id}
+                                onChange={setCompraField('unidad_contenido_id')}
+                                options={[{ value: '', label: 'Ej. Kilo, Unidad…' }, ...unidadOptions]}
+                                error={errors.compra_contenido}
                             />
                             <Input
-                                label="Stock máx."
+                                label="Precio de compra"
                                 type="number"
                                 step="any"
                                 min="0"
-                                value={form.stock_maximo}
-                                onChange={setField('stock_maximo')}
+                                placeholder="140.00"
+                                value={compra.precio}
+                                onChange={setCompraField('precio')}
                             />
                         </div>
+                        {calculo.baseId && calculo.factorCompraBase > 0 && (
+                            <p className="mt-2 text-xs text-warm-500">
+                                {compra.unidad_compra_id
+                                    ? `1 ${unidadNombre(compra.unidad_compra_id)} = `
+                                    : 'La compra equivale a '}
+                                <strong>
+                                    {calculo.factorCompraBase.toLocaleString('es-PE')}{' '}
+                                    {unidadNombre(calculo.baseId)}
+                                </strong>
+                                {Number(compra.precio) > 0 && (
+                                    <>
+                                        {' · costo por '}
+                                        {unidadNombre(calculo.baseId).toLowerCase()}:{' '}
+                                        <strong>{money(calculo.costoBase)}</strong>
+                                    </>
+                                )}
+                            </p>
+                        )}
                     </section>
 
-                    {/* Detalle de precios / unidades derivadas */}
+                    {/* Cómo lo vendo */}
                     <section>
                         <div className="mb-2 flex items-center justify-between">
                             <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                Detalle de precios — unidades derivadas
+                                Cómo lo vendo
                             </h3>
-                            <Button variant="secondary" size="sm" onClick={addDerivada}>
+                            <Button variant="secondary" size="sm" onClick={addVenta}>
                                 <Plus className="h-4 w-4" />
-                                Agregar unidad derivada
+                                Agregar formato
                             </Button>
                         </div>
-                        {errors.derivadas && (
+                        {errors.ventas && (
                             <Alert variant="warning" className="mb-2">
-                                {errors.derivadas}
+                                {errors.ventas}
                             </Alert>
                         )}
                         <div className="overflow-x-auto rounded-lg border border-edge">
-                            <table className="w-full min-w-[860px] text-sm">
+                            <table className="w-full min-w-[540px] text-sm">
                                 <thead>
                                     <tr className="bg-primary-600 text-left text-xs text-white">
-                                        <th className="px-2 py-2 font-medium">Formato de venta</th>
-                                        <th className="px-2 py-2 font-medium">Factor ({baseAbrev})</th>
-                                        <th className="px-2 py-2 font-medium">P. compra</th>
-                                        <th className="px-2 py-2 font-medium">% venta</th>
-                                        <th className="px-2 py-2 font-medium">P. venta</th>
-                                        <th className="px-2 py-2 font-medium">Complementario</th>
-                                        <th className="px-2 py-2 font-medium">Cant.</th>
+                                        <th className="px-2 py-2 font-medium">Vendo por</th>
+                                        <th className="px-2 py-2 font-medium">Me cuesta</th>
+                                        <th className="px-2 py-2 font-medium">% ganancia</th>
+                                        <th className="px-2 py-2 font-medium">Precio de venta</th>
                                         <th className="w-10 px-2 py-2" />
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {derivadas.map((d, i) => (
-                                        <tr key={i} className="border-t border-edge">
-                                            <td className="px-2 py-1.5">
-                                                <select
-                                                    className="h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-sm"
-                                                    value={d.unidad_base_id}
-                                                    onChange={(e) => setDerivadaUnidad(i, e.target.value)}
-                                                >
-                                                    <option value="">Elegir unidad…</option>
-                                                    {unidadOptions.map((o) => (
-                                                        <option key={o.value} value={o.value}>
-                                                            {o.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <input
-                                                    type="number"
-                                                    step="0.001"
-                                                    min="0.001"
-                                                    className={`h-8 w-24 rounded-md border px-2 text-sm ${
-                                                        errors[`der.${i}.factor`]
-                                                            ? 'border-red-400'
-                                                            : 'border-gray-300'
-                                                    }`}
-                                                    value={d.factor_conversion}
-                                                    onChange={(e) =>
-                                                        setDerivadaField(i, 'factor_conversion', e.target.value)
-                                                    }
-                                                />
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    min="0"
-                                                    className="h-8 w-24 rounded-md border border-gray-300 px-2 text-sm"
-                                                    value={d.precio_compra}
-                                                    onChange={(e) =>
-                                                        recomputeVenta(i, { precio_compra: e.target.value })
-                                                    }
-                                                />
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    className="h-8 w-20 rounded-md border border-gray-300 px-2 text-sm"
-                                                    value={d.margen}
-                                                    onChange={(e) => recomputeVenta(i, { margen: e.target.value })}
-                                                />
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    min="0"
-                                                    className="h-8 w-24 rounded-md border border-gray-300 bg-emerald-50 px-2 text-sm font-medium"
-                                                    value={d.precio_venta}
-                                                    onChange={(e) =>
-                                                        setDerivadaField(i, 'precio_venta', e.target.value)
-                                                    }
-                                                />
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <select
-                                                    className="h-8 w-40 rounded-md border border-gray-300 bg-white px-2 text-sm"
-                                                    value={d.producto_complementario_id}
-                                                    onChange={(e) =>
-                                                        setDerivadaField(
-                                                            i,
-                                                            'producto_complementario_id',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                >
-                                                    {productoOptions.map((o) => (
-                                                        <option key={o.value} value={o.value}>
-                                                            {o.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    min="0"
-                                                    className="h-8 w-20 rounded-md border border-gray-300 px-2 text-sm"
-                                                    value={d.cantidad_complementaria}
-                                                    onChange={(e) =>
-                                                        setDerivadaField(
-                                                            i,
-                                                            'cantidad_complementaria',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                />
-                                            </td>
-                                            <td className="px-2 py-1.5 text-center">
-                                                <button
-                                                    type="button"
-                                                    aria-label="Quitar"
-                                                    disabled={derivadas.length === 1}
-                                                    onClick={() => removeDerivada(i)}
-                                                    className="rounded p-1 text-red-600 transition hover:bg-red-50 disabled:opacity-30"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {ventas.map((v, i) => {
+                                        const fila = calculo.filas.find(
+                                            (f) => String(f.unidad_id) === String(v.unidad_id),
+                                        );
+                                        return (
+                                            <tr key={i} className="border-t border-edge">
+                                                <td className="px-2 py-1.5">
+                                                    <select
+                                                        className="h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-sm"
+                                                        value={v.unidad_id}
+                                                        onChange={(e) =>
+                                                            setVentaField(i, 'unidad_id', e.target.value)
+                                                        }
+                                                    >
+                                                        <option value="">Elegir formato…</option>
+                                                        {unidadOptions.map((o) => (
+                                                            <option key={o.value} value={o.value}>
+                                                                {o.label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </td>
+                                                <td className="px-2 py-1.5 text-warm-600">
+                                                    {fila ? money(fila.precio_compra) : '—'}
+                                                </td>
+                                                <td className="px-2 py-1.5">
+                                                    <input
+                                                        type="number"
+                                                        step="any"
+                                                        className="h-8 w-20 rounded-md border border-gray-300 px-2 text-sm"
+                                                        value={v.margen}
+                                                        onChange={(e) =>
+                                                            setVentaField(i, 'margen', e.target.value)
+                                                        }
+                                                    />
+                                                </td>
+                                                <td className="px-2 py-1.5">
+                                                    <input
+                                                        type="number"
+                                                        step="any"
+                                                        min="0"
+                                                        className="h-8 w-28 rounded-md border border-gray-300 bg-emerald-50 px-2 text-sm font-medium"
+                                                        placeholder={fila ? fila.precio_venta.toFixed(4) : ''}
+                                                        value={v.precio_venta}
+                                                        onChange={(e) =>
+                                                            setVentaField(i, 'precio_venta', e.target.value)
+                                                        }
+                                                    />
+                                                </td>
+                                                <td className="px-2 py-1.5 text-center">
+                                                    <button
+                                                        type="button"
+                                                        aria-label="Quitar"
+                                                        disabled={ventas.length === 1}
+                                                        onClick={() => removeVenta(i)}
+                                                        className="rounded p-1 text-red-600 transition hover:bg-red-50 disabled:opacity-30"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
-                        <p className="mt-2 text-xs text-gray-400">
-                            El <strong>factor</strong> se calcula al elegir la unidad (en {baseAbrev}) y es
-                            editable — para empaques variables (ej. saco de arroz = 49, de azúcar = 50). El
-                            precio de venta = compra × (1 + % venta), editable.
+                        <p className="mt-2 text-xs text-warm-500">
+                            El costo de cada formato sale de tu precio de compra. El precio de venta se
+                            calcula con el % de ganancia; si escribes uno a mano, manda el tuyo.
+                            {calculo.baseId && (
+                                <>
+                                    {' '}El stock se contará en{' '}
+                                    <strong>{unidadNombre(calculo.baseId).toLowerCase()}</strong>.
+                                </>
+                            )}
                         </p>
                     </section>
                 </div>
