@@ -1,8 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Loader2, Printer, X } from 'lucide-react';
+import { Download, ExternalLink, FileText, Loader2, Printer, X } from 'lucide-react';
 import { descargarPdf, obtenerPdf } from '../lib/pdf';
 import { useToast } from '../lib/toast';
+
+/**
+ * ¿El navegador dibuja PDFs dentro de la página? Los navegadores móviles no
+ * traen visor integrado: al ponerlos en un iframe muestran un recuadro con el
+ * identificador del blob en vez del documento. En ese caso conviene ofrecer
+ * abrir o descargar en lugar de incrustar.
+ */
+const soportaPdfIncrustado = () => {
+    if (typeof navigator === 'undefined') return true;
+    if (typeof navigator.pdfViewerEnabled === 'boolean') return navigator.pdfViewerEnabled;
+    return typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true;
+};
 
 /**
  * Modal que renderiza el PDF de un documento dentro de una tarjeta centrada
@@ -28,6 +40,7 @@ export default function PdfViewerModal({
     const [formato, setFormato] = useState(formatos[0]);
     const [url, setUrl] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [incrustable] = useState(soportaPdfIncrustado);
 
     // Al abrir se resetea al primer formato disponible.
     useEffect(() => {
@@ -76,7 +89,12 @@ export default function PdfViewerModal({
 
     if (!open) return null;
 
+    const abrir = () => url && window.open(url, '_blank', 'noopener');
+
     const imprimir = () => {
+        // En móvil se abre en el visor del sistema, que ya ofrece imprimir.
+        if (!incrustable) return abrir();
+
         const frame = iframeRef.current;
         if (!frame) return;
         try {
@@ -142,13 +160,16 @@ export default function PdfViewerModal({
                     </div>
 
                     {/* PDF: se ajusta al ancho para no dejar franjas grises a los costados */}
-                    <div className="relative flex-1 overflow-hidden bg-gray-100" style={{ minHeight: '76vh' }}>
+                    <div
+                        className="relative flex-1 overflow-hidden bg-gray-100"
+                        style={{ minHeight: incrustable ? '76vh' : '18rem' }}
+                    >
                         {loading && (
                             <div className="absolute inset-0 z-10 flex items-center justify-center">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
                             </div>
                         )}
-                        {url && (
+                        {url && incrustable && (
                             <iframe
                                 ref={iframeRef}
                                 title={titulo}
@@ -156,6 +177,25 @@ export default function PdfViewerModal({
                                 className="h-full w-full border-0"
                                 style={{ minHeight: '76vh' }}
                             />
+                        )}
+                        {url && !incrustable && (
+                            <div className="flex h-full flex-col items-center justify-center gap-4 px-6 py-10 text-center">
+                                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+                                    <FileText className="h-8 w-8" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-warm-900">{nombre ?? titulo}</p>
+                                    <p className="mt-1 text-xs text-warm-500">
+                                        Tu navegador no muestra PDF dentro de la página. Ábrelo o descárgalo para verlo.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={abrir}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700"
+                                >
+                                    <ExternalLink className="h-4 w-4" /> Abrir PDF
+                                </button>
+                            </div>
                         )}
                     </div>
 
@@ -166,7 +206,11 @@ export default function PdfViewerModal({
                             disabled={!url}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-edge px-3 py-1.5 text-sm font-medium text-warm-700 transition hover:bg-gray-50 disabled:opacity-40"
                         >
-                            <Printer className="h-4 w-4" /> Imprimir
+                            {incrustable ? (
+                                <><Printer className="h-4 w-4" /> Imprimir</>
+                            ) : (
+                                <><ExternalLink className="h-4 w-4" /> Abrir</>
+                            )}
                         </button>
                         <button
                             onClick={() => descargarPdf(tipo, id, { formato, nombre })}
