@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ArrowDownLeft, ArrowRightLeft, ArrowUpRight, Package } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import Layout from '../components/Layout';
@@ -55,8 +55,8 @@ export default function Movimientos() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    /** Unidad en la que se expresan las cantidades ('' = la base de cada producto). */
-    const [verEn, setVerEn] = useState('');
+    /** Unidad elegida por fila para expresar la cantidad: { [id del movimiento]: nombre }. */
+    const [unidadPorFila, setUnidadPorFila] = useState({});
 
     const [filterTipo, setFilterTipo] = useState('');
     const [filterAlmacen, setFilterAlmacen] = useState('');
@@ -144,31 +144,21 @@ export default function Movimientos() {
     const esEntrada = (row) => row.tipo_movimiento === 'entrada';
     const cantAbs = (row) => Math.abs(Number(row.cantidad ?? 0));
 
-    /** Unidades que manejan los productos del kardex visible (saco, caja, kilo…). */
-    const unidadesDisponibles = useMemo(() => {
-        const nombres = new Set();
-        for (const m of movimientos) {
-            for (const pres of m.producto?.presentaciones ?? []) {
-                if (pres.activo === false) continue;
-                const n = pres.nombre?.trim();
-                if (n) nombres.add(n);
-            }
-        }
-        return [...nombres].sort((a, b) => a.localeCompare(b, 'es'));
-    }, [movimientos]);
+    /** Formatos activos del producto de esa fila, del más chico al más grande. */
+    const formatosDe = (row) =>
+        (row.producto?.presentaciones ?? [])
+            .filter((p) => p.activo !== false && p.nombre?.trim())
+            .sort((a, b) => (Number(a.factor_conversion) || 1) - (Number(b.factor_conversion) || 1));
 
     /**
-     * Cantidad del movimiento en la unidad elegida. Se guarda en unidad base,
-     * así que se divide por el factor: una salida de 100 kg son 2 sacos de 50.
-     * Devuelve null si el producto no maneja esa unidad.
+     * Cuántas unidades base vale la unidad elegida en esa fila. Las cantidades
+     * se guardan en unidad base: una salida de 100 kg son 2 sacos de 50.
      */
-    const cantidadEn = (row, unidad) => {
-        const pres = (row.producto?.presentaciones ?? []).find(
-            (x) => x.activo !== false && x.nombre?.trim() === unidad,
-        );
-        if (!pres) return null;
-        const factor = Number(pres.factor_conversion) || 1;
-        return cantAbs(row) / factor;
+    const factorDeFila = (row) => {
+        const elegida = unidadPorFila[row.id];
+        if (!elegida) return 1;
+        const pres = formatosDe(row).find((p) => p.nombre.trim() === elegida);
+        return pres ? Number(pres.factor_conversion) || 1 : 1;
     };
 
     const columns = [
@@ -257,40 +247,45 @@ export default function Movimientos() {
                 ),
         },
         {
+            // Cada producto tiene sus formatos: la unidad se elige por fila y
+            // la cantidad se muestra en ella.
             key: 'unidad',
-            label: 'Und.',
-            width: '70px',
+            label: 'Ver en',
+            width: '150px',
             searchable: false,
-            render: (row) =>
-                row.producto?.unidad_base?.abreviatura ??
-                row.producto?.unidad_base?.nombre ?? <span className="text-gray-400">—</span>,
+            render: (row) => {
+                const formatos = formatosDe(row);
+                const base = row.producto?.unidad_base?.nombre ?? 'Unidad base';
+
+                if (formatos.length === 0) return <span className="text-gray-500">{base}</span>;
+
+                return (
+                    <select
+                        value={unidadPorFila[row.id] ?? ''}
+                        onChange={(e) =>
+                            setUnidadPorFila((prev) => ({ ...prev, [row.id]: e.target.value }))
+                        }
+                        className="h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-xs"
+                    >
+                        <option value="">{base} (base)</option>
+                        {formatos.map((f) => (
+                            <option key={f.id} value={f.nombre.trim()}>
+                                {f.nombre.trim()}
+                            </option>
+                        ))}
+                    </select>
+                );
+            },
         },
         {
             key: 'cantidad',
             label: 'Cant.',
             width: '80px',
             align: 'right',
-            render: (row) => <span className="text-gray-700">{num(cantAbs(row))}</span>,
+            render: (row) => (
+                <span className="text-gray-700">{num(cantAbs(row) / factorDeFila(row))}</span>
+            ),
         },
-        ...(verEn
-            ? [
-                  {
-                      key: 'cantidad_en_unidad',
-                      label: `En ${verEn}`,
-                      width: '110px',
-                      align: 'right',
-                      searchable: false,
-                      render: (row) => {
-                          const v = cantidadEn(row, verEn);
-                          return v == null ? (
-                              <span className="text-gray-300" title={`Este producto no se maneja en ${verEn}`}>—</span>
-                          ) : (
-                              <span className="font-semibold text-primary-700">{num(v)}</span>
-                          );
-                      },
-                  },
-              ]
-            : []),
         {
             key: 'costo_anterior',
             label: 'C. Ant.',
@@ -347,7 +342,11 @@ export default function Movimientos() {
             width: '90px',
             align: 'right',
             searchable: false,
-            render: (row) => <span className="font-medium text-gray-900">{num(row.saldo_stock)}</span>,
+            render: (row) => (
+                <span className="font-medium text-gray-900">
+                    {num(Number(row.saldo_stock ?? 0) / factorDeFila(row))}
+                </span>
+            ),
         },
     ];
 
@@ -359,20 +358,6 @@ export default function Movimientos() {
             />
 
             {error && <Alert variant="error" className="mb-4">{error}</Alert>}
-
-            {unidadesDisponibles.length > 0 && (
-                <div className="mb-4 w-56">
-                    <Select
-                        label="Ver cantidades en"
-                        value={verEn}
-                        onChange={(e) => setVerEn(e.target.value)}
-                        options={[
-                            { value: '', label: 'Unidad base del producto' },
-                            ...unidadesDisponibles.map((u) => ({ value: u, label: u })),
-                        ]}
-                    />
-                </div>
-            )}
 
             <DataTable
                 columns={columns}

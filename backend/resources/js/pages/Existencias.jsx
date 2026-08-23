@@ -24,8 +24,8 @@ export default function Existencias() {
     /** Fila cuyo desglose por unidad derivada se muestra abajo. */
     const [seleccionada, setSeleccionada] = useState(null);
 
-    /** Unidad en la que se expresa el stock de la tabla ('' = la base de cada producto). */
-    const [verEn, setVerEn] = useState('');
+    /** Unidad elegida por fila para expresar su stock: { [id de la fila]: nombre }. */
+    const [unidadPorFila, setUnidadPorFila] = useState({});
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -72,7 +72,9 @@ export default function Existencias() {
 
     const stockBadge = (row) => {
         const { stock, minimo, maximo } = stockInfo(row);
-        const texto = num(stock);
+        // El semáforo se decide con los valores base (así están los mínimos);
+        // lo que cambia es solo cómo se muestra la cantidad.
+        const texto = num(stock / factorDeFila(row));
 
         if (stock <= 0) return <Badge variant="red">{texto}</Badge>;
         if (minimo > 0 && stock <= minimo) return <Badge variant="amber">{texto}</Badge>;
@@ -179,15 +181,37 @@ export default function Existencias() {
               ]
             : []),
         {
+            // Cada producto tiene sus propios formatos, así que la unidad se
+            // elige por fila y el stock se muestra en ella.
             key: 'unidad',
-            label: 'Und.',
-            width: '70px',
+            label: 'Ver en',
+            width: '150px',
             searchable: false,
-            render: (row) => (
-                <span className="text-warm-500">
-                    {row.producto?.unidad_base?.abreviatura ?? row.producto?.unidad_base?.nombre ?? '—'}
-                </span>
-            ),
+            render: (row) => {
+                const formatos = formatosDe(row);
+                const base = row.producto?.unidad_base?.nombre ?? 'Unidad base';
+
+                if (formatos.length === 0) {
+                    return <span className="text-warm-500">{base}</span>;
+                }
+
+                return (
+                    <select
+                        value={unidadPorFila[row.id] ?? ''}
+                        onChange={(e) =>
+                            setUnidadPorFila((prev) => ({ ...prev, [row.id]: e.target.value }))
+                        }
+                        className="h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-xs"
+                    >
+                        <option value="">{base} (base)</option>
+                        {formatos.map((f) => (
+                            <option key={f.id} value={f.nombre.trim()}>
+                                {f.nombre.trim()}
+                            </option>
+                        ))}
+                    </select>
+                );
+            },
         },
         {
             key: 'stock_actual',
@@ -197,34 +221,15 @@ export default function Existencias() {
             searchable: false,
             render: stockBadge,
         },
-        ...(verEn
-            ? [
-                  {
-                      key: 'stock_en_unidad',
-                      label: `En ${verEn}`,
-                      width: '110px',
-                      align: 'right',
-                      searchable: false,
-                      render: (row) => {
-                          const v = stockEn(row, verEn);
-                          return v == null ? (
-                              <span className="text-warm-300" title={`Este producto no se maneja en ${verEn}`}>
-                                  —
-                              </span>
-                          ) : (
-                              <span className="font-semibold text-primary-700">{num(v)}</span>
-                          );
-                      },
-                  },
-              ]
-            : []),
         {
             key: 'stock_reservado',
             label: 'Reserv.',
             width: '85px',
             align: 'right',
             searchable: false,
-            render: (row) => <span className="text-warm-500">{num(row.stock_reservado)}</span>,
+            render: (row) => (
+                <span className="text-warm-500">{num(Number(row.stock_reservado ?? 0) / factorDeFila(row))}</span>
+            ),
         },
         {
             key: 'stock_disponible',
@@ -233,7 +238,9 @@ export default function Existencias() {
             align: 'right',
             searchable: false,
             render: (row) => (
-                <span className="font-medium text-warm-900">{num(row.stock_disponible)}</span>
+                <span className="font-medium text-warm-900">
+                    {num(Number(row.stock_disponible ?? 0) / factorDeFila(row))}
+                </span>
             ),
         },
         {
@@ -242,7 +249,9 @@ export default function Existencias() {
             width: '75px',
             align: 'right',
             searchable: false,
-            render: (row) => <span className="text-warm-500">{num(stockInfo(row).minimo)}</span>,
+            render: (row) => (
+                <span className="text-warm-500">{num(stockInfo(row).minimo / factorDeFila(row))}</span>
+            ),
         },
         {
             key: 'stock_maximo',
@@ -250,7 +259,9 @@ export default function Existencias() {
             width: '75px',
             align: 'right',
             searchable: false,
-            render: (row) => <span className="text-warm-500">{num(stockInfo(row).maximo)}</span>,
+            render: (row) => (
+                <span className="text-warm-500">{num(stockInfo(row).maximo / factorDeFila(row))}</span>
+            ),
         },
         {
             key: 'costo_promedio',
@@ -337,35 +348,21 @@ export default function Existencias() {
             .sort((a, b) => a.factor - b.factor);
     }, [seleccionada]);
 
-    /**
-     * Unidades en las que se puede expresar el stock: las presentaciones que
-     * tienen los productos que se están viendo (saco, kilo, gramo…).
-     */
-    const unidadesDisponibles = useMemo(() => {
-        const mapa = new Map();
-        for (const row of visibles) {
-            for (const pres of row.producto?.presentaciones ?? []) {
-                if (pres.activo === false) continue;
-                const nombre = pres.nombre?.trim();
-                if (nombre && !mapa.has(nombre)) mapa.set(nombre, nombre);
-            }
-        }
-        return [...mapa.keys()].sort((a, b) => a.localeCompare(b, 'es'));
-    }, [visibles]);
+    /** Formatos activos del producto de esa fila, del más chico al más grande. */
+    const formatosDe = (row) =>
+        (row.producto?.presentaciones ?? [])
+            .filter((p) => p.activo !== false && p.nombre?.trim())
+            .sort((a, b) => (Number(a.factor_conversion) || 1) - (Number(b.factor_conversion) || 1));
 
     /**
-     * Stock de una fila expresado en la unidad elegida. El stock vive en la
-     * unidad base del producto, así que se divide por el factor de esa
-     * presentación: 50 kg de un saco de 50 kg son 1 saco; 20 kg son 0.4.
-     * Devuelve null si el producto no maneja esa unidad.
+     * Cuántas unidades base vale la unidad elegida en esa fila. Sin elección
+     * (o si el formato ya no existe) vale 1: se muestra en unidad base.
      */
-    const stockEn = (row, unidad) => {
-        const pres = (row.producto?.presentaciones ?? []).find(
-            (x) => x.activo !== false && x.nombre?.trim() === unidad,
-        );
-        if (!pres) return null;
-        const factor = Number(pres.factor_conversion) || 1;
-        return (Number(row.stock_actual) || 0) / factor;
+    const factorDeFila = (row) => {
+        const elegida = unidadPorFila[row.id];
+        if (!elegida) return 1;
+        const pres = formatosDe(row).find((p) => p.nombre.trim() === elegida);
+        return pres ? Number(pres.factor_conversion) || 1 : 1;
     };
 
     const tabItems = [
@@ -386,23 +383,8 @@ export default function Existencias() {
 
             {error && <Alert variant="error" className="mb-4">{error}</Alert>}
 
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                    <Tabs items={tabItems} value={tab} onChange={setTab} />
-                </div>
-                {unidadesDisponibles.length > 0 && (
-                    <div className="w-56">
-                        <Select
-                            label="Ver stock en"
-                            value={verEn}
-                            onChange={(e) => setVerEn(e.target.value)}
-                            options={[
-                                { value: '', label: 'Unidad base del producto' },
-                                ...unidadesDisponibles.map((u) => ({ value: u, label: u })),
-                            ]}
-                        />
-                    </div>
-                )}
+            <div className="mb-4">
+                <Tabs items={tabItems} value={tab} onChange={setTab} />
             </div>
 
             {/* Resumen de lo que se está viendo */}
