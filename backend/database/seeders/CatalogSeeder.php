@@ -17,22 +17,8 @@ class CatalogSeeder extends Seeder
     public function run(): void
     {
         // ── Unidades de Medida ──
-        $unidades = [
-            ['nombre' => 'Unidad', 'abreviatura' => 'u', 'factor_base' => 1],
-            ['nombre' => 'Kilogramo', 'abreviatura' => 'kg', 'factor_base' => 1000],
-            ['nombre' => 'Gramo', 'abreviatura' => 'g', 'factor_base' => 1],
-            ['nombre' => 'Litro', 'abreviatura' => 'l', 'factor_base' => 1000],
-            ['nombre' => 'Mililitro', 'abreviatura' => 'ml', 'factor_base' => 1],
-            ['nombre' => 'Bolsa', 'abreviatura' => 'bolsa', 'factor_base' => 1],
-            ['nombre' => 'Caja', 'abreviatura' => 'caja', 'factor_base' => 1],
-            ['nombre' => 'Paquete', 'abreviatura' => 'pqte', 'factor_base' => 1],
-            ['nombre' => 'Galón', 'abreviatura' => 'gal', 'factor_base' => 3785],
-            ['nombre' => 'Saco', 'abreviatura' => 'saco', 'factor_base' => 1],
-            ['nombre' => 'Docena', 'abreviatura' => 'doc', 'factor_base' => 12],
-        ];
-        foreach ($unidades as $u) {
-            UnidadMedida::create($u);
-        }
+        // La lista y sus factores viven en un solo sitio.
+        $this->call(UnidadesMedidaSeeder::class);
         $uUnidad = UnidadMedida::where('abreviatura', 'u')->first();
         $uKg = UnidadMedida::where('abreviatura', 'kg')->first();
         $uG = UnidadMedida::where('abreviatura', 'g')->first();

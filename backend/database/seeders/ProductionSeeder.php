@@ -78,6 +78,7 @@ class ProductionSeeder extends Seeder
 
         // ── Catálogos base del sistema (idempotentes) ──
         $this->call([
+            UnidadesMedidaSeeder::class,
             MetodosPagoSeeder::class,
             MotivosMovimientoSeeder::class,
         ]);
