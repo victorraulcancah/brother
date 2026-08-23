@@ -120,6 +120,88 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
   }
 
+  /// Ficha de solo lectura del producto, con sus formatos de venta.
+  Future<void> _verDetalle(Map<String, dynamic> item) async {
+    final pres = ((item['presentaciones'] as List?) ?? []).whereType<Map>().toList();
+    String money(dynamic v) => 'S/ ${sinCerosSobrantes(double.tryParse('$v') ?? 0, 4)}';
+
+    await showAppModal<void>(
+      context,
+      title: item['nombre']?.toString() ?? 'Producto',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppFormSection(
+            title: 'Datos',
+            children: [
+              _detalleFila('Código', item['codigo']?.toString() ?? '—'),
+              _detalleFila('Cód. barras', item['codigo_barras']?.toString() ?? '—'),
+              _detalleFila('Marca', _nested(item, 'marca').isEmpty ? '—' : _nested(item, 'marca')),
+              _detalleFila('Categoría',
+                  _nested(item, 'categoria').isEmpty ? '—' : _nested(item, 'categoria')),
+              _detalleFila('Se cuenta en', _nested(item, 'unidad_medida').isEmpty
+                  ? '—'
+                  : _nested(item, 'unidad_medida')),
+              _detalleFila('Estado', item['activo'] == true ? 'Activo' : 'Inactivo'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          AppFormSection(
+            title: 'Formatos de venta',
+            children: [
+              if (pres.isEmpty)
+                const Text('Sin formatos registrados',
+                    style: TextStyle(color: AppColors.textMuted))
+              else
+                ...pres.map((p) {
+                  final compra = double.tryParse('${p['precio_compra']}') ?? 0;
+                  final venta = double.tryParse('${p['precio_venta']}') ?? 0;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${p['nombre'] ?? ''}  ·  equivale a ${sinCerosSobrantes(double.tryParse('${p['factor_conversion']}') ?? 1, 2)}',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        Text(
+                          '${money(compra)} → ${money(venta)}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: venta >= compra ? AppColors.success : AppColors.danger,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detalleFila(String etiqueta, String valor) => Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(etiqueta, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            Flexible(
+              child: Text(valor,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+            ),
+          ],
+        ),
+      );
+
   Future<void> _delete(Map<String, dynamic> item) async {
     final confirmado = await showAppConfirmDialog(
       context,
@@ -229,6 +311,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     ),
                   ],
                   actions: [
+                    DataCardAction(
+                      icon: Icons.visibility_outlined,
+                      color: AppColors.info,
+                      tooltip: 'Ver detalle',
+                      onTap: () => _verDetalle(item),
+                    ),
                     DataCardAction(
                       icon: Icons.edit_outlined,
                       color: AppColors.primary,

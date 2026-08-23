@@ -54,7 +54,7 @@ class Producto extends Model
     protected function casts(): array
     {
         return [
-            'precio_base' => 'decimal:2',
+            'precio_base' => 'decimal:4',
             'factor_compra_base' => 'decimal:2',
             'stock_minimo' => 'decimal:2',
             'stock_maximo' => 'decimal:2',

@@ -152,6 +152,25 @@ class ProductoController extends Controller
                 $vieja->delete();
             }
         }
+
+        $this->refrescarPrecioBase($producto);
+    }
+
+    /**
+     * `precio_base` es una columna heredada de cuando un producto tenía un solo
+     * precio. Hoy los precios viven en las presentaciones, así que se mantiene
+     * al día con el precio de la unidad base (la de factor 1): es el que cuadra
+     * con el stock, que también se cuenta en esa unidad.
+     */
+    private function refrescarPrecioBase(Producto $producto): void
+    {
+        $base = $producto->presentaciones()
+            ->orderBy('factor_conversion')
+            ->first();
+
+        $producto->forceFill([
+            'precio_base' => $base ? round((float) $base->precio_venta / max((float) $base->factor_conversion, 1), 4) : 0,
+        ])->save();
     }
 
     /** ¿Algún documento apunta a esta presentación? */
