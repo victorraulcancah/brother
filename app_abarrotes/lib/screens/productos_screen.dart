@@ -488,6 +488,11 @@ class _ProductoWizardState extends State<_ProductoWizard> {
 
   String _nombreUnidad(int? id) => nombreUnidad(widget.unidades, id);
 
+  /// "1 saco" una vez elegida la unidad de compra; si no, "cada uno".
+  String get _unidadCompraTexto => _unidadCompraId != null
+      ? '1 ${_nombreUnidad(_unidadCompraId).toLowerCase()}'
+      : 'cada uno';
+
   String _money(double n) => 'S/ ${sinCerosSobrantes(n, 4)}';
 
   /// Cuánto cuesta un formato de venta. No depende del precio de venta, así
@@ -782,37 +787,35 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                   _recalcularTodo();
                 },
               ),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      controller: _cantidadCompra,
-                      label: 'Que trae',
-                      icon: Icons.numbers,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => _recalcularTodo(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: AppSelect<int>(
-                      label: 'De',
-                      value: _unidadContenidoId,
-                      options: _optsUnidades,
-                      onChanged: (v) {
-                        _unidadContenidoId = v;
-                        _recalcularTodo();
-                      },
-                    ),
-                  ),
-                ],
-              ),
+              // Cada campo con su etiqueta, uno debajo de otro: en móvil no hay
+              // ancho para ponerlos en fila sin que se aprieten.
               AppTextField(
                 controller: _precioCompra,
-                label: 'Precio de compra (S/)',
+                label: '¿Cuánto pagas por $_unidadCompraTexto? (S/)',
                 icon: Icons.attach_money,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (_) => _recalcularTodo(),
+              ),
+              AppTextField(
+                controller: _cantidadCompra,
+                label: '¿Cuánto trae $_unidadCompraTexto?',
+                icon: Icons.numbers,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => _recalcularTodo(),
+              ),
+              AppSelect<int>(
+                label: '¿En qué unidad?',
+                icon: Icons.straighten,
+                value: _unidadContenidoId,
+                options: _optsUnidades,
+                onChanged: (v) {
+                  _unidadContenidoId = v;
+                  _recalcularTodo();
+                },
+              ),
+              const Text(
+                'Ej. un saco trae 50 de Kilogramo; una caja trae 12 de Unidad.',
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
               if (calculo.baseId != null && calculo.factorCompraBase > 0)
                 Container(

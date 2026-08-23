@@ -230,6 +230,11 @@ export default function Productos() {
         );
 
     // Todo el cálculo (unidad base, factores y costos) sale de compra + ventas.
+    /** "1 saco" una vez elegida la unidad de compra; si no, "cada uno". */
+    const unidadCompraTexto = compra.unidad_compra_id
+        ? `1 ${unidadNombre(compra.unidad_compra_id).toLowerCase()}`
+        : 'cada uno';
+
     const calculo = useMemo(
         () => calcularPresentaciones({ unidades, compra, ventas }),
         [unidades, compra, ventas],
@@ -654,7 +659,9 @@ export default function Productos() {
                         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
                             Cómo lo compro
                         </h3>
-                        <div className="grid gap-4 sm:grid-cols-4">
+                        {/* Rejilla de 2x2, igual que Clasificación: cada campo con
+                            su etiqueta encima y todos alineados. */}
+                        <div className="grid gap-4 sm:grid-cols-2">
                             <FieldWithAdd onAdd={() => setQuick({ tipo: 'unidad' })}>
                                 <Select
                                     label="Compro por"
@@ -665,7 +672,16 @@ export default function Productos() {
                                 />
                             </FieldWithAdd>
                             <Input
-                                label="Que trae"
+                                label={`¿Cuánto pagas por ${unidadCompraTexto}?`}
+                                type="number"
+                                step="any"
+                                min="0"
+                                placeholder="140.00"
+                                value={compra.precio}
+                                onChange={setCompraField('precio')}
+                            />
+                            <Input
+                                label={`¿Cuánto trae ${unidadCompraTexto}?`}
                                 type="number"
                                 step="any"
                                 min="0"
@@ -675,22 +691,20 @@ export default function Productos() {
                                 error={errors.compra_cantidad}
                             />
                             <Select
-                                label="De"
+                                label="¿En qué unidad?"
                                 value={compra.unidad_contenido_id}
                                 onChange={setCompraField('unidad_contenido_id')}
-                                options={[{ value: '', label: 'Ej. Kilo, Unidad…' }, ...unidadOptions]}
+                                options={[
+                                    { value: '', label: 'Ej. Kilogramo, Unidad…' },
+                                    ...unidadOptions,
+                                ]}
                                 error={errors.compra_contenido}
                             />
-                            <Input
-                                label="Precio de compra"
-                                type="number"
-                                step="any"
-                                min="0"
-                                placeholder="140.00"
-                                value={compra.precio}
-                                onChange={setCompraField('precio')}
-                            />
                         </div>
+                        <p className="mt-2 text-xs text-warm-400">
+                            Ej. un saco trae <strong>50</strong> de <strong>Kilogramo</strong>; una
+                            caja trae <strong>12</strong> de <strong>Unidad</strong>.
+                        </p>
                         {calculo.baseId && calculo.factorCompraBase > 0 && (
                             <p className="mt-2 text-xs text-warm-500">
                                 {compra.unidad_compra_id
