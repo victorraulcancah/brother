@@ -263,10 +263,11 @@ class _PagosCuentaScreenState extends State<PagosCuentaScreen> {
           final i = e.key;
           final l = e.value;
           return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
             child: Column(
+              spacing: 12,
               children: [
                 MetodoPicker(
                   cuentas: _cuentas,
@@ -280,7 +281,6 @@ class _PagosCuentaScreenState extends State<PagosCuentaScreen> {
                     l.billeteraId = b;
                   }),
                 ),
-                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
@@ -291,7 +291,9 @@ class _PagosCuentaScreenState extends State<PagosCuentaScreen> {
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
+                    const SizedBox(width: 4),
                     IconButton(
+                      tooltip: 'Quitar forma de pago',
                       icon: const Icon(Icons.close, size: 18),
                       color: AppColors.danger,
                       onPressed: _lineas.length == 1 ? null : () => setState(() => _lineas.removeAt(i).dispose()),
@@ -307,7 +309,6 @@ class _PagosCuentaScreenState extends State<PagosCuentaScreen> {
           alignment: Alignment.centerLeft,
           child: TextButton.icon(onPressed: () => setState(() => _lineas.add(_PagoLinea())), icon: const Icon(Icons.add), label: const Text('Agregar forma')),
         ),
-        const SizedBox(height: 4),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
