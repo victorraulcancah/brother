@@ -532,7 +532,7 @@ class _ProductoWizardState extends State<_ProductoWizard> {
         children: [
           _stepIndicator(0, 'Datos'),
           const Expanded(child: Divider()),
-          _stepIndicator(1, 'Compra y venta'),
+          _stepIndicator(1, 'Precios'),
         ],
       ),
     );
@@ -832,7 +832,7 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                       }
                     },
                   )
-                : PrimaryButton(label: 'Guardar producto', onPressed: _guardar),
+                : PrimaryButton(label: 'Guardar', onPressed: _guardar),
           ),
         ],
       ),
