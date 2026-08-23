@@ -256,6 +256,7 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
           options: [for (final u in unidades) AppSelectOption<int>(u['id'] as int, _labelUnidad(_productoId, u))],
           onChanged: _productoId == null ? null : _elegirUnidad,
         ),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
@@ -265,7 +266,7 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
               child: AppTextField(
                 controller: _precio,
@@ -275,7 +276,7 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         PrimaryButton(label: 'Agregar producto', icon: Icons.add, onPressed: _agregar),
 
         // ── Productos agregados ──

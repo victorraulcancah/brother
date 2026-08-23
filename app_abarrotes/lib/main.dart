@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'config/app_routes.dart';
 import 'providers/auth_provider.dart';
@@ -53,6 +54,10 @@ class MyApp extends StatelessWidget {
         title: 'BRAVA',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        // Calendarios y textos de Material en español (antes: "Select date").
+        locale: const Locale('es'),
+        supportedLocales: const [Locale('es'), Locale('en')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
         initialRoute: AppRoutes.splash,
         routes: {
           AppRoutes.splash: (_) => const SplashScreen(),

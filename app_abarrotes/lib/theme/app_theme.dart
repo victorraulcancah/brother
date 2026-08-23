@@ -49,6 +49,17 @@ class AppTheme {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
       ),
+      // Los selectores de fecha y hora no heredan `dialogTheme`: traen el suyo,
+      // que por defecto usa `surfaceContainerHigh` (crema teñido de naranja).
+      datePickerTheme: const DatePickerThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        headerBackgroundColor: Colors.white,
+        headerForegroundColor: AppColors.textStrong,
+      ),
+      timePickerTheme: const TimePickerThemeData(
+        backgroundColor: Colors.white,
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textStrong,

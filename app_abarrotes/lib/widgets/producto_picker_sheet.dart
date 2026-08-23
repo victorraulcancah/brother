@@ -84,7 +84,9 @@ class _PickerSheetState extends State<_PickerSheet> {
   @override
   void initState() {
     super.initState();
-    _mostrarFiltros = widget.initialQuery.isEmpty;
+    // Plegados: seis desplegables tapaban la lista, que es a lo que se viene.
+    // El botón de filtros lleva una insignia con cuántos hay activos.
+    _mostrarFiltros = false;
   }
 
   @override
@@ -273,9 +275,16 @@ class _PickerSheetState extends State<_PickerSheet> {
               ),
 
               if (_mostrarFiltros)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
                   child: Column(
+                    spacing: 10,
                     children: [
                       Row(
                         children: [
@@ -356,7 +365,11 @@ class _PickerSheetState extends State<_PickerSheet> {
                                 controller: _stockHasta,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 onChanged: (_) => setState(() {}),
-                                decoration: const InputDecoration(labelText: 'Hasta', hintText: 'N'),
+                                decoration: const InputDecoration(
+                                  labelText: 'Stock hasta',
+                                  hintText: 'N',
+                                  isDense: true,
+                                ),
                               ),
                             ),
                           ],
@@ -457,15 +470,28 @@ class _PickerSheetState extends State<_PickerSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(p['nombre']?.toString() ?? '—', style: const TextStyle(fontWeight: FontWeight.w600)),
-                        if (subt.isNotEmpty) Text(subt, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        // A una línea cada uno: con nombres largos la fila
+                        // crecía y la lista quedaba desalineada.
+                        Text(
+                          p['nombre']?.toString() ?? '—',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        if (subt.isNotEmpty)
+                          Text(
+                            subt,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                          ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 8),
                   if (widget.stockPorProducto.isNotEmpty)
                     AppBadge(
-                      'Stock ${_fmt(stock)}${abrev.isEmpty ? '' : ' $abrev'}',
+                      '${_fmt(stock)}${abrev.isEmpty ? '' : ' $abrev'}',
                       type: stock <= 0 ? AppBadgeType.danger : AppBadgeType.neutral,
                     ),
                 ],
