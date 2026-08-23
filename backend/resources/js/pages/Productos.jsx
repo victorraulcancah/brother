@@ -187,12 +187,31 @@ export default function Productos() {
     const addVenta = () => setVentas((prev) => [...prev, ventaVacia()]);
     const removeVenta = (index) =>
         setVentas((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
+
+    /**
+     * El % de ganancia y el precio de venta son dos vistas del mismo dato: al
+     * mover uno se recalcula el otro sobre el costo de esa fila.
+     */
     const setVentaField = (index, campo, valor) =>
         setVentas((prev) =>
             prev.map((v, i) => {
                 if (i !== index) return v;
-                // Al cambiar el % se recalcula el precio; al escribir el precio, manda el precio.
-                if (campo === 'margen') return { ...v, margen: valor, precio_venta: '' };
+
+                if (campo === 'margen') {
+                    // Se limpia el precio para que vuelva a derivarse del %.
+                    return { ...v, margen: valor, precio_venta: '' };
+                }
+
+                if (campo === 'precio_venta') {
+                    const costo = costoDe(v.unidad_id);
+                    const precio = Number(valor);
+                    const margen =
+                        costo > 0 && valor !== '' && Number.isFinite(precio)
+                            ? String(+((precio / costo - 1) * 100).toFixed(1))
+                            : v.margen;
+                    return { ...v, precio_venta: valor, margen };
+                }
+
                 return { ...v, [campo]: valor };
             }),
         );
@@ -202,6 +221,12 @@ export default function Productos() {
         () => calcularPresentaciones({ unidades, compra, ventas }),
         [unidades, compra, ventas],
     );
+
+    const filaDe = (unidadId) =>
+        calculo.filas.find((f) => String(f.unidad_id) === String(unidadId)) ?? null;
+    const costoDe = (unidadId) => filaDe(unidadId)?.precio_compra ?? 0;
+    /** Number -> texto sin ceros de relleno: 3.5 y 0.0035, no 3.5000. */
+    const conDecimales = (n) => String(+Number(n).toFixed(4));
 
     // ---- Guardar ----
     const validate = () => {
@@ -690,21 +715,21 @@ export default function Productos() {
                             </Alert>
                         )}
                         <div className="overflow-x-auto rounded-lg border border-edge">
-                            <table className="w-full min-w-[540px] text-sm">
+                            <table className="w-full min-w-[640px] text-sm">
                                 <thead>
                                     <tr className="bg-primary-600 text-left text-xs text-white">
                                         <th className="px-2 py-2 font-medium">Vendo por</th>
                                         <th className="px-2 py-2 font-medium">Me cuesta</th>
                                         <th className="px-2 py-2 font-medium">% ganancia</th>
                                         <th className="px-2 py-2 font-medium">Precio de venta</th>
+                                        <th className="px-2 py-2 font-medium">Ganas</th>
                                         <th className="w-10 px-2 py-2" />
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {ventas.map((v, i) => {
-                                        const fila = calculo.filas.find(
-                                            (f) => String(f.unidad_id) === String(v.unidad_id),
-                                        );
+                                        const fila = filaDe(v.unidad_id);
+                                        const ganancia = fila ? fila.precio_venta - fila.precio_compra : 0;
                                         return (
                                             <tr key={i} className="border-t border-edge">
                                                 <td className="px-2 py-1.5">
@@ -743,12 +768,30 @@ export default function Productos() {
                                                         step="any"
                                                         min="0"
                                                         className="h-8 w-28 rounded-md border border-gray-300 bg-emerald-50 px-2 text-sm font-medium"
-                                                        placeholder={fila ? fila.precio_venta.toFixed(4) : ''}
-                                                        value={v.precio_venta}
+                                                        value={
+                                                            v.precio_venta !== ''
+                                                                ? v.precio_venta
+                                                                : fila
+                                                                  ? conDecimales(fila.precio_venta)
+                                                                  : ''
+                                                        }
                                                         onChange={(e) =>
                                                             setVentaField(i, 'precio_venta', e.target.value)
                                                         }
                                                     />
+                                                </td>
+                                                <td className="px-2 py-1.5 text-warm-600">
+                                                    {fila && fila.precio_compra > 0 ? (
+                                                        <span
+                                                            className={
+                                                                ganancia < 0 ? 'text-red-600' : 'text-green-700'
+                                                            }
+                                                        >
+                                                            {money(ganancia)}
+                                                        </span>
+                                                    ) : (
+                                                        '—'
+                                                    )}
                                                 </td>
                                                 <td className="px-2 py-1.5 text-center">
                                                     <button

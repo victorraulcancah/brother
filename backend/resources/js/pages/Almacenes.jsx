@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BadgeCheck, Edit, MapPin, Tag, Trash2, Warehouse } from 'lucide-react';
+import { BadgeCheck, Edit, MapPin, Power, PowerOff, Tag, Trash2, Warehouse } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
@@ -21,6 +21,10 @@ export default function Almacenes() {
     const [saving, setSaving] = useState(false);
 
     const [deleteTarget, setDeleteTarget] = useState(null);
+    // Respuesta 409 del servidor: por qué no se puede eliminar este almacén.
+    const [bloqueo, setBloqueo] = useState(null);
+    // Id del almacén cuyo activo/inactivo se está guardando.
+    const [toggling, setToggling] = useState(null);
     const [deleting, setDeleting] = useState(false);
 
     const [filterEstado, setFilterEstado] = useState('');
@@ -95,16 +99,69 @@ export default function Almacenes() {
 
     const handleDelete = async () => {
         setDeleting(true);
+        setBloqueo(null);
         try {
             await api.delete(`/almacenes/${deleteTarget.id}`);
             toast.success('Almacén eliminado.');
             setDeleteTarget(null);
             await load();
-        } catch {
-            toast.error('No se pudo eliminar el almacén.');
+        } catch (err) {
+            // 409: tiene historial. No es un fallo, es que corresponde desactivar.
+            if (err.response?.status === 409) {
+                setBloqueo(err.response.data);
+            } else {
+                toast.error('No se pudo eliminar el almacén.');
+            }
         } finally {
             setDeleting(false);
         }
+    };
+
+    /** Guarda el almacén cambiando solo su estado activo/inactivo. */
+    const guardarActivo = (almacen, activo) =>
+        api.put(`/almacenes/${almacen.id}`, {
+            nombre: almacen.nombre,
+            codigo: almacen.codigo,
+            tipo: almacen.tipo,
+            direccion: almacen.direccion,
+            activo,
+        });
+
+    const toggleActivo = async (almacen) => {
+        const activar = !almacen.activo;
+        setToggling(almacen.id);
+        try {
+            await guardarActivo(almacen, activar);
+            toast.success(
+                activar
+                    ? `"${almacen.nombre}" está activo de nuevo.`
+                    : `"${almacen.nombre}" quedó desactivado. Su historial se conserva.`,
+            );
+            await load();
+        } catch {
+            toast.error(activar ? 'No se pudo activar el almacén.' : 'No se pudo desactivar el almacén.');
+        } finally {
+            setToggling(null);
+        }
+    };
+
+    const handleDesactivar = async () => {
+        setDeleting(true);
+        try {
+            await guardarActivo(deleteTarget, false);
+            toast.success('Almacén desactivado. Su historial se conserva.');
+            cerrarEliminar();
+            await load();
+        } catch {
+            toast.error('No se pudo desactivar el almacén.');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const cerrarEliminar = () => {
+        setDeleteTarget(null);
+        setBloqueo(null);
     };
 
     const applyFilters = () => {
@@ -212,17 +269,36 @@ export default function Almacenes() {
             type: 'actions',
             key: 'actions',
             label: 'Acciones',
+            // Tres botones no entran en los 120px por defecto.
+            width: '150px',
             actions: (row) => (
                 <>
                     <button
                         aria-label="Editar"
+                        title="Editar"
                         onClick={() => openEdit(row)}
                         className="rounded-md p-1.5 text-primary-600 transition hover:bg-primary-50 hover:text-primary-700"
                     >
                         <Edit className="h-4 w-4" />
                     </button>
+                    {/* Desactivar es distinto de eliminar: apaga el almacén sin
+                        tocar su historial, y se puede volver a activar. */}
+                    <button
+                        aria-label={row.activo ? 'Desactivar' : 'Activar'}
+                        title={row.activo ? 'Desactivar' : 'Activar'}
+                        disabled={toggling === row.id}
+                        onClick={() => toggleActivo(row)}
+                        className={
+                            row.activo
+                                ? 'rounded-md p-1.5 text-amber-600 transition hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40'
+                                : 'rounded-md p-1.5 text-green-600 transition hover:bg-green-50 hover:text-green-700 disabled:opacity-40'
+                        }
+                    >
+                        {row.activo ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                    </button>
                     <button
                         aria-label="Eliminar"
+                        title="Eliminar"
                         onClick={() => setDeleteTarget(row)}
                         className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-700"
                     >
@@ -336,24 +412,58 @@ export default function Almacenes() {
             {/* Modal eliminar */}
             <Modal
                 open={Boolean(deleteTarget)}
-                onClose={() => setDeleteTarget(null)}
-                title="Eliminar almacén"
-                description={`¿Seguro que deseas eliminar "${deleteTarget?.nombre}"?`}
+                onClose={cerrarEliminar}
+                title={bloqueo ? 'No se puede eliminar' : 'Eliminar almacén'}
+                description={
+                    bloqueo
+                        ? `"${deleteTarget?.nombre}" ya tiene historial en el sistema.`
+                        : `¿Seguro que deseas eliminar "${deleteTarget?.nombre}"?`
+                }
                 size="sm"
                 footer={
                     <>
-                        <Button variant="secondary" onClick={() => setDeleteTarget(null)}>
-                            Cancelar
+                        <Button variant="secondary" onClick={cerrarEliminar}>
+                            {bloqueo ? 'Cerrar' : 'Cancelar'}
                         </Button>
-                        <Button variant="danger" loading={deleting} onClick={handleDelete}>
-                            Eliminar
-                        </Button>
+                        {bloqueo ? (
+                            bloqueo.puede_desactivar && (
+                                <Button loading={deleting} onClick={handleDesactivar}>
+                                    Desactivar almacén
+                                </Button>
+                            )
+                        ) : (
+                            <Button variant="danger" loading={deleting} onClick={handleDelete}>
+                                Eliminar
+                            </Button>
+                        )}
                     </>
                 }
             >
-                <Alert variant="warning">
-                    El stock y los movimientos asociados a este almacén podrían verse afectados.
-                </Alert>
+                {bloqueo ? (
+                    <div className="space-y-3">
+                        <Alert variant="warning">{bloqueo.message}</Alert>
+                        {bloqueo.motivos?.length > 0 && (
+                            <div>
+                                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-warm-500">
+                                    Está siendo usado por
+                                </p>
+                                <ul className="list-inside list-disc space-y-0.5 text-sm text-warm-700">
+                                    {bloqueo.motivos.map((m) => (
+                                        <li key={m}>{m}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                        {!bloqueo.puede_desactivar && (
+                            <p className="text-sm text-warm-500">Este almacén ya está desactivado.</p>
+                        )}
+                    </div>
+                ) : (
+                    <Alert variant="warning">
+                        Solo se puede eliminar si está vacío: sin stock y sin movimientos, ventas ni
+                        traslados registrados. Si tiene historial, el sistema te ofrecerá desactivarlo.
+                    </Alert>
+                )}
             </Modal>
         </Layout>
     );
