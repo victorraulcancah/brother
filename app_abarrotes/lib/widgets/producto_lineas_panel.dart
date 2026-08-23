@@ -353,9 +353,11 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
                 ),
               ],
             ),
+            const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Column(
+                spacing: 12,
                 children: [
                   AppSelect<int>(
                     label: 'Unidad',
@@ -379,7 +381,7 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
                           validator: (_) => excede ? 'Supera el stock' : null,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: AppTextField(
                           controller: l.precio,
@@ -388,14 +390,20 @@ class _ProductoLineasPanelState extends State<ProductoLineasPanel> {
                           onChanged: (_) => widget.onChanged(),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text('Subtotal', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                            Text(_money(l.subtotal), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
-                          ],
+                    ],
+                  ),
+                  // El subtotal en su propia línea: como tercera columna dejaba
+                  // los dos campos en un tercio de ancho cada uno.
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      const Text('Subtotal ', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                      Text(
+                        _money(l.subtotal),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AppColors.primary,
                         ),
                       ),
                     ],

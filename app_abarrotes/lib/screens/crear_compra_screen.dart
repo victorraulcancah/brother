@@ -53,6 +53,9 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
   int? _proveedorId;
   String _tipoDoc = 'factura';
   String _formaPago = 'contado';
+
+  /// Al crédito no se cobra nada al emitir: queda como cuenta por pagar.
+  bool get _esContado => _formaPago == 'contado';
   final _serie = TextEditingController();
   final _numero = TextEditingController();
   final _flete = TextEditingController(text: '0');
@@ -232,12 +235,14 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
         'detalles': lineasValidas
             .map((l) => {'producto_presentacion_id': l.presentacionId, 'cantidad': l.cant, 'costo_unitario': l.precioVal})
             .toList(),
-        'pagos': _pagos.where((p) => p.valor > 0).map((p) => {
-              'metodo': p.tipo,
-              'cuenta_bancaria_id': p.tipo == 'transferencia' ? p.cuentaId : null,
-              'billetera_id': p.tipo == 'billetera' ? p.billeteraId : null,
-              'monto': p.valor,
-            }).toList(),
+        'pagos': _esContado
+            ? _pagos.where((p) => p.valor > 0).map((p) => {
+                  'metodo': p.tipo,
+                  'cuenta_bancaria_id': p.tipo == 'transferencia' ? p.cuentaId : null,
+                  'billetera_id': p.tipo == 'billetera' ? p.billeteraId : null,
+                  'monto': p.valor,
+                }).toList()
+            : const [],
       };
 
       if (_editando) {
@@ -306,7 +311,7 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
                       Row(
                         children: [
                           Expanded(child: AppTextField(controller: _serie, label: 'Serie', icon: Icons.tag)),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           Expanded(child: AppTextField(controller: _numero, label: 'Número')),
                         ],
                       ),
@@ -387,8 +392,9 @@ class _CrearCompraScreenState extends State<CrearCompraScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  AppFormSection(
-                    title: 'Pagos (mixto)',
+                  if (_esContado)
+                    AppFormSection(
+                      title: 'Pagos (mixto)',
                     children: [
                       for (int i = 0; i < _pagos.length; i++)
                         Container(
