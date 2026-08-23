@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './lib/auth';
 import { ToastProvider } from './lib/toast';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -43,6 +43,9 @@ import Ganancias from './pages/Ganancias';
 import EnConstruccion from './pages/EnConstruccion';
 
 const routes = [
+    // La raíz lleva al escritorio; sin esto caía en el comodín "*" y mostraba
+    // "En construcción" al entrar por la URL base o al volver del login.
+    { path: '/', element: <Navigate to="/dashboard" replace /> },
     { path: '/dashboard', element: <Dashboard /> },
     { path: '/roles', element: <Roles /> },
     { path: '/usuarios', element: <Usuarios /> },
