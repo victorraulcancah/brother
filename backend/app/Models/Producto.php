@@ -30,6 +30,27 @@ class Producto extends Model
         'activo',
     ];
 
+    /**
+     * Siguiente código correlativo (PROD001, PROD002…) para cuando no se envía
+     * uno. Toma el mayor número usado con ese prefijo y avanza hasta encontrar
+     * uno libre, por si hay huecos o códigos escritos a mano.
+     */
+    public static function generarCodigo(string $prefijo = 'PROD'): string
+    {
+        $ultimo = static::where('codigo', 'like', $prefijo.'%')
+            ->orderByRaw('LENGTH(codigo) DESC, codigo DESC')
+            ->value('codigo');
+
+        $n = (int) preg_replace('/\D/', '', (string) $ultimo);
+
+        do {
+            $n++;
+            $codigo = $prefijo.str_pad((string) $n, 3, '0', STR_PAD_LEFT);
+        } while (static::where('codigo', $codigo)->exists());
+
+        return $codigo;
+    }
+
     protected function casts(): array
     {
         return [

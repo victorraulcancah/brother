@@ -207,7 +207,7 @@ export default function Productos() {
     // ---- Guardar ----
     const validate = () => {
         const next = {};
-        if (!form.codigo.trim()) next.codigo = 'Ingrese el código';
+        // El código ya no se pide en el formulario: lo genera el servidor.
         if (!form.nombre.trim()) next.nombre = 'Ingrese el nombre';
         if (!form.unidad_medida_id) next.unidad_medida_id = 'Seleccione la unidad de medida';
         if (derivadas.length === 0) next.derivadas = 'Agregue al menos una unidad derivada';
@@ -506,11 +506,13 @@ export default function Productos() {
                             Identificación
                         </h3>
                         <div className="grid gap-4 sm:grid-cols-3">
+                            {/* El código se genera solo en el servidor (PROD001, PROD002…). */}
                             <Input
-                                label="Código / SKU"
-                                value={form.codigo}
-                                onChange={setField('codigo')}
-                                error={errors.codigo}
+                                label="Producto"
+                                value={form.nombre}
+                                onChange={setField('nombre')}
+                                error={errors.nombre}
+                                className="sm:col-span-2"
                             />
                             <Input
                                 label="Código de barra"
@@ -527,18 +529,6 @@ export default function Productos() {
                                 />
                                 Producto activo
                             </label>
-                            <Input
-                                label="Producto"
-                                value={form.nombre}
-                                onChange={setField('nombre')}
-                                error={errors.nombre}
-                                className="sm:col-span-2"
-                            />
-                            <Input
-                                label="Descripción ticket"
-                                value={form.descripcion_ticket}
-                                onChange={setField('descripcion_ticket')}
-                            />
                         </div>
                     </section>
 

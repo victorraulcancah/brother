@@ -1,11 +1,20 @@
 <?php
 namespace App\Http\Requests\Producto;
 
+use App\Models\Producto;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreProductoRequest extends FormRequest
 {
     public function authorize(): bool { return true; }
+
+    /** El formulario ya no pide código: si llega vacío, se genera uno. */
+    protected function prepareForValidation(): void
+    {
+        if (blank($this->input('codigo'))) {
+            $this->merge(['codigo' => Producto::generarCodigo()]);
+        }
+    }
 
     public function rules(): array
     {
