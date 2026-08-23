@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Edit, HandCoins, Handshake, Plus, Printer, Trash2, Undo2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
+import { opcionesAlmacen } from '../lib/almacenes';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
@@ -579,7 +580,7 @@ export default function Prestamos() {
                                 options={[{ value: 'prestado', label: 'Presté (la tienda presta)' }, { value: 'recibido', label: 'Me prestaron (la tienda recibe)' }]} />
                             <Select label="Almacén" value={form.almacen_id} disabled={Boolean(editing)}
                                 onChange={(e) => { setField('almacen_id', e.target.value); setItems([]); setPanel({ ...panelVacio }); }}
-                                options={[{ value: '', label: 'Selecciona…' }, ...almacenes.map((a) => ({ value: String(a.id), label: a.nombre }))]}
+                                options={[{ value: '', label: 'Selecciona…' }, ...opcionesAlmacen(almacenes, form.almacen_id)]}
                                 error={formErrors.almacen_id} />
                             <Input label="Fecha del préstamo" type="date" value={form.fecha_prestamo} disabled={Boolean(editing)}
                                 onChange={(e) => setField('fecha_prestamo', e.target.value)} error={formErrors.fecha_prestamo} />

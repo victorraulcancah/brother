@@ -1,4 +1,4 @@
-/<?php
+<?php
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Producto\StoreProductoRequest;
@@ -11,6 +11,7 @@ use App\Models\ProductoLote;
 use App\Models\ProductoPresentacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ProductoController extends Controller
 {
@@ -19,6 +20,22 @@ class ProductoController extends Controller
         'unidadCompra', 'unidadBase',
         'presentaciones.unidadBase', 'presentaciones.complementario',
         'lotes',
+    ];
+
+    /**
+     * Tablas que guardan con qué presentación se hizo un documento. Se
+     * comprueban con Schema porque algunas columnas se agregaron y quitaron
+     * por migración.
+     */
+    private const USOS_PRESENTACION = [
+        'nota_venta_detalles',
+        'compra_detalles',
+        'ajuste_detalles',
+        'prestamo_detalles',
+        'prestamo_devoluciones',
+        'transferencia_detalles',
+        'toma_inventario_detalles',
+        'movimientos_inventario',
     ];
 
     public function index(Request $request)
@@ -53,6 +70,15 @@ class ProductoController extends Controller
     {
         $data = $request->validated();
 
+        $cambiaUnidadBase = array_key_exists('unidad_medida_id', $data)
+            && (int) $data['unidad_medida_id'] !== (int) $producto->unidad_medida_id;
+
+        if ($cambiaUnidadBase && $this->tieneMovimiento($producto)) {
+            return response()->json([
+                'message' => 'No se puede cambiar la unidad en la que se cuenta el stock de un producto que ya tiene existencias o movimientos: las cantidades registradas quedarían mal contadas. Deja el stock en cero y sin documentos pendientes, o crea un producto nuevo.',
+            ], 409);
+        }
+
         DB::transaction(function () use ($producto, $data) {
             $producto->update($this->soloProducto($data));
             if (array_key_exists('presentaciones', $data)) {
@@ -75,14 +101,22 @@ class ProductoController extends Controller
         return collect($data)->except(['presentaciones', 'lote'])->all();
     }
 
-    /** Reemplaza las presentaciones del producto por la lista enviada. */
+    /**
+     * Deja las presentaciones del producto igual a la lista enviada, pero SIN
+     * borrarlas y recrearlas: una venta apunta a la presentación con la que se
+     * hizo, así que borrarla rompe la clave foránea y se pierde el histórico.
+     *
+     * Las que siguen en la lista se actualizan (se identifican por nombre, que
+     * es único por producto); las que desaparecen se borran solo si nadie las
+     * usa, y si tienen historial se desactivan.
+     */
     private function syncPresentaciones(Producto $producto, array $lista): void
     {
-        $producto->presentaciones()->delete();
+        $existentes = $producto->presentaciones()->get()->keyBy('nombre');
+        $conservadas = [];
 
         foreach ($lista as $p) {
-            ProductoPresentacion::create([
-                'producto_id' => $producto->id,
+            $datos = [
                 'nombre' => $p['nombre'],
                 'codigo_barras' => $p['codigo_barras'] ?? null,
                 'precio_venta' => $p['precio_venta'] ?? 0,
@@ -93,8 +127,75 @@ class ProductoController extends Controller
                 'producto_complementario_id' => $p['producto_complementario_id'] ?? null,
                 'cantidad_complementaria' => $p['cantidad_complementaria'] ?? 0,
                 'activo' => $p['activo'] ?? true,
-            ]);
+            ];
+
+            $actual = $existentes->get($p['nombre']);
+
+            if ($actual) {
+                $actual->update($datos);
+                $conservadas[] = $actual->id;
+            } else {
+                $nueva = ProductoPresentacion::create($datos + ['producto_id' => $producto->id]);
+                $conservadas[] = $nueva->id;
+            }
         }
+
+        foreach ($existentes as $vieja) {
+            if (in_array($vieja->id, $conservadas, true)) {
+                continue;
+            }
+
+            if ($this->presentacionEnUso($vieja->id)) {
+                $vieja->update(['activo' => false]);
+            } else {
+                $vieja->delete();
+            }
+        }
+    }
+
+    /** ¿Algún documento apunta a esta presentación? */
+    private function presentacionEnUso(int $presentacionId): bool
+    {
+        foreach (self::USOS_PRESENTACION as $tabla) {
+            if (! Schema::hasTable($tabla) || ! Schema::hasColumn($tabla, 'producto_presentacion_id')) {
+                continue;
+            }
+
+            if (DB::table($tabla)->where('producto_presentacion_id', $presentacionId)->exists()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * ¿El producto ya tiene vida en el sistema? Se usa para no dejar cambiar la
+     * unidad base: el stock guardado está expresado en ella, y cambiarla
+     * reinterpreta las cantidades (50 unidades pasarían a valer 50 gramos).
+     */
+    private function tieneMovimiento(Producto $producto): bool
+    {
+        $conStock = $producto->stocks()
+            ->where(fn ($q) => $q->where('stock_actual', '!=', 0)->orWhere('stock_reservado', '!=', 0))
+            ->exists();
+
+        if ($conStock) {
+            return true;
+        }
+
+        if (Schema::hasTable('movimientos_inventario')
+            && DB::table('movimientos_inventario')->where('producto_id', $producto->id)->exists()) {
+            return true;
+        }
+
+        foreach ($producto->presentaciones()->pluck('id') as $id) {
+            if ($this->presentacionEnUso((int) $id)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Crea el lote inicial y carga el stock en el almacén principal. */

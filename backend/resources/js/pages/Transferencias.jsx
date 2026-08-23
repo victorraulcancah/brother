@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Ban, Edit, ListChecks, Lock, PackageCheck, Plus, PlusCircle, Printer, Repeat, Send, Trash2, Truck } from 'lucide-react';
 import api, { asList } from '../lib/api';
+import { opcionesAlmacen } from '../lib/almacenes';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
@@ -732,11 +733,11 @@ export default function Transferencias() {
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <Select label="Almacén origen" value={form.almacen_origen_id} disabled={Boolean(editing)}
                                 onChange={(e) => { setField('almacen_origen_id', e.target.value); setItems([]); setPanel({ ...panelVacio }); }}
-                                options={[{ value: '', label: 'Selecciona…' }, ...almacenes.map((a) => ({ value: String(a.id), label: a.nombre }))]}
+                                options={[{ value: '', label: 'Selecciona…' }, ...opcionesAlmacen(almacenes, form.almacen_origen_id)]}
                                 error={formErrors.almacen_origen_id} />
                             <Select label="Almacén destino" value={form.almacen_destino_id} disabled={Boolean(editing)}
                                 onChange={(e) => setField('almacen_destino_id', e.target.value)}
-                                options={[{ value: '', label: 'Selecciona…' }, ...almacenes.filter((a) => String(a.id) !== String(form.almacen_origen_id)).map((a) => ({ value: String(a.id), label: a.nombre }))]}
+                                options={[{ value: '', label: 'Selecciona…' }, ...opcionesAlmacen(almacenes, form.almacen_destino_id).filter((o) => o.value !== String(form.almacen_origen_id))]}
                                 error={formErrors.almacen_destino_id} />
                             <Input label="Fecha de inicio" type="date" value={form.fecha_inicio_traslado}
                                 onChange={(e) => setField('fecha_inicio_traslado', e.target.value)}

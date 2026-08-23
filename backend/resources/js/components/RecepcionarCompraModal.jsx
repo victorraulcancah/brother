@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PackageCheck } from 'lucide-react';
 import api, { asList } from '../lib/api';
+import { opcionesAlmacen } from '../lib/almacenes';
 import { useToast } from '../lib/toast';
 import { Alert, Button, Input, Modal, Select, Spinner } from './ui';
 
@@ -139,7 +140,7 @@ export default function RecepcionarCompraModal({ open, onClose, compraId, onDone
                             onChange={(e) => setForm((p) => ({ ...p, almacen_id: e.target.value }))}
                             options={[
                                 { value: '', label: 'Selecciona…' },
-                                ...almacenes.map((a) => ({ value: String(a.id), label: a.nombre })),
+                                ...opcionesAlmacen(almacenes, form.almacen_id),
                             ]}
                         />
                         <Input

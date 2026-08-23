@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowUpRight, BadgeCheck, Edit, Lock, Plus, Printer, Scale, Trash2 } from 'lucide-react';
 import api, { asList } from '../lib/api';
+import { opcionesAlmacen } from '../lib/almacenes';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
@@ -910,10 +911,7 @@ export default function Ajustes() {
                                 }}
                                 options={[
                                     { value: '', label: 'Seleccione un almacén' },
-                                    ...almacenes.map((a) => ({
-                                        value: String(a.id),
-                                        label: a.nombre,
-                                    })),
+                                    ...opcionesAlmacen(almacenes, form.almacen_id),
                                 ]}
                                 error={formErrors.almacen_id}
                             />

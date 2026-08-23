@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, Plus, ReceiptText, Trash2, Wallet } from 'lucide-react';
 import api, { asList } from '../lib/api';
+import { opcionesAlmacen } from '../lib/almacenes';
 import { useToast } from '../lib/toast';
 import { useAuth } from '../lib/auth';
 import Layout from '../components/Layout';
@@ -456,7 +457,7 @@ export default function CrearVenta() {
                         }}
                         options={[
                             { value: '', label: 'Selecciona…' },
-                            ...almacenes.map((a) => ({ value: String(a.id), label: a.nombre })),
+                            ...opcionesAlmacen(almacenes, form.almacen_id),
                         ]}
                     />
                     <Select
