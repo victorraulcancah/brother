@@ -13,7 +13,7 @@ class ProveedorController extends Controller
 
     public function index()
     {
-        return response()->json(Proveedor::all());
+        return response()->json(Proveedor::latest('id')->get());
     }
 
     public function store(Request $request)

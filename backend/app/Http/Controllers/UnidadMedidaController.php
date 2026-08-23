@@ -14,7 +14,7 @@ class UnidadMedidaController extends Controller
 
     public function index()
     {
-        return UnidadMedidaResource::collection(UnidadMedida::all());
+        return UnidadMedidaResource::collection(UnidadMedida::latest('id')->get());
     }
 
     public function store(Request $request)

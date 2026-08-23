@@ -15,7 +15,7 @@ class EmpresaController extends Controller
 
     public function index(): JsonResponse
     {
-        return response()->json(Empresa::with('users')->get());
+        return response()->json(Empresa::with('users')->latest('id')->get());
     }
 
     public function store(StoreEmpresaRequest $request): JsonResponse

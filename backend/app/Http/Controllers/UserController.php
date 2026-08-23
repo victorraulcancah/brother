@@ -18,7 +18,7 @@ class UserController extends Controller
 
     public function index(): JsonResponse
     {
-        return response()->json(User::with('empresa', 'caja', 'roles')->get());
+        return response()->json(User::with('empresa', 'caja', 'roles')->latest('id')->get());
     }
 
     public function store(StoreUserRequest $request): JsonResponse

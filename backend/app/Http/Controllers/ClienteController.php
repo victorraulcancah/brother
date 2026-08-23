@@ -9,7 +9,7 @@ class ClienteController extends Controller
 {
     public function index()
     {
-        return response()->json(Cliente::where('activo', true)->get());
+        return response()->json(Cliente::where('activo', true)->latest('id')->get());
     }
 
     public function store(Request $request)

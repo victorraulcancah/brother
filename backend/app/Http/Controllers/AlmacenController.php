@@ -37,7 +37,7 @@ class AlmacenController extends Controller
 
     public function index()
     {
-        return response()->json(Almacen::all());
+        return response()->json(Almacen::latest('id')->get());
     }
 
     /**

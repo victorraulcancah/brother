@@ -43,6 +43,7 @@ class ProductoController extends Controller
         $perPage = min(max((int) $request->input('per_page', 15), 1), 500);
 
         $productos = Producto::with(['marca', 'subMarca', 'categoria', 'subCategoria', 'unidadMedida', 'presentaciones.unidadBase'])
+            ->latest('id')
             ->paginate($perPage);
         return ProductoResource::collection($productos);
     }
