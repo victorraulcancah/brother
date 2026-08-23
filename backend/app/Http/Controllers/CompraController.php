@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Compra;
+use App\Models\CuentaPorPagar;
 use App\Models\SerieDocumento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -105,6 +106,7 @@ class CompraController extends Controller
 
             $this->crearDetalles($compra, $data['detalles']);
             $this->crearPagos($compra, $data['pagos'] ?? []);
+            $this->sincronizarCuentaPorPagar($compra);
 
             return $compra;
         });
@@ -177,6 +179,8 @@ class CompraController extends Controller
                 $compra->pagos()->delete();
                 $this->crearPagos($compra, $data['pagos'] ?? []);
             }
+
+            $this->sincronizarCuentaPorPagar($compra->fresh());
         });
 
         return response()->json(
@@ -222,16 +226,58 @@ class CompraController extends Controller
 
     public function anular(Compra $compra)
     {
-        $compra->update(['estado' => 'anulada']);
+        DB::transaction(function () use ($compra) {
+            $compra->update(['estado' => 'anulada']);
+            // Anulada la compra, la deuda con el proveedor ya no existe.
+            CuentaPorPagar::where('compra_id', $compra->id)->delete();
+        });
+
         return response()->json($compra->fresh());
     }
 
     public function destroy(Compra $compra)
     {
+        CuentaPorPagar::where('compra_id', $compra->id)->delete();
         $compra->detalles()->delete();
         $compra->pagos()->delete();
         $compra->delete();
         return response()->json(['message' => 'Eliminado']);
+    }
+
+    /**
+     * Una compra al crédito deja una deuda con el proveedor. Se mantiene al día
+     * con el total y lo ya pagado (puede haber adelanto), y desaparece si la
+     * compra pasa a contado.
+     */
+    private function sincronizarCuentaPorPagar(Compra $compra): void
+    {
+        $cuenta = CuentaPorPagar::where('compra_id', $compra->id)->first();
+
+        if ($compra->forma_pago !== 'credito' || ! $compra->proveedor_id || $compra->estado === 'anulada') {
+            $cuenta?->delete();
+
+            return;
+        }
+
+        $total = round((float) $compra->total, 2);
+        $pagado = round((float) $compra->pagos()->sum('monto'), 2);
+        $saldo = round(max($total - $pagado, 0), 2);
+
+        $vencimiento = $compra->fecha_vencimiento
+            ?? $compra->fecha?->copy()->addDays((int) $compra->dias_credito)
+            ?? now();
+
+        $datos = [
+            'compra_id' => $compra->id,
+            'proveedor_id' => $compra->proveedor_id,
+            'monto_total' => $total,
+            'monto_pagado' => $pagado,
+            'saldo' => $saldo,
+            'fecha_vencimiento' => $vencimiento,
+            'estado' => $saldo <= 0 ? 'pagada' : ($pagado > 0 ? 'parcial' : 'pendiente'),
+        ];
+
+        $cuenta ? $cuenta->update($datos) : CuentaPorPagar::create($datos);
     }
 
     /** Crea las líneas calculando el subtotal de cada una. */

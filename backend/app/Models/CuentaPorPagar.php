@@ -10,6 +10,7 @@ class CuentaPorPagar extends Model
 
     protected $fillable = [
         'recepcion_compra_id',
+        'compra_id',
         'proveedor_id',
         'monto_total',
         'monto_pagado',
@@ -31,6 +32,12 @@ class CuentaPorPagar extends Model
     public function recepcionCompra()
     {
         return $this->belongsTo(RecepcionCompra::class);
+    }
+
+    /** Compra al crédito que originó la deuda (alternativa a la recepción). */
+    public function compra()
+    {
+        return $this->belongsTo(Compra::class);
     }
 
     public function proveedor()

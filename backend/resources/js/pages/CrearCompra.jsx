@@ -373,7 +373,9 @@ export default function CrearCompra() {
                 cantidad: it.cantidad,
                 costo_unitario: it.costo_unitario || 0,
             })),
-            pagos: pagosEfectivos
+            // Al crédito no se envía ningún pago: la deuda se salda desde
+            // Cuentas por Pagar.
+            pagos: (esContado ? pagosEfectivos : [])
                 .filter((p) => p.tipo && Number(p.monto) > 0)
                 .map((p) => ({
                     metodo: p.tipo,
@@ -651,6 +653,22 @@ export default function CrearCompra() {
             {/* Pagos mixtos + Totales */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
                 <div className="space-y-6">
+                    {/* Al crédito no se cobra al registrar: la compra genera una
+                        cuenta por pagar y ahí se registran los pagos. */}
+                    {!esContado ? (
+                        <div className="rounded-xl border border-edge bg-white p-5 shadow-sm">
+                            <h2 className="mb-2 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-warm-500">
+                                <Wallet className="h-4 w-4" /> Pago
+                            </h2>
+                            <p className="text-sm text-warm-500">
+                                Compra al crédito: queda registrada en{' '}
+                                <strong className="text-warm-900">Cuentas por Pagar</strong> por{' '}
+                                <strong className="text-warm-900">{money(total)}</strong>
+                                {form.dias_credito > 0 && ` a ${form.dias_credito} días`}. Los pagos al
+                                proveedor se registran desde ahí.
+                            </p>
+                        </div>
+                    ) : (
                     <div className="rounded-xl border border-edge bg-white p-5 shadow-sm">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-warm-500">
@@ -745,6 +763,7 @@ export default function CrearCompra() {
                             </>
                         )}
                     </div>
+                    )}
 
                     <div className="rounded-xl border border-edge bg-white p-5 shadow-sm">
                         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-warm-500">Observaciones</h2>
