@@ -181,8 +181,21 @@ export default function Productos() {
     };
 
     // ---- Formatos de venta ----
-    const setCompraField = (campo) => (e) =>
-        setCompra((prev) => ({ ...prev, [campo]: e.target.value }));
+    const setCompraField = (campo) => (e) => {
+        const valor = e.target.value;
+        setCompra((prev) => ({ ...prev, [campo]: valor }));
+
+        // La unidad de compra se guarda siempre como formato (si no, no se
+        // podría registrar la compra en esa unidad). Se agrega a la lista para
+        // que se vea y se le pueda poner precio de venta; se puede quitar.
+        if (campo === 'unidad_compra_id' && valor) {
+            setVentas((prev) =>
+                prev.some((v) => String(v.unidad_id) === String(valor))
+                    ? prev
+                    : [...prev.filter((v) => v.unidad_id), { ...ventaVacia(), unidad_id: valor }],
+            );
+        }
+    };
 
     const addVenta = () => setVentas((prev) => [...prev, ventaVacia()]);
     const removeVenta = (index) =>
@@ -811,6 +824,8 @@ export default function Productos() {
                             </table>
                         </div>
                         <p className="mt-2 text-xs text-warm-500">
+                            La unidad en que compras se guarda siempre como formato, para poder
+                            registrar la compra en ella.{' '}
                             El costo de cada formato sale de tu precio de compra. El precio de venta se
                             calcula con el % de ganancia; si escribes uno a mano, manda el tuyo.
                             {calculo.baseId && (

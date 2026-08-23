@@ -772,6 +772,13 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                 options: _optsUnidades,
                 onChanged: (v) {
                   _unidadCompraId = v;
+                  // La unidad de compra se guarda siempre como formato (si no,
+                  // la compra no se podría registrar en ella). Se agrega a la
+                  // lista para que se vea y se le pueda poner precio.
+                  if (v != null && !_ventas.any((x) => x.unidadId == v)) {
+                    _ventas.removeWhere((x) => x.unidadId == null);
+                    _ventas.add(_VentaEntry.vacia()..unidadId = v);
+                  }
                   _recalcularTodo();
                 },
               ),
@@ -840,8 +847,10 @@ class _ProductoWizardState extends State<_ProductoWizard> {
               const Padding(
                 padding: EdgeInsets.only(top: 4),
                 child: Text(
-                  'El costo de cada formato sale de tu precio de compra. El precio de venta se '
-                  'calcula con el % de ganancia; si escribes uno a mano, manda el tuyo.',
+                  'La unidad en que compras se guarda siempre como formato, para poder '
+                  'registrar la compra en ella. El costo de cada formato sale de tu precio de '
+                  'compra; el precio de venta se calcula con el % de ganancia, y si escribes '
+                  'uno a mano manda el tuyo.',
                   style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
               ),

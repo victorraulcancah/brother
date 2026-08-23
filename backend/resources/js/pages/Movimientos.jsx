@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowRightLeft, ArrowUpRight, Package } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import Layout from '../components/Layout';
@@ -54,6 +54,9 @@ export default function Movimientos() {
     const [almacenes, setAlmacenes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    /** Unidad en la que se expresan las cantidades ('' = la base de cada producto). */
+    const [verEn, setVerEn] = useState('');
 
     const [filterTipo, setFilterTipo] = useState('');
     const [filterAlmacen, setFilterAlmacen] = useState('');
@@ -140,6 +143,33 @@ export default function Movimientos() {
 
     const esEntrada = (row) => row.tipo_movimiento === 'entrada';
     const cantAbs = (row) => Math.abs(Number(row.cantidad ?? 0));
+
+    /** Unidades que manejan los productos del kardex visible (saco, caja, kilo…). */
+    const unidadesDisponibles = useMemo(() => {
+        const nombres = new Set();
+        for (const m of movimientos) {
+            for (const pres of m.producto?.presentaciones ?? []) {
+                if (pres.activo === false) continue;
+                const n = pres.nombre?.trim();
+                if (n) nombres.add(n);
+            }
+        }
+        return [...nombres].sort((a, b) => a.localeCompare(b, 'es'));
+    }, [movimientos]);
+
+    /**
+     * Cantidad del movimiento en la unidad elegida. Se guarda en unidad base,
+     * así que se divide por el factor: una salida de 100 kg son 2 sacos de 50.
+     * Devuelve null si el producto no maneja esa unidad.
+     */
+    const cantidadEn = (row, unidad) => {
+        const pres = (row.producto?.presentaciones ?? []).find(
+            (x) => x.activo !== false && x.nombre?.trim() === unidad,
+        );
+        if (!pres) return null;
+        const factor = Number(pres.factor_conversion) || 1;
+        return cantAbs(row) / factor;
+    };
 
     const columns = [
         { key: 'id', label: '#', width: '56px', render: (row) => <span className="text-gray-500">{row.id}</span> },
@@ -242,6 +272,25 @@ export default function Movimientos() {
             align: 'right',
             render: (row) => <span className="text-gray-700">{num(cantAbs(row))}</span>,
         },
+        ...(verEn
+            ? [
+                  {
+                      key: 'cantidad_en_unidad',
+                      label: `En ${verEn}`,
+                      width: '110px',
+                      align: 'right',
+                      searchable: false,
+                      render: (row) => {
+                          const v = cantidadEn(row, verEn);
+                          return v == null ? (
+                              <span className="text-gray-300" title={`Este producto no se maneja en ${verEn}`}>—</span>
+                          ) : (
+                              <span className="font-semibold text-primary-700">{num(v)}</span>
+                          );
+                      },
+                  },
+              ]
+            : []),
         {
             key: 'costo_anterior',
             label: 'C. Ant.',
@@ -310,6 +359,20 @@ export default function Movimientos() {
             />
 
             {error && <Alert variant="error" className="mb-4">{error}</Alert>}
+
+            {unidadesDisponibles.length > 0 && (
+                <div className="mb-4 w-56">
+                    <Select
+                        label="Ver cantidades en"
+                        value={verEn}
+                        onChange={(e) => setVerEn(e.target.value)}
+                        options={[
+                            { value: '', label: 'Unidad base del producto' },
+                            ...unidadesDisponibles.map((u) => ({ value: u, label: u })),
+                        ]}
+                    />
+                </div>
+            )}
 
             <DataTable
                 columns={columns}

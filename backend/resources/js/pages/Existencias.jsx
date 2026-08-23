@@ -24,6 +24,9 @@ export default function Existencias() {
     /** Fila cuyo desglose por unidad derivada se muestra abajo. */
     const [seleccionada, setSeleccionada] = useState(null);
 
+    /** Unidad en la que se expresa el stock de la tabla ('' = la base de cada producto). */
+    const [verEn, setVerEn] = useState('');
+
     const load = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -194,6 +197,27 @@ export default function Existencias() {
             searchable: false,
             render: stockBadge,
         },
+        ...(verEn
+            ? [
+                  {
+                      key: 'stock_en_unidad',
+                      label: `En ${verEn}`,
+                      width: '110px',
+                      align: 'right',
+                      searchable: false,
+                      render: (row) => {
+                          const v = stockEn(row, verEn);
+                          return v == null ? (
+                              <span className="text-warm-300" title={`Este producto no se maneja en ${verEn}`}>
+                                  —
+                              </span>
+                          ) : (
+                              <span className="font-semibold text-primary-700">{num(v)}</span>
+                          );
+                      },
+                  },
+              ]
+            : []),
         {
             key: 'stock_reservado',
             label: 'Reserv.',
@@ -313,6 +337,37 @@ export default function Existencias() {
             .sort((a, b) => a.factor - b.factor);
     }, [seleccionada]);
 
+    /**
+     * Unidades en las que se puede expresar el stock: las presentaciones que
+     * tienen los productos que se están viendo (saco, kilo, gramo…).
+     */
+    const unidadesDisponibles = useMemo(() => {
+        const mapa = new Map();
+        for (const row of visibles) {
+            for (const pres of row.producto?.presentaciones ?? []) {
+                if (pres.activo === false) continue;
+                const nombre = pres.nombre?.trim();
+                if (nombre && !mapa.has(nombre)) mapa.set(nombre, nombre);
+            }
+        }
+        return [...mapa.keys()].sort((a, b) => a.localeCompare(b, 'es'));
+    }, [visibles]);
+
+    /**
+     * Stock de una fila expresado en la unidad elegida. El stock vive en la
+     * unidad base del producto, así que se divide por el factor de esa
+     * presentación: 50 kg de un saco de 50 kg son 1 saco; 20 kg son 0.4.
+     * Devuelve null si el producto no maneja esa unidad.
+     */
+    const stockEn = (row, unidad) => {
+        const pres = (row.producto?.presentaciones ?? []).find(
+            (x) => x.activo !== false && x.nombre?.trim() === unidad,
+        );
+        if (!pres) return null;
+        const factor = Number(pres.factor_conversion) || 1;
+        return (Number(row.stock_actual) || 0) / factor;
+    };
+
     const tabItems = [
         { key: 'todos', label: 'Todos', icon: Store },
         ...almacenes.map((a) => ({
@@ -331,8 +386,23 @@ export default function Existencias() {
 
             {error && <Alert variant="error" className="mb-4">{error}</Alert>}
 
-            <div className="mb-4">
-                <Tabs items={tabItems} value={tab} onChange={setTab} />
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                    <Tabs items={tabItems} value={tab} onChange={setTab} />
+                </div>
+                {unidadesDisponibles.length > 0 && (
+                    <div className="w-56">
+                        <Select
+                            label="Ver stock en"
+                            value={verEn}
+                            onChange={(e) => setVerEn(e.target.value)}
+                            options={[
+                                { value: '', label: 'Unidad base del producto' },
+                                ...unidadesDisponibles.map((u) => ({ value: u, label: u })),
+                            ]}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Resumen de lo que se está viendo */}

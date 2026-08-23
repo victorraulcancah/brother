@@ -9,6 +9,7 @@ use App\Models\Producto;
 use App\Models\ProductoAlmacenStock;
 use App\Models\ProductoLote;
 use App\Models\ProductoPresentacion;
+use App\Models\UnidadMedida;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -153,7 +154,55 @@ class ProductoController extends Controller
             }
         }
 
+        $this->asegurarPresentacionDeCompra($producto);
         $this->refrescarPrecioBase($producto);
+    }
+
+    /**
+     * La unidad en la que se compra tiene que existir como formato: si compras
+     * por saco, la compra debe poder registrarse en sacos. Sin esto el saco no
+     * aparecía en ningún lado y había que comprar en kilos.
+     *
+     * Si el usuario ya lo puso como formato de venta, se respeta el suyo.
+     */
+    private function asegurarPresentacionDeCompra(Producto $producto): void
+    {
+        $factor = round((float) $producto->factor_compra_base, 4);
+
+        if (! $producto->unidad_compra_id || $factor <= 0) {
+            return;
+        }
+
+        $unidad = UnidadMedida::find($producto->unidad_compra_id);
+        if (! $unidad) {
+            return;
+        }
+
+        $existentes = $producto->presentaciones()->get();
+
+        // Ya está, por nombre o porque algún formato equivale a una compra entera.
+        if ($existentes->contains(fn ($p) => $p->nombre === $unidad->nombre
+            || round((float) $p->factor_conversion, 4) === $factor)) {
+            return;
+        }
+
+        // El costo por unidad base sale de cualquier formato ya valorizado.
+        $refe = $existentes->first(fn ($p) => (float) $p->precio_compra > 0 && (float) $p->factor_conversion > 0);
+        $costoBase = $refe ? (float) $refe->precio_compra / (float) $refe->factor_conversion : 0.0;
+        $margen = $refe ? (float) $refe->margen : 0.0;
+        $compra = round($costoBase * $factor, 4);
+
+        ProductoPresentacion::create([
+            'producto_id' => $producto->id,
+            'nombre' => $unidad->nombre,
+            'precio_compra' => $compra,
+            'margen' => $margen,
+            'precio_venta' => round($compra * (1 + $margen / 100), 4),
+            'factor_conversion' => $factor,
+            'unidad_base_id' => $unidad->id,
+            'cantidad_complementaria' => 0,
+            'activo' => true,
+        ]);
     }
 
     /**

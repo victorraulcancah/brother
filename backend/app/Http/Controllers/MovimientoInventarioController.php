@@ -12,6 +12,8 @@ class MovimientoInventarioController extends Controller
         $movimientos = MovimientoInventario::with([
             'producto:id,codigo,nombre,unidad_base_id',
             'producto.unidadBase:id,nombre,abreviatura',
+            // Para poder expresar la cantidad en sacos, cajas, kilos…
+            'producto.presentaciones:id,producto_id,nombre,factor_conversion,activo',
             'almacen:id,nombre',
             'usuario:id,name',
         ])
