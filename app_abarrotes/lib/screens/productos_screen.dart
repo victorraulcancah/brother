@@ -402,10 +402,15 @@ class _ProductoWizardState extends State<_ProductoWizard> {
 
   String _money(double n) => 'S/ ${sinCerosSobrantes(n, 4)}';
 
+  /// Cuánto cuesta un formato de venta. No depende del precio de venta, así
+  /// que se puede usar para recalcularlo sin caer en un cálculo circular.
+  double _costoDe(int? unidadId) => _calculo.filaDe(unidadId)?.precioCompra ?? 0;
+
   /// El % y el precio son dos vistas del mismo dato: al mover uno se recalcula
   /// el otro sobre el costo de esa fila.
+
   void _onPrecioVentaEditado(_VentaEntry v, String valor) {
-    final costo = _calculo.filaDe(v.unidadId)?.precioCompra ?? 0;
+    final costo = _costoDe(v.unidadId);
     final precio = double.tryParse(valor.trim());
     if (costo > 0 && precio != null) {
       v.margenCtrl.text = sinCerosSobrantes((precio / costo - 1) * 100, 1);
@@ -414,19 +419,41 @@ class _ProductoWizardState extends State<_ProductoWizard> {
   }
 
   void _onMargenEditado(_VentaEntry v) {
-    // Se limpia el precio para que vuelva a derivarse del %.
-    v.precioCtrl.text = '';
+    _escribirPrecio(v);
     setState(() {});
+  }
+
+  /// Vuelca en el campo el precio que sale del costo y el % de esa fila.
+  void _escribirPrecio(_VentaEntry v) {
+    final costo = _costoDe(v.unidadId);
+    final margen = double.tryParse(v.margenCtrl.text.trim());
+    if (costo > 0 && margen != null) {
+      v.precioCtrl.text = sinCerosSobrantes(costo * (1 + margen / 100), 4);
+    }
+  }
+
+  /// Al cambiar la compra cambia el costo, así que todos los precios que
+  /// dependen de un % se vuelven a calcular.
+  void _recalcularTodo() {
+    setState(() {
+      for (final v in _ventas) {
+        _escribirPrecio(v);
+      }
+    });
   }
 
   // ---- Guardar ----
 
   void _guardar() {
-    if (!_formKey1.currentState!.validate()) {
+    // Al guardar estamos en el paso 2, así que el Form del paso 1 ya no está
+    // en pantalla y su `currentState` es null: sus campos se revisan a mano.
+    if (_nombre.text.trim().isEmpty) {
       setState(() => _step = 0);
+      showAppSnackbar(context, 'Ingresa el nombre del producto',
+          type: AppSnackbarType.warning);
       return;
     }
-    if (!_formKey2.currentState!.validate()) return;
+    if (_formKey2.currentState?.validate() == false) return;
 
     final calculo = _calculo;
 
@@ -655,7 +682,10 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                 icon: Icons.shopping_bag_outlined,
                 value: _unidadCompraId,
                 options: _optsUnidades,
-                onChanged: (v) => setState(() => _unidadCompraId = v),
+                onChanged: (v) {
+                  _unidadCompraId = v;
+                  _recalcularTodo();
+                },
               ),
               Row(
                 children: [
@@ -665,7 +695,7 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                       label: 'Que trae',
                       icon: Icons.numbers,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => _recalcularTodo(),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -674,7 +704,10 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                       label: 'De',
                       value: _unidadContenidoId,
                       options: _optsUnidades,
-                      onChanged: (v) => setState(() => _unidadContenidoId = v),
+                      onChanged: (v) {
+                        _unidadContenidoId = v;
+                        _recalcularTodo();
+                      },
                     ),
                   ),
                 ],
@@ -684,7 +717,7 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                 label: 'Precio de compra (S/)',
                 icon: Icons.attach_money,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) => _recalcularTodo(),
               ),
               if (calculo.baseId != null && calculo.factorCompraBase > 0)
                 Container(
@@ -747,7 +780,10 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                     label: 'Vendo por',
                     value: v.unidadId,
                     options: _optsUnidades,
-                    onChanged: (nuevo) => setState(() => v.unidadId = nuevo),
+                    onChanged: (nuevo) {
+                      v.unidadId = nuevo;
+                      _recalcularTodo();
+                    },
                   ),
                 ),
                 if (_ventas.length > 1)
@@ -827,7 +863,7 @@ class _ProductoWizardState extends State<_ProductoWizard> {
                 ? PrimaryButton(
                     label: 'Siguiente',
                     onPressed: () {
-                      if (_formKey1.currentState!.validate()) {
+                      if (_formKey1.currentState?.validate() ?? true) {
                         setState(() => _step++);
                       }
                     },
