@@ -11,6 +11,7 @@ use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+//
 class AjusteInventarioController extends Controller
 {
     private const RELACIONES = [
