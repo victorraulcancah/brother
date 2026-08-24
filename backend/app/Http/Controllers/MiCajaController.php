@@ -111,18 +111,40 @@ class MiCajaController extends Controller
     }
 
     /** Resumen del efectivo esperado en la apertura. */
+    /**
+     * En la caja física solo hay billetes y monedas. Un cobro por Yape o
+     * transferencia queda registrado como movimiento, pero el dinero entra al
+     * banco, no al cajón: si se sumara al esperado, el arqueo saldría siempre
+     * con faltante. Por eso `esperado` cuenta únicamente el efectivo, y lo
+     * demás se informa aparte.
+     */
     private function resumen(AperturaCaja $apertura): array
     {
-        $ingresos = (float) MovimientoCaja::where('apertura_caja_id', $apertura->id)->where('tipo', 'ingreso')->sum('monto');
-        $egresos = (float) MovimientoCaja::where('apertura_caja_id', $apertura->id)->where('tipo', 'egreso')->sum('monto');
-        $inicial = (float) $apertura->monto_inicial;
+        $movimientos = MovimientoCaja::where('apertura_caja_id', $apertura->id)
+            ->get(['tipo', 'monto', 'cuenta_bancaria_id', 'billetera_id']);
+
+        $enEfectivo = fn ($m) => ! $m->cuenta_bancaria_id && ! $m->billetera_id;
+
+        $suma = fn ($coleccion) => round((float) $coleccion->sum('monto'), 2);
+
+        $ingresos = $movimientos->where('tipo', 'ingreso');
+        $egresos = $movimientos->where('tipo', 'egreso');
+
+        $inicial = round((float) $apertura->monto_inicial, 2);
+        $efectivoIngresos = $suma($ingresos->filter($enEfectivo));
+        $efectivoEgresos = $suma($egresos->filter($enEfectivo));
 
         return [
-            'monto_inicial' => round($inicial, 2),
-            'ingresos' => round($ingresos, 2),
-            'egresos' => round($egresos, 2),
-            'esperado' => round($inicial + $ingresos - $egresos, 2),
-            'movimientos' => MovimientoCaja::where('apertura_caja_id', $apertura->id)->count(),
+            'monto_inicial' => $inicial,
+            'ingresos' => $suma($ingresos),
+            'egresos' => $suma($egresos),
+            // Desglose: lo que se cuenta a mano y lo que no.
+            'efectivo_ingresos' => $efectivoIngresos,
+            'efectivo_egresos' => $efectivoEgresos,
+            'otros_ingresos' => $suma($ingresos->reject($enEfectivo)),
+            'otros_egresos' => $suma($egresos->reject($enEfectivo)),
+            'esperado' => round($inicial + $efectivoIngresos - $efectivoEgresos, 2),
+            'movimientos' => $movimientos->count(),
         ];
     }
 }

@@ -125,7 +125,15 @@ export default function Ajustes() {
     const motivosOptions = useMemo(
         () =>
             motivos
-                .filter((m) => m.activo !== false && m.tipo === form.tipo && !m.categoria_gasto)
+                // Los del sistema (Recepción, Salida por venta) los genera el
+                // propio flujo de compras y ventas: no son motivos de ajuste.
+                .filter(
+                    (m) =>
+                        m.activo !== false &&
+                        m.tipo === form.tipo &&
+                        !m.categoria_gasto &&
+                        !m.es_sistema,
+                )
                 .map((m) => ({ value: m.nombre, label: m.nombre })),
         [motivos, form.tipo],
     );
@@ -151,9 +159,12 @@ export default function Ajustes() {
 
         return productos
             .filter((p) => {
-                const stock = stockDelAlmacen[String(p.id)];
-                if (stock === undefined) return false;
-                return form.tipo === 'salida' ? stock > 0 : true;
+                // En una entrada vale cualquier producto del catálogo, aunque
+                // nunca haya estado en este almacén: justamente se está
+                // cargando por primera vez. En una salida sí se exige stock.
+                if (form.tipo !== 'salida') return p.activo !== false;
+
+                return (stockDelAlmacen[String(p.id)] ?? 0) > 0;
             })
             .map((p) => ({
                 value: String(p.id),

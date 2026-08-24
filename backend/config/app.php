@@ -65,7 +65,10 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // El negocio opera en Perú: con UTC, una venta de las 8 p.m. se guardaba
+    // con la fecha del día siguiente y los reportes la contaban en el día
+    // equivocado.
+    'timezone' => env('APP_TIMEZONE', 'America/Lima'),
 
     /*
     |--------------------------------------------------------------------------

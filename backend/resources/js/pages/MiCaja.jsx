@@ -146,6 +146,9 @@ export default function MiCaja() {
     const resumen = data?.resumen;
     const movimientos = data?.movimientos ?? [];
     const esperado = resumen?.esperado ?? 0;
+    // Yape y transferencias quedan registrados, pero el dinero va al banco:
+    // no se cuentan en el arqueo del cajón.
+    const otrosMedios = (resumen?.otros_ingresos ?? 0) - (resumen?.otros_egresos ?? 0);
     const diferencia = (Number(montoContado) || 0) - esperado;
 
     // Opciones de método según lo que acepta la caja.
@@ -292,7 +295,7 @@ export default function MiCaja() {
                                 <Stat icon={PiggyBank} label="Monto inicial" value={money(resumen?.monto_inicial)} />
                                 <Stat icon={ArrowUpCircle} label="Ingresos" value={money(resumen?.ingresos)} accent="text-green-600" bg="bg-green-50" />
                                 <Stat icon={ArrowDownCircle} label="Gastos" value={money(resumen?.egresos)} accent="text-red-600" bg="bg-red-50" />
-                                <Stat icon={Wallet} label="Esperado en caja" value={money(esperado)} accent="text-primary-600" bg="bg-primary-50" />
+                                <Stat icon={Wallet} label="Efectivo esperado" value={money(esperado)} accent="text-primary-600" bg="bg-primary-50" />
                             </div>
 
                             <h3 className="mb-2 text-sm font-bold text-warm-900">Movimientos de esta apertura</h3>
@@ -333,10 +336,16 @@ export default function MiCaja() {
                 footer={<><Button variant="secondary" onClick={() => setCerrarOpen(false)}>Cancelar</Button><Button variant="danger" loading={saving} onClick={cerrar}>Cerrar caja</Button></>}>
                 <div className="space-y-3">
                     <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
-                        <span className="text-warm-500">Esperado en caja</span>
+                        <span className="text-warm-500">Efectivo esperado</span>
                         <span className="font-semibold text-warm-900">{money(esperado)}</span>
                     </div>
-                    <Input label="Monto contado (S/)" type="number" min="0" step="0.01" placeholder="0.00" value={montoContado} onChange={(e) => setMontoContado(e.target.value)} />
+                    {Math.abs(otrosMedios) > 0.001 && (
+                        <p className="-mt-1 mb-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                            Además se cobraron <strong>{money(otrosMedios)}</strong> por transferencia
+                            o billetera. Ese dinero va al banco, no al cajón: no lo cuentes aquí.
+                        </p>
+                    )}
+                    <Input label="Efectivo contado (S/)" type="number" min="0" step="0.01" placeholder="0.00" value={montoContado} onChange={(e) => setMontoContado(e.target.value)} />
                     {montoContado !== '' && Math.abs(diferencia) > 0.001 && (
                         <div className={`rounded-lg px-3 py-2 text-sm font-medium ${diferencia < 0 ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
                             {diferencia < 0 ? 'Faltante' : 'Sobrante'}: {money(Math.abs(diferencia))}

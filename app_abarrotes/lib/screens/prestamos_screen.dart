@@ -791,10 +791,11 @@ class _PrestamoFormSheetState extends State<_PrestamoFormSheet> {
     final excede = _esPrestado && l.presentacionId != null && l.cant > disp;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
+          spacing: 12,
           children: [
             Row(
               children: [

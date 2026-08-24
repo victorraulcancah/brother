@@ -10,6 +10,23 @@ import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import 'movimientos_caja_screen.dart';
 
+/// Fecha y hora legibles. `fecha` es solo el día (llega como
+/// "2026-08-23T00:00:00Z" y pintarla cruda mostraba las 00:00), así que la
+/// hora real se toma de `created_at`.
+String _fechaHora(Map m) {
+  final dia = DateTime.tryParse('${m['fecha'] ?? ''}');
+  final creado = DateTime.tryParse('${m['created_at'] ?? ''}');
+  if (dia == null && creado == null) return '';
+
+  final d = dia ?? creado!;
+  final f =
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  if (creado == null) return f;
+
+  final h = creado.toLocal();
+  return '$f ${h.hour.toString().padLeft(2, '0')}:${h.minute.toString().padLeft(2, '0')}';
+}
+
 String _metodoTxt(Map m) {
   final cuenta = m['cuenta_bancaria'] as Map<String, dynamic>?;
   final billetera = m['billetera'] as Map<String, dynamic>?;
@@ -96,6 +113,7 @@ class _MiCajaScreenState extends State<MiCajaScreen> {
 
   Future<void> _cerrar() async {
     final esperado = _n(_resumen?['esperado']);
+    final otros = _n(_resumen?['otros_ingresos']) - _n(_resumen?['otros_egresos']);
     final ctrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
@@ -110,18 +128,40 @@ class _MiCajaScreenState extends State<MiCajaScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
                     children: [
-                      const Text('Esperado en caja'),
-                      Text(_money(esperado), style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Efectivo esperado'),
+                          Text(_money(esperado), style: const TextStyle(fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                      // Yape y transferencias no entran al cajón: si se
+                      // sumaran, el arqueo siempre daría faltante.
+                      if (otros.abs() > 0.001) ...[
+                        const Divider(height: 14),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Cobrado por transferencia o billetera (va al banco, no lo cuentes)',
+                                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                              ),
+                            ),
+                            Text(_money(otros),
+                                style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 8),
                 AppTextField(
                   controller: ctrl,
-                  label: 'Monto contado (S/)',
+                  label: 'Efectivo contado (S/)',
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   onChanged: (_) => setD(() {}),
                 ),
@@ -289,7 +329,7 @@ class _MiCajaScreenState extends State<MiCajaScreen> {
               children: [
                 Text(motivo.isEmpty ? (esIngreso ? 'Ingreso' : 'Gasto') : motivo,
                     style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text('${_metodoTxt(m)} · ${m['fecha'] ?? ''}',
+                Text('${_metodoTxt(m)} · ${_fechaHora(m)}',
                     style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
               ],
             ),

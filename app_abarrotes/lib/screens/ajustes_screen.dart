@@ -18,6 +18,7 @@ import '../widgets/app_text_field.dart';
 import '../widgets/app_toggle.dart';
 import '../widgets/data_card.dart';
 import '../widgets/pdf_viewer_sheet.dart';
+import '../widgets/producto_picker_sheet.dart';
 import '../utils/almacenes.dart';
 
 String _money(dynamic v) =>
@@ -674,9 +675,12 @@ class _AjusteFormSheetState extends State<_AjusteFormSheet> {
   /// Motivos de inventario activos que aplican al tipo elegido.
   List<AppSelectOption<String>> get _motivosOptions => [
     for (final m in widget.motivos)
+      // Los del sistema (Recepción, Salida por venta) los genera el propio
+      // flujo de compras y ventas: no son motivos de ajuste.
       if (m['activo'] != false &&
           m['tipo'] == _tipo &&
-          (m['categoria_gasto'] == null))
+          m['categoria_gasto'] == null &&
+          m['es_sistema'] != true)
         AppSelectOption<String>(
           m['nombre'].toString(),
           m['nombre'].toString(),
@@ -694,16 +698,67 @@ class _AjusteFormSheetState extends State<_AjusteFormSheet> {
     };
   }
 
-  /// Solo productos del almacén; en salidas además se exige stock.
-  List<AppSelectOption<int>> get _productosOptions {
+  /// En una entrada vale cualquier producto del catálogo, aunque nunca haya
+  /// estado en este almacén: justamente se está cargando por primera vez.
+  /// En una salida sí se exige stock: no se resta de lo que no hay.
+  List<Map<String, dynamic>> get _productosOfrecidos {
     final stock = _stockDelAlmacen;
     return [
       for (final p in widget.productos)
-        if (stock.containsKey(p['id']) &&
-            (_tipo != 'salida' || (stock[p['id']] ?? 0) > 0))
-          AppSelectOption<int>(p['id'] as int, p['nombre']?.toString() ?? ''),
+        if (_tipo == 'salida'
+            ? (stock[p['id']] ?? 0) > 0
+            : p['activo'] != false)
+          p,
     ];
   }
+
+  List<AppSelectOption<int>> get _productosOptions => [
+    for (final p in _productosOfrecidos)
+      AppSelectOption<int>(p['id'] as int, p['nombre']?.toString() ?? ''),
+  ];
+
+  /// Abre el buscador con filtros y agrega lo elegido como líneas.
+  /// Si el producto ya está en la lista, se acumula en vez de duplicarlo.
+  Future<void> _buscarProductos() async {
+    final stock = _stockDelAlmacen;
+
+    final elegidos = await showProductoPicker(
+      context,
+      productos: _productosOfrecidos,
+      stockPorProducto: stock,
+      // En una salida interesa filtrar por stock; en una entrada no aporta.
+      stockFilter: _tipo == 'salida',
+      title: _tipo == 'salida' ? 'Productos a restar' : 'Productos a sumar',
+    );
+    if (elegidos == null || elegidos.isEmpty) return;
+
+    setState(() {
+      // La primera línea vacía se aprovecha en vez de dejarla colgando.
+      _lineas.removeWhere((l) => l.productoId == null);
+
+      for (final sel in elegidos) {
+        final presId = sel.presentacion['id'] as int?;
+        final ya = _lineas.indexWhere((l) => l.presentacionId == presId);
+
+        if (ya != -1) {
+          final actual = double.tryParse(_lineas[ya].cantidad.text.trim()) ?? 0;
+          _lineas[ya].cantidad.text = _fmtCantidad(actual + sel.cantidad);
+        } else {
+          _lineas.add(
+            _Linea()
+              ..productoId = sel.producto['id'] as int?
+              ..presentacionId = presId
+              ..cantidad.text = _fmtCantidad(sel.cantidad),
+          );
+        }
+      }
+
+      if (_lineas.isEmpty) _lineas.add(_Linea());
+    });
+  }
+
+  String _fmtCantidad(double n) =>
+      n == n.roundToDouble() ? n.toStringAsFixed(0) : n.toStringAsFixed(2);
 
   Map<String, dynamic>? _productoDe(int? id) {
     if (id == null) return null;
@@ -871,12 +926,24 @@ class _AjusteFormSheetState extends State<_AjusteFormSheet> {
 
           AppFormSection(
             title: _tipo == 'salida' ? 'Productos a restar' : 'Productos a sumar',
-            trailing: TextButton.icon(
-              onPressed: _almacenId == null
-                  ? null
-                  : () => setState(() => _lineas.add(_Linea())),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Agregar'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Con un catálogo grande, elegir en un desplegable es inviable:
+                // el buscador filtra por nombre, código, barras, marca…
+                IconButton(
+                  tooltip: 'Buscar productos',
+                  icon: const Icon(Icons.search, size: 20),
+                  onPressed: _almacenId == null ? null : _buscarProductos,
+                ),
+                TextButton.icon(
+                  onPressed: _almacenId == null
+                      ? null
+                      : () => setState(() => _lineas.add(_Linea())),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Agregar'),
+                ),
+              ],
             ),
             children: [
               if (_almacenId == null)
@@ -930,10 +997,11 @@ class _AjusteFormSheetState extends State<_AjusteFormSheet> {
     final excede = _tipo == 'salida' && l.presentacionId != null && cantidad > disponible;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
+          spacing: 12,
           children: [
             Row(
               children: [
@@ -977,14 +1045,11 @@ class _AjusteFormSheetState extends State<_AjusteFormSheet> {
             if (l.presentacionId != null)
               Align(
                 alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    'Disponible: ${_num(disponible)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
+                child: Text(
+                  'Disponible: ${_num(disponible)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
                   ),
                 ),
               ),

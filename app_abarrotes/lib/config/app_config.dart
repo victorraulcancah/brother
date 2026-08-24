@@ -10,10 +10,11 @@ class AppConfig {
 
   /// Base de la API (Laravel).
   ///
-  /// IP de la PC en la red WiFi, para probar desde un celular real. No sirve
-  /// `127.0.0.1` (apunta al propio celular) ni `10.0.2.2` (solo emulador).
-  /// Si cambias de red, la IP cambia: revísala con `ipconfig`.
+  /// PRODUCCIÓN: el VPS, alcanzable desde cualquier red.
   ///
-  /// Laravel debe correr con: php artisan serve --host=0.0.0.0 --port=8000
-  static const String apiBaseUrl = 'http://192.168.18.23:8000/api';
+  /// Para volver a probar en local, cámbiala por la IP de tu PC en la WiFi
+  /// (p. ej. 'http://192.168.18.23:8000/api') y levanta Laravel con
+  /// `php artisan serve --host=0.0.0.0 --port=8000`. No sirven `127.0.0.1`
+  /// (apunta al propio celular) ni `10.0.2.2` (solo emulador).
+  static const String apiBaseUrl = 'http://83.147.39.58:10066/api';
 }
