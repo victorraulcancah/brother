@@ -17,6 +17,49 @@ import 'crear_venta_screen.dart';
 
 String _money(dynamic v) => 'S/ ${(double.tryParse('${v ?? 0}') ?? 0).toStringAsFixed(2)}';
 
+String _fecha(dynamic v) {
+  final d = DateTime.tryParse('${v ?? ''}');
+  if (d == null) return '—';
+  return '${d.day}/${d.month}/${d.year}';
+}
+
+const _formaLabel = {
+  'efectivo': 'Efectivo',
+  'transferencia': 'Transferencia',
+  'billetera': 'Billetera digital',
+  'tarjeta': 'Tarjeta',
+  'credito': 'Crédito',
+};
+
+/// "Arroz Costeño · Kilogramo" — el nombre puede venir por la presentación
+/// o suelto en la línea, según cómo se haya guardado la venta.
+String _nombreLinea(Map d) {
+  final pres = d['presentacion'] as Map?;
+  final producto = (pres?['producto'] as Map?)?['nombre'] ?? d['producto_nombre'] ?? '—';
+  final unidad = pres?['nombre'];
+  return unidad == null ? '$producto' : '$producto · $unidad';
+}
+
+/// Fila "etiqueta: valor" de la cabecera del detalle.
+Widget _dato(String etiqueta, String valor) => Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 78,
+            child: Text(
+              etiqueta,
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ),
+          Expanded(
+            child: Text(valor, style: const TextStyle(fontWeight: FontWeight.w500)),
+          ),
+        ],
+      ),
+    );
+
 class NotasVentaScreen extends StatefulWidget {
   const NotasVentaScreen({super.key});
 
@@ -112,53 +155,134 @@ class _NotasVentaScreenState extends State<NotasVentaScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Cliente: ${(venta['cliente'] as Map?)?['nombre'] ?? 'Clientes varios'}',
+                // Mismos datos que el detalle de la web.
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _dato('Cliente',
+                          (venta['cliente'] as Map?)?['nombre']?.toString() ?? 'Clientes varios'),
+                      _dato('Fecha', _fecha(venta['fecha_emision'])),
+                      _dato('Vendedor',
+                          (venta['vendedor'] as Map?)?['name']?.toString() ?? '—'),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          AppBadge(
+                            venta['estado'] == 'anulada' ? 'Anulada' : 'Emitida',
+                            type: venta['estado'] == 'anulada'
+                                ? AppBadgeType.danger
+                                : AppBadgeType.success,
+                          ),
+                          const SizedBox(width: 6),
+                          AppBadge(
+                            venta['tipo_pago'] == 'contado' ? 'Contado' : 'Crédito',
+                            type: venta['tipo_pago'] == 'contado'
+                                ? AppBadgeType.success
+                                : AppBadgeType.warning,
+                          ),
+                        ],
+                      ),
+                      if (venta['observaciones'] != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Obs.: ${venta['observaciones']}',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                Text(
-                  'Vendedor: ${(venta['vendedor'] as Map?)?['name'] ?? '—'}',
-                ),
-                if (venta['observaciones'] != null)
-                  Text('Obs.: ${venta['observaciones']}'),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
+
                 const Text(
-                  'Productos',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  'PRODUCTOS',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textMuted,
+                  ),
                 ),
+                const SizedBox(height: 6),
                 for (final d in detalles)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            '${(d['presentacion'] as Map?)?['producto']?['nombre'] ?? d['producto_nombre'] ?? '—'}'
-                            ' · ${(d['presentacion'] as Map?)?['nombre'] ?? ''}',
-                          ),
-                        ),
-                        Text('${d['cantidad']} x ${_money(d['precio_unitario'])}'),
-                        const SizedBox(width: 8),
                         Text(
-                          _money(d['subtotal']),
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          _nombreLinea(d),
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${d['cantidad']} × ${_money(d['precio_unitario'])}',
+                              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                            ),
+                            Text(
+                              _money(d['subtotal']),
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                const SizedBox(height: 12),
-                const Text('Pagos', style: TextStyle(fontWeight: FontWeight.w600)),
+
+                const SizedBox(height: 6),
+                const Text(
+                  'PAGOS',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                if (pagos.isEmpty)
+                  const Text(
+                    'Sin pagos registrados.',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  ),
                 for (final pg in pagos)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.only(bottom: 4),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('${pg['forma_pago'] ?? '—'}'),
+                        Text(_formaLabel['${pg['forma_pago']}'] ?? '${pg['forma_pago'] ?? '—'}'),
                         Text(_money(pg['monto'])),
                       ],
                     ),
                   ),
-                const Divider(),
+
+                const Divider(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Subtotal', style: TextStyle(color: AppColors.textMuted)),
+                    Text(_money(venta['subtotal'])),
+                  ],
+                ),
+                if ((double.tryParse('${venta['descuento_total'] ?? 0}') ?? 0) > 0)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Descuento', style: TextStyle(color: AppColors.textMuted)),
+                      Text('− ${_money(venta['descuento_total'])}'),
+                    ],
+                  ),
+                const SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
