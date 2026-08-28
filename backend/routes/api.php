@@ -100,6 +100,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('notas-venta', [NotaVentaController::class, 'index']);
     Route::post('notas-venta', [NotaVentaController::class, 'store']);
     Route::get('notas-venta/{notaVenta}', [NotaVentaController::class, 'show']);
+    Route::put('notas-venta/{notaVenta}', [NotaVentaController::class, 'update']);
     Route::post('notas-venta/{notaVenta}/anular', [NotaVentaController::class, 'anular']);
     Route::delete('notas-venta/{notaVenta}', [NotaVentaController::class, 'destroy']);
 

@@ -30,6 +30,21 @@ class NotaVentaController extends Controller
         return new NotaVentaResource($nota);
     }
 
+    /**
+     * Edita una venta emitida. El servicio revierte el efecto anterior (stock,
+     * caja y cuenta por cobrar) y vuelve a aplicarlo con los datos nuevos.
+     */
+    public function update(StoreNotaVentaRequest $request, NotaVenta $notaVenta)
+    {
+        try {
+            $nota = $this->notaVentaService->actualizar($notaVenta, $request->validated());
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return new NotaVentaResource($nota);
+    }
+
     public function show(NotaVenta $notaVenta)
     {
         return new NotaVentaResource(

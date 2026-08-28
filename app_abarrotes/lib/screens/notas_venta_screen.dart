@@ -186,6 +186,16 @@ class _NotasVentaScreenState extends State<NotasVentaScreen> {
         ),
       );
 
+  Future<void> _editar(Map<String, dynamic> item) async {
+    final ok = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CrearVentaScreen(ventaId: item['id'] as int),
+      ),
+    );
+    if (ok == true) _load();
+  }
+
   /// El listado no trae productos ni pagos: se piden al abrir el detalle.
   Future<void> _verDetalle(Map<String, dynamic> item) async {
     Map<String, dynamic> venta = {};
@@ -432,13 +442,14 @@ class _NotasVentaScreenState extends State<NotasVentaScreen> {
                           titulo: 'Nota de venta',
                           formatos: const ['a4', 'ticket']),
                     ),
-                    DataCardAction(
-                      icon: Icons.visibility_outlined,
-                      color: AppColors.info,
-                      tooltip: 'Ver detalle',
-                      onTap: () => _verDetalle(item),
-                    ),
+                    // Sin botón de "ver": el detalle se abre tocando la tarjeta.
                     if (!anulada) ...[
+                          DataCardAction(
+                            icon: Icons.edit_outlined,
+                            color: AppColors.primary,
+                            tooltip: 'Editar',
+                            onTap: () => _editar(item),
+                          ),
                           DataCardAction(
                             icon: Icons.block,
                             color: AppColors.danger,

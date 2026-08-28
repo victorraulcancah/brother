@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ban, Eye, Printer, User } from 'lucide-react';
+import { Ban, Edit, Eye, Printer, User } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
@@ -124,6 +124,8 @@ export default function NotasVenta() {
             type: 'actions',
             key: 'actions',
             label: 'Acciones',
+            // Cuatro botones no entran en los 120px por defecto.
+            width: '170px',
             actions: (row) => (
                 <>
                     <button
@@ -142,6 +144,16 @@ export default function NotasVenta() {
                     >
                         <Printer className="h-4 w-4" />
                     </button>
+                    {row.estado !== 'anulada' && (
+                        <button
+                            aria-label="Editar"
+                            title="Editar venta"
+                            onClick={() => navigate(`/notas-venta/${row.id}/editar`)}
+                            className="rounded-md p-1.5 text-amber-600 transition hover:bg-amber-50 hover:text-amber-700"
+                        >
+                            <Edit className="h-4 w-4" />
+                        </button>
+                    )}
                     {row.estado !== 'anulada' && (
                         <button
                             aria-label="Anular"

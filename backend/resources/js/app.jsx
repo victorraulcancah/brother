@@ -75,6 +75,7 @@ const routes = [
     { path: '/clientes', element: <Clientes /> },
     { path: '/notas-venta', element: <NotasVenta /> },
     { path: '/notas-venta/nueva', element: <CrearVenta /> },
+    { path: '/notas-venta/:id/editar', element: <CrearVenta /> },
     { path: '/metodos-de-pago', element: <MetodosDePago /> },
     { path: '/mi-caja', element: <MiCaja /> },
     { path: '/cajas', element: <Cajas /> },

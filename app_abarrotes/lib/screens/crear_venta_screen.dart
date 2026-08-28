@@ -38,7 +38,10 @@ class _Pago {
 }
 
 class CrearVentaScreen extends StatefulWidget {
-  const CrearVentaScreen({super.key});
+  /// Con id se edita una venta existente; sin id, se crea una nueva.
+  final int? ventaId;
+
+  const CrearVentaScreen({super.key, this.ventaId});
 
   @override
   State<CrearVentaScreen> createState() => _CrearVentaScreenState();
@@ -48,6 +51,7 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
   final ApiService _api = ApiService();
   bool _loading = true;
   bool _saving = false;
+  bool get _editando => widget.ventaId != null;
   String? _error;
 
   List<Map<String, dynamic>> _clientes = [];
@@ -111,10 +115,61 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
 
       // Con un solo almacén no tiene sentido hacer elegir.
       if (_almacenes.length == 1) _almacenId = _almacenes.first['id'] as int?;
+
+      if (widget.ventaId != null) await _cargarVenta();
     } catch (_) {
       _error = 'No se pudieron cargar los datos.';
     }
     if (mounted) setState(() => _loading = false);
+  }
+
+  /// Vuelca una venta existente al formulario, sus líneas y sus pagos.
+  Future<void> _cargarVenta() async {
+    // Laravel envuelve los Resource en {"data": {...}}.
+    final res = await _api.get(ApiEndpoints.notaVenta(widget.ventaId!));
+    final venta = Map<String, dynamic>.from(
+      (res is Map && res['data'] is Map) ? res['data'] as Map : res as Map,
+    );
+
+    _clienteId = venta['cliente_id'] as int?;
+    _almacenId = venta['almacen_id'] as int?;
+    _tipoPago = venta['tipo_pago']?.toString() ?? 'contado';
+    _observaciones.text = venta['observaciones']?.toString() ?? '';
+    final fecha = DateTime.tryParse('${venta['fecha_emision'] ?? ''}');
+    if (fecha != null) _fecha = fecha;
+
+    for (final l in _lineas) {
+      l.dispose();
+    }
+    _lineas.clear();
+    for (final d in ((venta['detalles'] as List?) ?? []).whereType<Map>()) {
+      final producto = (d['presentacion'] as Map?)?['producto'] as Map?;
+      _lineas.add(LineaProducto(
+        productoId: (producto?['id'] as int?) ?? 0,
+        presentacionId: d['producto_presentacion_id'] as int?,
+        cantidad: '${d['cantidad'] ?? 0}',
+        precio: '${d['precio_unitario'] ?? 0}',
+      ));
+    }
+
+    // Al crédito el pago es un apunte automático, no un cobro real.
+    final cobros = ((venta['pagos'] as List?) ?? [])
+        .whereType<Map>()
+        .where((p) => p['forma_pago'] != 'credito')
+        .toList();
+    if (cobros.isNotEmpty) {
+      for (final p in _pagos) {
+        p.dispose();
+      }
+      _pagos.clear();
+      for (final c in cobros) {
+        _pagos.add(_Pago()
+          ..tipo = c['forma_pago']?.toString() ?? 'efectivo'
+          ..cuentaId = c['cuenta_bancaria_id'] as int?
+          ..billeteraId = c['billetera_id'] as int?
+          ..monto.text = '${c['monto'] ?? 0}');
+      }
+    }
   }
 
   /// Stock en unidad base de cada producto del almacén elegido.
@@ -219,61 +274,65 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
 
     setState(() => _saving = true);
     try {
-      await _api.post(
-        ApiEndpoints.notasVenta,
-        body: {
-          'cliente_id': _clienteId,
-          'almacen_id': _almacenId,
-          'vendedor_id': auth.user?.id,
-          'fecha_emision': fecha,
-          'moneda': 'PEN',
-          'tipo_pago': _tipoPago,
-          'subtotal': _total,
-          'descuento_total': 0,
-          'total': _total,
-          'observaciones': _observaciones.text.trim().isEmpty
-              ? null
-              : _observaciones.text.trim(),
-          'serie': 'NV01',
-          'detalles': [
-            for (final l in validas)
-              {
-                'producto_presentacion_id': l.presentacionId,
-                'cantidad': l.cant,
-                'precio_unitario': l.precioVal,
-                'descuento': 0,
-                'subtotal': l.subtotal,
-              },
-          ],
-          'pagos': _esContado
-              ? [
-                  for (final p in _pagosEfectivos)
-                    if (p.monto > 0)
-                      {
-                        'metodo_pago_id': null,
-                        'forma_pago': p.tipo,
-                        'cuenta_bancaria_id': p.tipo == 'transferencia'
-                            ? p.cuentaId
-                            : null,
-                        'billetera_id': p.tipo == 'billetera'
-                            ? p.billeteraId
-                            : null,
-                        'monto': p.monto,
-                        'fecha': fecha,
-                        'referencia': null,
-                      },
-                ]
-              : [
-                  {
-                    'metodo_pago_id': null,
-                    'forma_pago': 'credito',
-                    'monto': _total,
-                    'fecha': fecha,
-                    'referencia': null,
-                  },
-                ],
-        },
-      );
+      final cuerpo = <String, dynamic>{
+        'cliente_id': _clienteId,
+        'almacen_id': _almacenId,
+        'vendedor_id': auth.user?.id,
+        'fecha_emision': fecha,
+        'moneda': 'PEN',
+        'tipo_pago': _tipoPago,
+        'subtotal': _total,
+        'descuento_total': 0,
+        'total': _total,
+        'observaciones': _observaciones.text.trim().isEmpty
+            ? null
+            : _observaciones.text.trim(),
+        'serie': 'NV01',
+        'detalles': [
+          for (final l in validas)
+            {
+              'producto_presentacion_id': l.presentacionId,
+              'cantidad': l.cant,
+              'precio_unitario': l.precioVal,
+              'descuento': 0,
+              'subtotal': l.subtotal,
+            },
+        ],
+        'pagos': _esContado
+            ? [
+                for (final p in _pagosEfectivos)
+                  if (p.monto > 0)
+                    {
+                      'metodo_pago_id': null,
+                      'forma_pago': p.tipo,
+                      'cuenta_bancaria_id': p.tipo == 'transferencia'
+                          ? p.cuentaId
+                          : null,
+                      'billetera_id': p.tipo == 'billetera'
+                          ? p.billeteraId
+                          : null,
+                      'monto': p.monto,
+                      'fecha': fecha,
+                      'referencia': null,
+                    },
+              ]
+            : [
+                {
+                  'metodo_pago_id': null,
+                  'forma_pago': 'credito',
+                  'monto': _total,
+                  'fecha': fecha,
+                  'referencia': null,
+                },
+              ],
+      };
+
+      if (_editando) {
+        await _api.put(ApiEndpoints.notaVenta(widget.ventaId!), body: cuerpo);
+      } else {
+        await _api.post(ApiEndpoints.notasVenta, body: cuerpo);
+      }
+
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() => _saving = false);
@@ -286,9 +345,9 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const AppScaffold(
-        title: 'Nueva Venta',
-        body: Center(child: CircularProgressIndicator()),
+      return AppScaffold(
+        title: _editando ? 'Editar Venta' : 'Nueva Venta',
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -298,7 +357,7 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
         .firstOrNull;
 
     return AppScaffold(
-      title: 'Nueva Venta',
+      title: _editando ? 'Editar Venta' : 'Nueva Venta',
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -528,7 +587,7 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: PrimaryButton(
-                    label: 'Registrar venta',
+                    label: _editando ? 'Guardar cambios' : 'Registrar venta',
                     loading: _saving,
                     onPressed: _guardar,
                   ),

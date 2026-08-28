@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Package, Plus, ReceiptText, Trash2, Wallet } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { opcionesAlmacen } from '../lib/almacenes';
@@ -27,6 +27,9 @@ export default function CrearVenta() {
     const toast = useToast();
     const navigate = useNavigate();
     const { user } = useAuth();
+    /** Con id en la URL se edita una venta existente; sin id, se crea una nueva. */
+    const { id: ventaId } = useParams();
+    const editando = Boolean(ventaId);
 
     const [clientes, setClientes] = useState([]);
     const [almacenes, setAlmacenes] = useState([]);
@@ -79,12 +82,49 @@ export default function CrearVenta() {
             if (listaAlmacenes.length === 1) {
                 setForm((prev) => ({ ...prev, almacen_id: String(listaAlmacenes[0].id) }));
             }
+
+            // Modo edición: la venta se vuelca al formulario, los ítems y los pagos.
+            if (ventaId) {
+                const res = await api.get(`/notas-venta/${ventaId}`);
+                const venta = res.data?.data ?? res.data;
+
+                setForm({
+                    cliente_id: venta.cliente_id ? String(venta.cliente_id) : '',
+                    almacen_id: venta.almacen_id ? String(venta.almacen_id) : '',
+                    fecha_emision: String(venta.fecha_emision ?? '').slice(0, 10) || hoy(),
+                    tipo_pago: venta.tipo_pago ?? 'contado',
+                    observaciones: venta.observaciones ?? '',
+                });
+
+                setItems(
+                    (venta.detalles ?? []).map((d) => ({
+                        producto_id: String(d.presentacion?.producto?.id ?? ''),
+                        producto_presentacion_id: String(d.producto_presentacion_id),
+                        cantidad: String(Number(d.cantidad) || 0),
+                        precio_unitario: String(Number(d.precio_unitario) || 0),
+                    })),
+                );
+
+                // Al crédito el pago es un apunte automático, no un cobro real.
+                const cobros = (venta.pagos ?? []).filter((p) => p.forma_pago !== 'credito');
+                if (cobros.length) {
+                    setPagos(
+                        cobros.map((p) => ({
+                            tipo: p.forma_pago ?? 'efectivo',
+                            cuentaId: p.cuenta_bancaria_id ? String(p.cuenta_bancaria_id) : '',
+                            billeteraId: p.billetera_id ? String(p.billetera_id) : '',
+                            monto: String(Number(p.monto) || 0),
+                        })),
+                    );
+                    setMixto(cobros.length > 1);
+                }
+            }
         } catch {
             toast.error('No se pudieron cargar los datos.');
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, ventaId]);
 
     useEffect(() => {
         load();
@@ -352,7 +392,7 @@ export default function CrearVenta() {
         }
 
         try {
-            await api.post('/notas-venta', {
+            const cuerpo = {
                 cliente_id: form.cliente_id || null,
                 almacen_id: form.almacen_id,
                 vendedor_id: user?.id,
@@ -366,8 +406,19 @@ export default function CrearVenta() {
                 serie: 'NV01',
                 detalles,
                 pagos: pagosPayload,
-            });
-            toast.success('Venta registrada. Stock descontado del almacén.');
+            };
+
+            if (editando) {
+                await api.put(`/notas-venta/${ventaId}`, cuerpo);
+            } else {
+                await api.post('/notas-venta', cuerpo);
+            }
+
+            toast.success(
+                editando
+                    ? 'Venta actualizada. Stock y caja recalculados.'
+                    : 'Venta registrada. Stock descontado del almacén.',
+            );
             navigate('/notas-venta');
         } catch (err) {
             const msg = err.response?.data?.message;
@@ -405,7 +456,9 @@ export default function CrearVenta() {
                     <ReceiptText className="h-5 w-5" />
                 </div>
                 <div>
-                    <h1 className="text-xl font-bold tracking-tight text-warm-900">Nueva Venta</h1>
+                    <h1 className="text-xl font-bold tracking-tight text-warm-900">
+                        {editando ? 'Editar Venta' : 'Nueva Venta'}
+                    </h1>
                     <p className="text-sm text-warm-500">Nota de venta y registro del cobro</p>
                 </div>
             </div>
@@ -795,7 +848,7 @@ export default function CrearVenta() {
 
                         <div className="mt-5 flex flex-col gap-2">
                             <Button onClick={guardar} loading={saving} className="w-full justify-center">
-                                Registrar venta
+                                {editando ? 'Guardar cambios' : 'Registrar venta'}
                             </Button>
                             <Button
                                 variant="secondary"

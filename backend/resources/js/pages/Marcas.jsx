@@ -261,6 +261,8 @@ export default function Marcas() {
             type: 'actions',
             key: 'actions',
             label: 'Acciones',
+            // Cuatro botones no entran en los 120px por defecto.
+            width: '170px',
             actions: (row) => (
                 <>
                     <button
@@ -312,6 +314,8 @@ export default function Marcas() {
             type: 'actions',
             key: 'actions',
             label: 'Acciones',
+            // Cuatro botones no entran en los 120px por defecto.
+            width: '170px',
             actions: (row) => (
                 <>
                     <button
