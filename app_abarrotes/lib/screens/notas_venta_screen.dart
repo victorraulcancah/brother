@@ -191,7 +191,11 @@ class _NotasVentaScreenState extends State<NotasVentaScreen> {
     Map<String, dynamic> venta = {};
     var error = false;
     try {
-      venta = await _api.get(ApiEndpoints.notaVenta(item['id']));
+      // Laravel envuelve los Resource en {"data": {...}}: sin desempaquetar,
+      // todos los campos salían vacíos.
+      final res = await _api.get(ApiEndpoints.notaVenta(item['id']));
+      final cuerpo = (res is Map && res['data'] is Map) ? res['data'] : res;
+      venta = Map<String, dynamic>.from(cuerpo as Map);
     } catch (_) {
       error = true;
     }
