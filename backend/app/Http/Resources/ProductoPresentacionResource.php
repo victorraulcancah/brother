@@ -18,6 +18,9 @@ class ProductoPresentacionResource extends JsonResource
             'margen' => $this->margen,
             'factor_conversion' => $this->factor_conversion,
             'unidad_base' => new UnidadMedidaResource($this->whenLoaded('unidadBase')),
+            // Solo si quien consulta lo cargó (ventas y compras lo necesitan
+            // para mostrar código y marca); si no, ni se serializa.
+            'producto' => new ProductoResource($this->whenLoaded('producto')),
             'producto_complementario_id' => $this->producto_complementario_id,
             'complementario' => new ProductoResource($this->whenLoaded('complementario')),
             'cantidad_complementaria' => $this->cantidad_complementaria,

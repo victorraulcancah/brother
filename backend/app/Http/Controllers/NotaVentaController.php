@@ -16,7 +16,7 @@ class NotaVentaController extends Controller
 
     public function index()
     {
-        $notas = NotaVenta::with(['cliente', 'almacen', 'vendedor', 'detalles.presentacion.producto', 'pagos.metodoPago'])
+        $notas = NotaVenta::with(['cliente', 'almacen', 'vendedor', 'detalles.presentacion.producto.marca', 'pagos.metodoPago'])
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
@@ -33,7 +33,7 @@ class NotaVentaController extends Controller
     public function show(NotaVenta $notaVenta)
     {
         return new NotaVentaResource(
-            $notaVenta->load(['cliente', 'almacen', 'vendedor', 'detalles.presentacion.producto', 'pagos.metodoPago'])
+            $notaVenta->load(['cliente', 'almacen', 'vendedor', 'detalles.presentacion.producto.marca', 'pagos.metodoPago'])
         );
     }
 

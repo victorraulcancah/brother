@@ -14,9 +14,13 @@ const formaLabel = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarje
 const money = (n) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
 
+const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(Number(n) || 0);
+
 export default function NotasVenta() {
     const toast = useToast();
     const navigate = useNavigate();
+    /** Venta cuyo detalle se muestra en la segunda tabla. */
+    const [seleccionada, setSeleccionada] = useState(null);
     const [notas, setNotas] = useState([]);
     /** Nota cuyo PDF se está viendo. */
     const [pdfTarget, setPdfTarget] = useState(null);
@@ -155,6 +159,16 @@ export default function NotasVenta() {
 
     const docNombre = (n) => `${n?.serie ?? ''}-${String(n?.numero ?? '').padStart(8, '0')}`;
 
+    const detallesVenta = seleccionada?.detalles ?? [];
+    const totalesVenta = detallesVenta.reduce(
+        (acc, d) => ({
+            cantidad: acc.cantidad + (Number(d.cantidad) || 0),
+            descuento: acc.descuento + (Number(d.descuento) || 0),
+            subtotal: acc.subtotal + (Number(d.subtotal) || 0),
+        }),
+        { cantidad: 0, descuento: 0, subtotal: 0 },
+    );
+
     return (
         <Layout>
             <PageHeader
@@ -175,6 +189,8 @@ export default function NotasVenta() {
                         (!fPago || n.tipo_pago === fPago),
                 )}
                 loading={loading}
+                onRowClick={(row) => setSeleccionada(row)}
+                rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
                 searchPlaceholder="Buscar ventas..."
                 filterable
                 filterCount={(fEstado ? 1 : 0) + (fPago ? 1 : 0)}
@@ -214,6 +230,85 @@ export default function NotasVenta() {
                     </div>
                 }
             />
+
+            {/* Detalle de la venta seleccionada */}
+            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+                <div className="flex items-center justify-between border-b border-edge px-5 py-3">
+                    <h2 className="text-sm font-semibold text-warm-900">
+                        Detalle {seleccionada ? `de ${seleccionada.serie}-${seleccionada.numero}` : ''}
+                    </h2>
+                    <span className="text-xs text-warm-500">
+                        {detallesVenta.length} {detallesVenta.length === 1 ? 'producto' : 'productos'}
+                    </span>
+                </div>
+                {/* Alto fijo: el detalle siempre ocupa lo mismo, haya 1 o 20 productos. */}
+                <div className="overflow-auto" style={{ height: '30vh' }}>
+                    <table className="w-full min-w-[820px] text-sm">
+                        <thead className="sticky top-0 z-10">
+                            <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                                <th className="w-12 px-3 py-1.5 text-center">#</th>
+                                <th className="w-28 px-3 py-1.5">Código</th>
+                                <th className="px-3 py-1.5">Producto</th>
+                                <th className="w-32 px-3 py-1.5">Marca</th>
+                                <th className="w-28 px-3 py-1.5">Unidad</th>
+                                <th className="w-20 px-3 py-1.5 text-right">Cant.</th>
+                                <th className="w-24 px-3 py-1.5 text-right">Precio</th>
+                                <th className="w-24 px-3 py-1.5 text-right">Dscto.</th>
+                                <th className="w-28 px-3 py-1.5 text-right">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {detallesVenta.length === 0 && (
+                                <tr>
+                                    <td colSpan={9} className="px-3 py-10 text-center text-sm text-warm-500">
+                                        {seleccionada
+                                            ? 'Esta venta no tiene productos.'
+                                            : 'Selecciona una venta arriba para ver su detalle.'}
+                                    </td>
+                                </tr>
+                            )}
+
+                            {detallesVenta.map((d, i) => {
+                                const producto = d.presentacion?.producto;
+                                return (
+                                    <tr key={d.id}>
+                                        <td className="px-3 py-2 text-center text-warm-500">{i + 1}</td>
+                                        <td className="px-3 py-2 text-warm-500">{producto?.codigo ?? '—'}</td>
+                                        <td className="px-3 py-2 font-semibold text-warm-900">
+                                            {producto?.nombre ?? d.producto_nombre ?? '—'}
+                                        </td>
+                                        <td className="px-3 py-2 text-warm-500">{producto?.marca?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2 text-warm-500">{d.presentacion?.nombre ?? '—'}</td>
+                                        <td className="px-3 py-2 text-right text-warm-900">{num(d.cantidad)}</td>
+                                        <td className="px-3 py-2 text-right text-warm-900">{money(d.precio_unitario)}</td>
+                                        <td className="px-3 py-2 text-right text-warm-500">
+                                            {Number(d.descuento) > 0 ? money(d.descuento) : '—'}
+                                        </td>
+                                        <td className="px-3 py-2 text-right font-semibold text-primary-600">
+                                            {money(d.subtotal)}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                        {detallesVenta.length > 0 && (
+                            <tfoot className="sticky bottom-0">
+                                <tr className="border-t-2 border-edge bg-gray-50 text-sm font-bold text-warm-900">
+                                    <td className="px-3 py-2" colSpan={5}>Total</td>
+                                    <td className="px-3 py-2 text-right">{num(totalesVenta.cantidad)}</td>
+                                    <td className="px-3 py-2" />
+                                    <td className="px-3 py-2 text-right">
+                                        {totalesVenta.descuento > 0 ? money(totalesVenta.descuento) : '—'}
+                                    </td>
+                                    <td className="px-3 py-2 text-right text-primary-700">
+                                        {money(totalesVenta.subtotal)}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        )}
+                    </table>
+                </div>
+            </div>
 
             <Modal
                 open={Boolean(anularTarget)}

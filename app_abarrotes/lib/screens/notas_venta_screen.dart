@@ -31,15 +31,6 @@ const _formaLabel = {
   'credito': 'Crédito',
 };
 
-/// "Arroz Costeño · Kilogramo" — el nombre puede venir por la presentación
-/// o suelto en la línea, según cómo se haya guardado la venta.
-String _nombreLinea(Map d) {
-  final pres = d['presentacion'] as Map?;
-  final producto = (pres?['producto'] as Map?)?['nombre'] ?? d['producto_nombre'] ?? '—';
-  final unidad = pres?['nombre'];
-  return unidad == null ? '$producto' : '$producto · $unidad';
-}
-
 /// Fila "etiqueta: valor" de la cabecera del detalle.
 Widget _dato(String etiqueta, String valor) => Padding(
       padding: const EdgeInsets.only(bottom: 2),
@@ -132,6 +123,69 @@ class _NotasVentaScreenState extends State<NotasVentaScreen> {
     }).toList();
   }
 
+
+  /// Una línea de la venta, con el mismo formato que el detalle de Compras.
+  Widget _detalleCard(Map<String, dynamic> d) {
+    final pres = d['presentacion'] as Map<String, dynamic>?;
+    final producto = pres?['producto'] as Map<String, dynamic>?;
+    final descuento = double.tryParse('${d['descuento'] ?? 0}') ?? 0;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              producto?['nombre']?.toString() ?? d['producto_nombre']?.toString() ?? '-',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            Text(
+              '${producto?['codigo'] ?? '-'} · ${pres?['nombre'] ?? '-'}'
+              '${producto?['marca'] is Map ? ' · ${producto!['marca']['nombre']}' : ''}',
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _colDato('Cant.', '${d['cantidad']}'),
+                _colDato('Precio', _money(d['precio_unitario'])),
+                _colDato('Subtotal', _money(d['subtotal'])),
+              ],
+            ),
+            if (descuento > 0) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  _colDato('Descuento', _money(descuento), color: AppColors.warning),
+                  const Spacer(),
+                  const Spacer(),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _colDato(String label, String valor, {Color? color}) => Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            ),
+            Text(
+              valor,
+              style: TextStyle(fontWeight: FontWeight.w600, color: color),
+            ),
+          ],
+        ),
+      );
+
   /// El listado no trae productos ni pagos: se piden al abrir el detalle.
   Future<void> _verDetalle(Map<String, dynamic> item) async {
     Map<String, dynamic> venta = {};
@@ -212,32 +266,7 @@ class _NotasVentaScreenState extends State<NotasVentaScreen> {
                 ),
                 const SizedBox(height: 6),
                 for (final d in detalles)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _nombreLinea(d),
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${d['cantidad']} × ${_money(d['precio_unitario'])}',
-                              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                            ),
-                            Text(
-                              _money(d['subtotal']),
-                              style: const TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                  _detalleCard(d.cast<String, dynamic>()),
 
                 const SizedBox(height: 6),
                 const Text(
@@ -370,6 +399,8 @@ class _NotasVentaScreenState extends State<NotasVentaScreen> {
                 final contado = item['tipo_pago'] == 'contado';
                 return DataCard(
                   title: '${item['serie']}-${item['numero']}',
+                  // Tocar la tarjeta abre el detalle, igual que en Compras.
+                  onTap: () => _verDetalle(item),
                   rows: [
                     DataCardRow.text('Cliente', cliente?['nombre'] as String? ?? 'Clientes varios'),
                     DataCardRow.text('Fecha', '${item['fecha_emision'] ?? '—'}'.split('T').first),
