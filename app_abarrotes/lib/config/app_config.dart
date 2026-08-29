@@ -17,4 +17,5 @@ class AppConfig {
   /// `php artisan serve --host=0.0.0.0 --port=8000`. No sirven `127.0.0.1`
   /// (apunta al propio celular) ni `10.0.2.2` (solo emulador).
   static const String apiBaseUrl = 'http://83.147.39.5/api';
+  ///static const String apiBaseUrl = 'http://192.168.18.23:8000/api';
 }

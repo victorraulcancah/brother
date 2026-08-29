@@ -19,7 +19,9 @@ class UpdateUserRequest extends FormRequest
             // ignoraba al propio usuario, así que guardar sin tocar el correo
             // fallaba con "El correo ya está registrado".
             'email' => 'sometimes|email|max:255|unique:users,email,' . $this->route('id'),
-            'password' => 'sometimes|string|min:6|confirmed',
+            // Sin `confirmed`: el formulario tiene un solo campo de contraseña,
+            // igual que al crear. Exigir la confirmación hacía fallar toda edición.
+            'password' => 'sometimes|string|min:6',
             'empresa_id' => 'nullable|exists:empresas,id',
             'caja_id' => 'nullable|exists:cajas,id',
             'role' => 'sometimes|string|exists:roles,name',
@@ -33,7 +35,6 @@ class UpdateUserRequest extends FormRequest
             'email.email' => 'El correo no es válido',
             'email.unique' => 'El correo ya está registrado',
             'password.min' => 'La contraseña debe tener al menos 6 caracteres',
-            'password.confirmed' => 'Las contraseñas no coinciden',
             'empresa_id.exists' => 'La empresa no existe',
             'role.exists' => 'El rol no existe',
         ];
