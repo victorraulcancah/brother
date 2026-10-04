@@ -41,6 +41,7 @@ class AppRoutes {
   // Ventas
   static const String clientes = '/clientes';
   static const String notasVenta = '/notas-venta';
+  static const String pedidos = '/pedidos';
 
   // Tesorería
   static const String cuentasMedios = '/cuentas-medios';

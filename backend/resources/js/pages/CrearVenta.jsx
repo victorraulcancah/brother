@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Package, Plus, ReceiptText, Trash2, Wallet } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { opcionesAlmacen } from '../lib/almacenes';
@@ -30,6 +30,10 @@ export default function CrearVenta() {
     /** Con id en la URL se edita una venta existente; sin id, se crea una nueva. */
     const { id: ventaId } = useParams();
     const editando = Boolean(ventaId);
+    /** Con ?pedido=ID la venta nace de un pedido: se precarga y, al guardar, lo convierte. */
+    const [searchParams] = useSearchParams();
+    const pedidoId = searchParams.get('pedido');
+    const desdePedido = Boolean(pedidoId) && !editando;
 
     const [clientes, setClientes] = useState([]);
     const [almacenes, setAlmacenes] = useState([]);
@@ -52,6 +56,11 @@ export default function CrearVenta() {
     const [panel, setPanel] = useState({ ...panelVacio });
     /** Productos ya agregados a la venta. */
     const [items, setItems] = useState([]);
+    /**
+     * Lo que el propio pedido tiene reservado (en unidad base, por producto). Al
+     * convertirlo esa reserva se libera, así que cuenta como disponible para esta venta.
+     */
+    const [reservaPropia, setReservaPropia] = useState({ almacenId: null, porProducto: {} });
     /** Buscador avanzado de productos. */
     const [picker, setPicker] = useState({ open: false, query: '' });
 
@@ -119,12 +128,49 @@ export default function CrearVenta() {
                     setMixto(cobros.length > 1);
                 }
             }
+
+            // Conversión de pedido: el pedido se vuelca al formulario como venta nueva.
+            if (desdePedido) {
+                const res = await api.get(`/pedidos/${pedidoId}`);
+                const pedido = res.data?.data ?? res.data;
+
+                if (pedido.estado !== 'pendiente') {
+                    toast.error('Este pedido ya no está pendiente.');
+                    navigate('/pedidos');
+                    return;
+                }
+
+                setForm((prev) => ({
+                    ...prev,
+                    cliente_id: pedido.cliente_id ? String(pedido.cliente_id) : '',
+                    almacen_id: String(pedido.almacen_id),
+                    observaciones: pedido.observaciones ?? '',
+                }));
+
+                const detalles = pedido.detalles ?? [];
+                setItems(
+                    detalles.map((d) => ({
+                        producto_id: String(d.presentacion?.producto?.id ?? ''),
+                        producto_presentacion_id: String(d.producto_presentacion_id),
+                        cantidad: String(Number(d.cantidad) || 0),
+                        precio_unitario: String(Number(d.precio_unitario) || 0),
+                    })),
+                );
+
+                const porProducto = {};
+                detalles.forEach((d) => {
+                    const productoId = String(d.presentacion?.producto?.id ?? '');
+                    const factor = Number(d.presentacion?.factor_conversion) || 1;
+                    porProducto[productoId] = (porProducto[productoId] ?? 0) + (Number(d.cantidad) || 0) * factor;
+                });
+                setReservaPropia({ almacenId: String(pedido.almacen_id), porProducto });
+            }
         } catch {
             toast.error('No se pudieron cargar los datos.');
         } finally {
             setLoading(false);
         }
-    }, [toast, ventaId]);
+    }, [toast, ventaId, pedidoId, desdePedido, navigate]);
 
     useEffect(() => {
         load();
@@ -143,16 +189,25 @@ export default function CrearVenta() {
         [productoDe],
     );
 
-    /** Stock (en unidad base) de cada producto en el almacén elegido. */
+    /**
+     * Stock DISPONIBLE (en unidad base) de cada producto en el almacén elegido:
+     * lo físico menos lo reservado por pedidos pendientes. Vender lo reservado
+     * dejaría a esos pedidos sin mercadería.
+     */
     const stockDelAlmacen = useMemo(() => {
         if (!form.almacen_id) return {};
+        const propia =
+            reservaPropia.almacenId === String(form.almacen_id) ? reservaPropia.porProducto : {};
+
         return existencias
             .filter((e) => String(e.almacen_id ?? e.almacen?.id) === String(form.almacen_id))
             .reduce((acc, e) => {
-                acc[String(e.producto_id)] = Number(e.stock_actual) || 0;
+                const productoId = String(e.producto_id);
+                const disponible = Number(e.stock_disponible ?? e.stock_actual) || 0;
+                acc[productoId] = disponible + (propia[productoId] ?? 0);
                 return acc;
             }, {});
-    }, [existencias, form.almacen_id]);
+    }, [existencias, form.almacen_id, reservaPropia]);
 
     /** Se vende lo que hay: solo productos con stock en el almacén elegido. */
     const productosDisponibles = useMemo(
@@ -410,6 +465,8 @@ export default function CrearVenta() {
 
             if (editando) {
                 await api.put(`/notas-venta/${ventaId}`, cuerpo);
+            } else if (desdePedido) {
+                await api.post(`/pedidos/${pedidoId}/convertir`, cuerpo);
             } else {
                 await api.post('/notas-venta', cuerpo);
             }
@@ -417,9 +474,11 @@ export default function CrearVenta() {
             toast.success(
                 editando
                     ? 'Venta actualizada. Stock y caja recalculados.'
-                    : 'Venta registrada. Stock descontado del almacén.',
+                    : desdePedido
+                      ? 'Pedido convertido en venta. Reserva liberada y stock descontado.'
+                      : 'Venta registrada. Stock descontado del almacén.',
             );
-            navigate('/notas-venta');
+            navigate(desdePedido ? '/pedidos' : '/notas-venta');
         } catch (err) {
             const msg = err.response?.data?.message;
             const firstErr = err.response?.data?.errors
@@ -446,7 +505,7 @@ export default function CrearVenta() {
             {/* Encabezado */}
             <div className="mb-6 flex items-center gap-3">
                 <button
-                    onClick={() => navigate('/notas-venta')}
+                    onClick={() => navigate(desdePedido ? '/pedidos' : '/notas-venta')}
                     className="flex h-9 w-9 items-center justify-center rounded-lg border border-edge text-gray-500 transition hover:bg-gray-50 hover:text-gray-800"
                     aria-label="Volver"
                 >
@@ -457,9 +516,13 @@ export default function CrearVenta() {
                 </div>
                 <div>
                     <h1 className="text-xl font-bold tracking-tight text-warm-900">
-                        {editando ? 'Editar Venta' : 'Nueva Venta'}
+                        {editando ? 'Editar Venta' : desdePedido ? 'Convertir pedido en venta' : 'Nueva Venta'}
                     </h1>
-                    <p className="text-sm text-warm-500">Nota de venta y registro del cobro</p>
+                    <p className="text-sm text-warm-500">
+                        {desdePedido
+                            ? 'Revisa los productos y registra el cobro. La reserva del pedido se libera al guardar.'
+                            : 'Nota de venta y registro del cobro'}
+                    </p>
                 </div>
             </div>
 
@@ -852,7 +915,7 @@ export default function CrearVenta() {
                             </Button>
                             <Button
                                 variant="secondary"
-                                onClick={() => navigate('/notas-venta')}
+                                onClick={() => navigate(desdePedido ? '/pedidos' : '/notas-venta')}
                                 className="w-full justify-center"
                             >
                                 Cancelar

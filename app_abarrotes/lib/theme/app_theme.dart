@@ -17,12 +17,18 @@ class AppTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       brightness: Brightness.light,
-    ).copyWith(primary: AppColors.primary, error: AppColors.danger);
+    ).copyWith(
+      primary: AppColors.primary,
+      onPrimary: Colors.white,
+      error: AppColors.danger,
+      surface: Colors.white,
+      surfaceTint: Colors.transparent,
+    );
 
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: Colors.white,
+      scaffoldBackgroundColor: AppColors.background,
       visualDensity: VisualDensity.adaptivePlatformDensity,
     );
 
@@ -43,14 +49,18 @@ class AppTheme {
           color: AppColors.textStrong,
         ),
       ),
-      // Material 3 tiñe las superficies con el color semilla y los diálogos
-      // salían anaranjados; se fuerzan en blanco.
+      // Material 3 tiñe las superficies con el color semilla; se fuerzan en
+      // blanco para que contrasten con el fondo gris de las pantallas.
+      drawerTheme: const DrawerThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
       dialogTheme: const DialogThemeData(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
       ),
       // Los selectores de fecha y hora no heredan `dialogTheme`: traen el suyo,
-      // que por defecto usa `surfaceContainerHigh` (crema teñido de naranja).
+      // que por defecto usa `surfaceContainerHigh` (teñido con el color semilla).
       datePickerTheme: const DatePickerThemeData(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
@@ -62,6 +72,7 @@ class AppTheme {
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         foregroundColor: AppColors.textStrong,
         elevation: 0,
         centerTitle: true,

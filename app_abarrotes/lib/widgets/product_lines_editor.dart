@@ -76,9 +76,9 @@ class ProductLinesEditor extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFA),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE6E8F5)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [

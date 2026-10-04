@@ -214,16 +214,16 @@ class _PagosCuentaScreenState extends State<PagosCuentaScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
               Text(value, style: TextStyle(fontWeight: FontWeight.w700, color: color)),
             ],
           ),
         );
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
       child: Row(children: [
-        cell('Total', _money(_cuenta['monto_total']), Colors.black87),
+        cell('Total', _money(_cuenta['monto_total']), AppColors.textStrong),
         cell('Pagado', _money(_cuenta['monto_pagado']), Colors.green.shade700),
         cell('Saldo', _money(_cuenta['saldo']), Colors.red.shade700),
       ]),
@@ -242,7 +242,7 @@ class _PagosCuentaScreenState extends State<PagosCuentaScreen> {
           Expanded(
             child: Text(
               '${p['fecha'] ?? ''}${(p['referencia'] ?? '').toString().isNotEmpty ? ' · ${p['referencia']}' : ''}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
               overflow: TextOverflow.ellipsis,
             ),
           ),

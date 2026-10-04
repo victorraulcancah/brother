@@ -66,6 +66,12 @@ class ApiEndpoints {
   static String cliente(int id) => '/clientes/$id';
   static const String notasVenta = '/notas-venta';
   static String notaVenta(int id) => '/notas-venta/$id';
+  /// Pedidos de cliente: reservan stock sin descontarlo.
+  static const String pedidos = '/pedidos';
+  static String pedido(int id) => '/pedidos/$id';
+  static String pedidoCancelar(int id) => '/pedidos/$id/cancelar';
+  /// Emite la nota de venta del pedido (mismo cuerpo que POST /notas-venta).
+  static String pedidoConvertir(int id) => '/pedidos/$id/convertir';
 
   // Compras
   static const String compras = '/compras';

@@ -15,7 +15,9 @@ import '../widgets/app_snackbar.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/metodo_picker.dart';
 import '../widgets/producto_lineas_panel.dart';
+import '../models/pedido.dart';
 import '../utils/almacenes.dart';
+import '../utils/stock.dart';
 
 /// Venta al paso: no se identifica al comprador.
 const _clienteGenerico = 'Clientes varios';
@@ -41,7 +43,12 @@ class CrearVentaScreen extends StatefulWidget {
   /// Con id se edita una venta existente; sin id, se crea una nueva.
   final int? ventaId;
 
-  const CrearVentaScreen({super.key, this.ventaId});
+  /// Con id se convierte ese pedido pendiente en venta: precarga cliente,
+  /// almacén y líneas, y al guardar emite la nota de venta desde el pedido
+  /// (POST /pedidos/{id}/convertir) en vez de crear una nueva.
+  final int? pedidoId;
+
+  const CrearVentaScreen({super.key, this.ventaId, this.pedidoId});
 
   @override
   State<CrearVentaScreen> createState() => _CrearVentaScreenState();
@@ -52,6 +59,14 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
   bool _loading = true;
   bool _saving = false;
   bool get _editando => widget.ventaId != null;
+  bool get _desdePedido => widget.pedidoId != null;
+  Pedido? _pedido;
+  /// Lo que el pedido tiene apartado: se libera al convertirlo, así que cuenta
+  /// como disponible para esta venta.
+  Map<int, double> _reservaPropia = {};
+  String get _titulo => _desdePedido
+      ? 'Convertir pedido${_pedido != null ? ' ${_pedido!.codigo}' : ''}'
+      : (_editando ? 'Editar Venta' : 'Nueva Venta');
   String? _error;
 
   List<Map<String, dynamic>> _clientes = [];
@@ -117,6 +132,7 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
       if (_almacenes.length == 1) _almacenId = _almacenes.first['id'] as int?;
 
       if (widget.ventaId != null) await _cargarVenta();
+      if (widget.pedidoId != null) await _cargarPedido();
     } catch (_) {
       _error = 'No se pudieron cargar los datos.';
     }
@@ -172,16 +188,42 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
     }
   }
 
-  /// Stock en unidad base de cada producto del almacén elegido.
-  Map<int, double> get _stockDelAlmacen {
-    if (_almacenId == null) return {};
-    return {
-      for (final e in _existencias)
-        if (e['almacen_id'] == _almacenId)
-          e['producto_id'] as int:
-              double.tryParse('${e['stock_actual']}') ?? 0,
-    };
+  /// Vuelca un pedido pendiente al formulario (cliente, almacén y líneas).
+  Future<void> _cargarPedido() async {
+    final pedido = Pedido.fromResponse(
+      await _api.get(ApiEndpoints.pedido(widget.pedidoId!)),
+    );
+    if (!pedido.esPendiente) {
+      _error = 'Solo se pueden convertir pedidos pendientes.';
+      return;
+    }
+    _pedido = pedido;
+    _reservaPropia = reservaDePedido(pedido);
+    _clienteId = pedido.clienteId;
+    _almacenId = pedido.almacenId;
+    _observaciones.text = pedido.observaciones ?? '';
+
+    for (final l in _lineas) {
+      l.dispose();
+    }
+    _lineas.clear();
+    for (final d in pedido.detalles) {
+      _lineas.add(LineaProducto(
+        productoId: d.productoId ?? 0,
+        presentacionId: d.productoPresentacionId,
+        cantidad: '${d.cantidad}',
+        precio: '${d.precioUnitario}',
+      ));
+    }
   }
+
+  /// Stock vendible en unidad base de cada producto del almacén elegido
+  /// (físico − reservado por otros pedidos).
+  Map<int, double> get _stockDelAlmacen => stockVendiblePorProducto(
+    _existencias,
+    _almacenId,
+    reservaPropia: _reservaPropia,
+  );
 
   Map<String, dynamic>? _productoDe(int? id) {
     if (id == null) return null;
@@ -327,7 +369,9 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
               ],
       };
 
-      if (_editando) {
+      if (_desdePedido) {
+        await _api.post(ApiEndpoints.pedidoConvertir(widget.pedidoId!), body: cuerpo);
+      } else if (_editando) {
         await _api.put(ApiEndpoints.notaVenta(widget.ventaId!), body: cuerpo);
       } else {
         await _api.post(ApiEndpoints.notasVenta, body: cuerpo);
@@ -346,7 +390,7 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return AppScaffold(
-        title: _editando ? 'Editar Venta' : 'Nueva Venta',
+        title: _titulo,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -357,7 +401,7 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
         .firstOrNull;
 
     return AppScaffold(
-      title: _editando ? 'Editar Venta' : 'Nueva Venta',
+      title: _titulo,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -424,7 +468,8 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
                   value: _almacenId,
                   options: opcionesAlmacen(_almacenes, _almacenId),
                   // El stock es de otro almacén: las líneas dejan de valer.
-                  onChanged: (v) => setState(() {
+                  // Un pedido ya tiene su mercadería apartada en su almacén.
+                  onChanged: _desdePedido ? null : (v) => setState(() {
                     _almacenId = v;
                     for (final l in _lineas) {
                       l.dispose();
@@ -565,11 +610,14 @@ class _CrearVentaScreenState extends State<CrearVentaScreen> {
               children: [
                 _resumenFila('Cliente', clienteNombre ?? _clienteGenerico),
                 _resumenFila('Total', _money(_total), destacado: true),
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    'Al registrar la venta se descuenta el stock del almacén elegido.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    _desdePedido
+                        ? 'Al registrar la venta se libera la reserva del pedido y '
+                              'se descuenta el stock del almacén.'
+                        : 'Al registrar la venta se descuenta el stock del almacén elegido.',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
                 ),
               ],

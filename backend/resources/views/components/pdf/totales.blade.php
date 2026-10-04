@@ -36,8 +36,8 @@
                         </tr>
                     @endforeach
                     <tr>
-                        <td class="right strong" style="font-size: 13px; color: #5d2e00;">TOTAL</td>
-                        <td class="right strong" style="font-size: 13px; color: #5d2e00;">{{ $moneda }} {{ $total }}</td>
+                        <td class="right strong" style="font-size: 13px; color: #1f2937;">TOTAL</td>
+                        <td class="right strong" style="font-size: 13px; color: #1f2937;">{{ $moneda }} {{ $total }}</td>
                     </tr>
                 </table>
             </td>

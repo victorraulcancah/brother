@@ -40,6 +40,7 @@ class AppMenu {
       children: [
         MenuLink(icon: Icons.people_outline, label: 'Clientes', route: AppRoutes.clientes),
         MenuLink(icon: Icons.receipt_long_outlined, label: 'Notas de Venta', route: AppRoutes.notasVenta),
+        MenuLink(icon: Icons.assignment_outlined, label: 'Pedidos', route: AppRoutes.pedidos),
       ],
     ),
     MenuGroup(

@@ -25,7 +25,12 @@ class NotaVentaController extends Controller
 
     public function store(StoreNotaVentaRequest $request)
     {
-        $nota = $this->notaVentaService->crear($request->validated());
+        try {
+            $nota = $this->notaVentaService->crear($request->validated());
+        } catch (\RuntimeException $e) {
+            // Stock insuficiente (incluye lo reservado por pedidos).
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return new NotaVentaResource($nota);
     }
@@ -38,7 +43,7 @@ class NotaVentaController extends Controller
     {
         try {
             $nota = $this->notaVentaService->actualizar($notaVenta, $request->validated());
-        } catch (\InvalidArgumentException $e) {
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 

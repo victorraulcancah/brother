@@ -30,23 +30,23 @@
         .marco td { padding: 4px 8px; vertical-align: top; }
 
         /* Recuadro de la cabecera: RUC / tipo de documento / número */
-        .docbox td { border: 1px solid #e0902f; padding: 5px 8px; text-align: center; }
-        .docbox .hl { background: #ef6c00; color: #fff; font-weight: bold; text-transform: uppercase; letter-spacing: .4px; }
+        .docbox td { border: 1px solid #1d4ed8; padding: 5px 8px; text-align: center; }
+        .docbox .hl { background: #2563eb; color: #fff; font-weight: bold; text-transform: uppercase; letter-spacing: .4px; }
         .docbox .num { font-weight: bold; font-size: 12px; }
 
         /* Tabla de ítems (encabezado de color, cuerpo con líneas suaves) */
-        .items { border: 1px solid #e0dad2; }
+        .items { border: 1px solid #d4d8de; }
         .items th {
-            background: #ef6c00; color: #fff; font-size: 9px; text-transform: uppercase;
+            background: #2563eb; color: #fff; font-size: 9px; text-transform: uppercase;
             letter-spacing: .3px; padding: 5px 6px; text-align: left;
         }
         .items td { padding: 4px 6px; border-bottom: 1px solid #eee; }
         .items .filler td { padding: 5px 6px; }
 
         /* Totales */
-        .totales td { padding: 5px 10px; border: 1px solid #e0dad2; }
+        .totales td { padding: 5px 10px; border: 1px solid #d4d8de; }
         .totales .lbl { text-align: right; font-weight: bold; text-transform: uppercase; }
-        .totales .tot { background: #ef6c00; color: #fff; border-color: #e0902f; }
+        .totales .tot { background: #2563eb; color: #fff; border-color: #1d4ed8; }
     </style>
 </head>
 <body>

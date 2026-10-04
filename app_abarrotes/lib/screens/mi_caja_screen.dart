@@ -127,7 +127,7 @@ class _MiCajaScreenState extends State<MiCajaScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8)),
                   child: Column(
                     children: [
                       Row(

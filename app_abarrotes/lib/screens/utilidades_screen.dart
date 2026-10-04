@@ -302,7 +302,7 @@ class _UtilidadesScreenState extends State<UtilidadesScreen> {
                     barsSpace: 2,
                     barRods: [
                       rod(_n(filas[i]['ventas']), AppColors.primary),
-                      rod(_n(filas[i]['costo']), const Color(0xFFF0B27A)),
+                      rod(_n(filas[i]['costo']), AppColors.primary200),
                       rod(_n(filas[i]['utilidad_neta']), _n(filas[i]['utilidad_neta']) < 0 ? AppColors.danger : AppColors.success),
                     ],
                   ),
@@ -314,7 +314,7 @@ class _UtilidadesScreenState extends State<UtilidadesScreen> {
             spacing: 12,
             children: [
               leyenda(AppColors.primary, 'Ventas'),
-              leyenda(const Color(0xFFF0B27A), 'Costo'),
+              leyenda(AppColors.primary200, 'Costo'),
               leyenda(AppColors.success, 'Utilidad neta'),
               leyenda(AppColors.danger, 'Pérdida'),
             ],

@@ -69,25 +69,33 @@ class StockService
         ?string $documentoTipo = null,
         ?int $documentoId = null,
         ?int $usuarioId = null,
-        ?string $fecha = null
+        ?string $fecha = null,
+        bool $respetarReservas = false
     ): MovimientoInventario {
-        return DB::transaction(function () use ($presentacion, $almacen, $cantidadPresentacion, $costoUnitario, $origen, $documentoTipo, $documentoId, $usuarioId, $fecha) {
+        return DB::transaction(function () use ($presentacion, $almacen, $cantidadPresentacion, $costoUnitario, $origen, $documentoTipo, $documentoId, $usuarioId, $fecha, $respetarReservas) {
             $factor = (float) $presentacion->factor_conversion ?: 1;
             $cantidadBase = $cantidadPresentacion * $factor;
 
             $stock = $this->getOrCreateStock($presentacion, $almacen);
             $anterior = (float) $stock->stock_actual;
 
-            if ($cantidadBase > $anterior) {
+            // Las ventas solo pueden usar lo disponible: lo reservado por pedidos
+            // pendientes es de esos pedidos. Un ajuste o una merma física no mira
+            // reservas, porque la mercadería que falta falta igual.
+            $reservado = $respetarReservas ? (float) $stock->stock_reservado : 0.0;
+            $utilizable = $anterior - $reservado;
+
+            if ($cantidadBase > $utilizable) {
                 // El disponible se guarda en unidad base; el usuario pide en unidades
                 // de la presentación. Se informan las dos para que no se confundan.
                 $abrev = $presentacion->producto?->unidadMedida?->abreviatura ?? 'u. base';
-                $disponiblePresentacion = $factor > 0 ? round($anterior / $factor, 2) : $anterior;
+                $disponiblePresentacion = $factor > 0 ? round($utilizable / $factor, 2) : $utilizable;
+                $nota = $reservado > 0 ? " ({$reservado} {$abrev} están reservados en pedidos)" : '';
 
                 throw new \RuntimeException(
                     "Stock insuficiente para \"{$presentacion->nombre}\" en \"{$almacen->nombre}\". "
                     . "Disponible: {$disponiblePresentacion} x {$presentacion->nombre} "
-                    . "({$anterior} {$abrev}). Pediste {$cantidadPresentacion}."
+                    . "({$utilizable} {$abrev}){$nota}. Pediste {$cantidadPresentacion}."
                 );
             }
 
@@ -135,6 +143,21 @@ class StockService
             $cantidadBase = $cantidadPresentacion * $factor;
 
             $stock = $this->getOrCreateStock($presentacion, $almacen);
+
+            // Reservar más de lo disponible dejaría el stock disponible en negativo
+            // y dos pedidos prometerían la misma mercadería.
+            $disponible = (float) $stock->stock_actual - (float) $stock->stock_reservado;
+            if ($cantidadBase > $disponible) {
+                $abrev = $presentacion->producto?->unidadMedida?->abreviatura ?? 'u. base';
+                $disponiblePresentacion = $factor > 0 ? round($disponible / $factor, 2) : $disponible;
+
+                throw new \RuntimeException(
+                    "Stock insuficiente para reservar \"{$presentacion->nombre}\" en \"{$almacen->nombre}\". "
+                    . "Disponible: {$disponiblePresentacion} x {$presentacion->nombre} "
+                    . "({$disponible} {$abrev}). Pediste {$cantidadPresentacion}."
+                );
+            }
+
             $stock->stock_reservado += $cantidadBase;
             $stock->stock_disponible = $stock->stock_actual - $stock->stock_reservado;
             $stock->save();
@@ -148,7 +171,8 @@ class StockService
             $cantidadBase = $cantidadPresentacion * $factor;
 
             $stock = $this->getOrCreateStock($presentacion, $almacen);
-            $stock->stock_reservado -= $cantidadBase;
+            // Nunca por debajo de cero: una reserva ya liberada no puede dejar el saldo negativo.
+            $stock->stock_reservado = max(0, (float) $stock->stock_reservado - $cantidadBase);
             $stock->stock_disponible = $stock->stock_actual - $stock->stock_reservado;
             $stock->save();
         });

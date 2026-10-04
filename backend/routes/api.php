@@ -26,6 +26,7 @@ use App\Http\Controllers\MotivoTrasladoController;
 use App\Http\Controllers\MovimientoInventarioController;
 use App\Http\Controllers\NotaVentaController;
 use App\Http\Controllers\PdfController;
+use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\OrdenCompraController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProductoPresentacionController;
@@ -102,6 +103,14 @@ Route::middleware('auth:api')->group(function () {
     Route::get('notas-venta/{notaVenta}', [NotaVentaController::class, 'show']);
     Route::put('notas-venta/{notaVenta}', [NotaVentaController::class, 'update']);
     Route::post('notas-venta/{notaVenta}/anular', [NotaVentaController::class, 'anular']);
+
+    // Pedidos: reservan stock hasta que se conviertan en venta o se cancelen
+    Route::get('pedidos', [PedidoController::class, 'index']);
+    Route::post('pedidos', [PedidoController::class, 'store']);
+    Route::get('pedidos/{pedido}', [PedidoController::class, 'show']);
+    Route::put('pedidos/{pedido}', [PedidoController::class, 'update']);
+    Route::post('pedidos/{pedido}/cancelar', [PedidoController::class, 'cancelar']);
+    Route::post('pedidos/{pedido}/convertir', [PedidoController::class, 'convertir']);
     Route::delete('notas-venta/{notaVenta}', [NotaVentaController::class, 'destroy']);
 
     // Tesorería

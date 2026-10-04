@@ -30,6 +30,8 @@ import RecepcionesCompra from './pages/RecepcionesCompra';
 import Clientes from './pages/Clientes';
 import NotasVenta from './pages/NotasVenta';
 import CrearVenta from './pages/CrearVenta';
+import Pedidos from './pages/Pedidos';
+import CrearPedido from './pages/CrearPedido';
 import MetodosDePago from './pages/MetodosDePago';
 import MiCaja from './pages/MiCaja';
 import Cajas from './pages/Cajas';
@@ -76,6 +78,9 @@ const routes = [
     { path: '/notas-venta', element: <NotasVenta /> },
     { path: '/notas-venta/nueva', element: <CrearVenta /> },
     { path: '/notas-venta/:id/editar', element: <CrearVenta /> },
+    { path: '/pedidos', element: <Pedidos /> },
+    { path: '/pedidos/nuevo', element: <CrearPedido /> },
+    { path: '/pedidos/:id/editar', element: <CrearPedido /> },
     { path: '/metodos-de-pago', element: <MetodosDePago /> },
     { path: '/mi-caja', element: <MiCaja /> },
     { path: '/cajas', element: <Cajas /> },

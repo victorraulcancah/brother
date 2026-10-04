@@ -104,17 +104,17 @@ flutter_launcher_icons:
   image_path: "assets/images/brava-icono.png"
   # En Android el icono adaptativo se recorta: el monograma va con margen
   # sobre el naranja de la marca.
-  adaptive_icon_background: "#EF6C00"
+  adaptive_icon_background: "#2563EB"
   adaptive_icon_foreground: "assets/images/brava-icono-adaptativo.png"
   remove_alpha_ios: true
 
 # Pantalla de carga (se genera con: dart run flutter_native_splash:create)
 flutter_native_splash:
-  color: "#EF6C00"
+  color: "#2563EB"
   image: "assets/images/brava-icono-adaptativo.png"
   android_12:
-    color: "#EF6C00"
+    color: "#2563EB"
     image: "assets/images/brava-icono-adaptativo.png"
-    icon_background_color: "#EF6C00"
+    icon_background_color: "#2563EB"
   android: true
   ios: true

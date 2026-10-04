@@ -20,6 +20,7 @@ import {
     ShoppingBag,
     Contact,
     ReceiptText,
+    ClipboardList,
     Store,
     Repeat,
     Scale,
@@ -44,6 +45,7 @@ export const navigation = [
         icon: ShoppingBag,
         children: [
             { label: 'Clientes', icon: Contact, to: '/clientes' },
+            { label: 'Pedidos', icon: ClipboardList, to: '/pedidos' },
             { label: 'Notas de Venta', icon: ReceiptText, to: '/notas-venta' },
         ],
     },

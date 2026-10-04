@@ -4,13 +4,12 @@ import '../services/api_service.dart';
 import '../services/crud_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_badge.dart';
-import '../widgets/app_button.dart';
 import '../widgets/app_modal.dart';
+import '../widgets/motivo_sheet.dart';
 import '../widgets/app_list_header.dart';
 import '../widgets/app_message.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/app_snackbar.dart';
-import '../widgets/app_text_field.dart';
 import '../widgets/data_card.dart';
 import '../widgets/pdf_viewer_sheet.dart';
 import 'crear_venta_screen.dart';
@@ -100,7 +99,7 @@ class _NotasVentaScreenState extends State<NotasVentaScreen> {
     final motivo = await showAppModal<String>(
       context,
       title: 'Anular venta',
-      child: _MotivoSheet(),
+      child: const MotivoSheet(label: 'Motivo de anulación', confirmLabel: 'Anular'),
     );
     if (motivo == null || motivo.trim().isEmpty) return;
     try {
@@ -464,39 +463,6 @@ class _NotasVentaScreenState extends State<NotasVentaScreen> {
                 ),
               ],
             ),
-    );
-  }
-}
-
-class _MotivoSheet extends StatefulWidget {
-  @override
-  State<_MotivoSheet> createState() => _MotivoSheetState();
-}
-
-class _MotivoSheetState extends State<_MotivoSheet> {
-  final _ctrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AppTextField(controller: _ctrl, label: 'Motivo de anulación', icon: Icons.edit_note),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(child: SecondaryButton(label: 'Cancelar', onPressed: () => Navigator.pop(context))),
-            const SizedBox(width: 12),
-            Expanded(child: PrimaryButton(label: 'Anular', onPressed: () => Navigator.pop(context, _ctrl.text))),
-          ],
-        ),
-      ],
     );
   }
 }

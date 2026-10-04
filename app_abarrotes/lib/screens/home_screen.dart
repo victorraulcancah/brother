@@ -16,8 +16,8 @@ String _num(dynamic v) {
 }
 
 const List<Color> _catColors = [
-  Color(0xFFef6c00), Color(0xFFfb8c00), Color(0xFFffa726),
-  Color(0xFF8d6e63), Color(0xFF5d2e00), Color(0xFFa9866a),
+  AppColors.primary, AppColors.primaryLight, AppColors.primary200,
+  AppColors.primaryDark, AppColors.primary900, AppColors.textMuted,
 ];
 
 class HomeScreen extends StatefulWidget {
@@ -193,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFef6c00), Color(0xFFfb8c00)]),
+        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryLight]),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(

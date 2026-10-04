@@ -109,7 +109,7 @@ export default function PdfViewerModal({
 
     return createPortal(
         <div className="fixed inset-0 z-[110] overflow-y-auto">
-            <div className="flex min-h-dvh items-center justify-center p-4">
+            <div className="flex min-h-dvh items-end justify-center sm:items-center sm:p-4">
                 <div
                     className="fixed inset-0 bg-black/50"
                     onClick={onClose}
@@ -121,8 +121,8 @@ export default function PdfViewerModal({
                     role="dialog"
                     aria-modal="true"
                     aria-label={titulo}
-                    className={`relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${
-                        formato === 'ticket' ? 'max-w-md' : 'max-w-3xl'
+                    className={`relative z-10 flex max-h-[92dvh] w-full animate-[sheet-in_0.28s_cubic-bezier(0.22,1,0.36,1)] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl motion-reduce:animate-none sm:animate-none sm:rounded-2xl ${
+                        formato === 'ticket' ? 'sm:max-w-md' : 'sm:max-w-3xl'
                     }`}
                 >
                     {/* Cabecera */}

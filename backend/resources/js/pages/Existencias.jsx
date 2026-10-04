@@ -94,6 +94,7 @@ export default function Existencias() {
             if (activeFilters.stock === 'sin') return stock <= 0;
             if (activeFilters.stock === 'bajo') return stock > 0 && minimo > 0 && stock <= minimo;
             if (activeFilters.stock === 'sobre') return maximo > 0 && stock > maximo;
+            if (activeFilters.stock === 'reservado') return Number(row.stock_reservado ?? 0) > 0;
             if (activeFilters.stock === 'normal') return stock > 0 && (minimo <= 0 || stock > minimo);
             return true;
         });
@@ -112,6 +113,7 @@ export default function Existencias() {
                     { value: 'sin', label: 'Sin stock' },
                     { value: 'bajo', label: 'Bajo el mínimo' },
                     { value: 'sobre', label: 'Sobre el máximo' },
+                    { value: 'reservado', label: 'Con reservas (pedidos)' },
                     { value: 'normal', label: 'Stock normal' },
                 ]}
                 className="w-52"
@@ -227,9 +229,16 @@ export default function Existencias() {
             width: '85px',
             align: 'right',
             searchable: false,
-            render: (row) => (
-                <span className="text-warm-500">{num(Number(row.stock_reservado ?? 0) / factorDeFila(row))}</span>
-            ),
+            render: (row) => {
+                const reservado = Number(row.stock_reservado ?? 0);
+                return reservado > 0 ? (
+                    <span className="font-semibold text-amber-600" title="Apartado por pedidos pendientes">
+                        {num(reservado / factorDeFila(row))}
+                    </span>
+                ) : (
+                    <span className="text-warm-500">0</span>
+                );
+            },
         },
         {
             key: 'stock_disponible',
@@ -237,11 +246,17 @@ export default function Existencias() {
             width: '85px',
             align: 'right',
             searchable: false,
-            render: (row) => (
-                <span className="font-medium text-warm-900">
-                    {num(Number(row.stock_disponible ?? 0) / factorDeFila(row))}
-                </span>
-            ),
+            render: (row) => {
+                const disponible = Number(row.stock_disponible ?? 0);
+                return (
+                    <span
+                        className={`font-medium ${disponible <= 0 ? 'text-red-600' : 'text-warm-900'}`}
+                        title="Stock físico menos lo reservado"
+                    >
+                        {num(disponible / factorDeFila(row))}
+                    </span>
+                );
+            },
         },
         {
             key: 'stock_minimo',
@@ -311,10 +326,11 @@ export default function Existencias() {
             acc.items += 1;
             if (stock <= 0) acc.sinStock += 1;
             else if (minimo > 0 && stock <= minimo) acc.bajoMinimo += 1;
+            if (Number(row.stock_reservado ?? 0) > 0) acc.conReservas += 1;
             acc.valorizado += stock * Number(row.costo_promedio ?? 0);
             return acc;
         },
-        { items: 0, sinStock: 0, bajoMinimo: 0, valorizado: 0 },
+        { items: 0, sinStock: 0, bajoMinimo: 0, conReservas: 0, valorizado: 0 },
     );
 
     /**
@@ -388,11 +404,12 @@ export default function Existencias() {
             </div>
 
             {/* Resumen de lo que se está viendo */}
-            <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
                 {[
                     { label: 'Productos', valor: resumen.items, tono: 'text-warm-900' },
                     { label: 'Sin stock', valor: resumen.sinStock, tono: 'text-red-600' },
                     { label: 'Bajo el mínimo', valor: resumen.bajoMinimo, tono: 'text-amber-600' },
+                    { label: 'Con reservas', valor: resumen.conReservas, tono: 'text-amber-600' },
                     { label: 'Valorizado', valor: money(resumen.valorizado), tono: 'text-primary-600' },
                 ].map((c) => (
                     <div key={c.label} className="rounded-xl border border-edge bg-white p-4 shadow-sm">
@@ -426,6 +443,7 @@ export default function Existencias() {
                         <span className="text-xs text-warm-500">
                             Stock base: {num(seleccionada.stock_actual)}{' '}
                             {seleccionada.producto?.unidad_base?.abreviatura ?? ''}
+                            {` · Reservado: ${num(seleccionada.stock_reservado)} · Disponible: ${num(seleccionada.stock_disponible)}`}
                             {seleccionada.almacen?.nombre ? ` · ${seleccionada.almacen.nombre}` : ''}
                         </span>
                     )}

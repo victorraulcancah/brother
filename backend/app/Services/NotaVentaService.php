@@ -139,7 +139,8 @@ class NotaVentaService
                 'nota_venta',
                 $nota->id,
                 auth()->id(),
-                $data['fecha_emision']
+                $data['fecha_emision'],
+                respetarReservas: true
             );
         }
 

@@ -19,6 +19,12 @@ String _num(dynamic v) {
   return n == n.roundToDouble() ? n.toStringAsFixed(0) : n.toStringAsFixed(2);
 }
 
+double _n(dynamic v) => double.tryParse('${v ?? 0}') ?? 0;
+
+/// Cantidad; con [tipo] se resalta como badge (ámbar / rojo según el caso).
+Widget _cantidad(double valor, {AppBadgeType? tipo}) =>
+    tipo == null ? Text(_num(valor), textAlign: TextAlign.end) : AppBadge(_num(valor), type: tipo);
+
 /// Stock por almacén, con el desglose en cada unidad derivada del producto.
 class ExistenciasScreen extends StatefulWidget {
   const ExistenciasScreen({super.key});
@@ -361,6 +367,11 @@ class _ExistenciasScreenState extends State<ExistenciasScreen> {
                             final factor = _factorDeFila(e);
                             final unidad = _unidadPorFila[e['id']] ?? base;
                             final i = _info(e);
+                            final reservado = _n(e['stock_reservado']);
+                            // Si el backend no manda disponible, es físico − reservado.
+                            final disponible = e['stock_disponible'] != null
+                                ? _n(e['stock_disponible'])
+                                : i.stock - reservado;
                             final costo =
                                 double.tryParse('${e['costo_promedio']}') ?? 0;
 
@@ -418,16 +429,24 @@ class _ExistenciasScreenState extends State<ExistenciasScreen> {
                                     ),
                                   ),
                                 DataCardRow(
-                                  label: 'Stock ($unidad)',
+                                  label: 'Físico ($unidad)',
                                   value: _badgeStock(e),
                                 ),
-                                DataCardRow.text(
-                                  'Reservado',
-                                  _num((double.tryParse('${e['stock_reservado'] ?? 0}') ?? 0) / factor),
+                                // Reservado por pedidos pendientes (ámbar) y lo que
+                                // realmente se puede vender (rojo si ya no queda).
+                                DataCardRow(
+                                  label: 'Reservado',
+                                  value: _cantidad(
+                                    reservado / factor,
+                                    tipo: reservado > 0 ? AppBadgeType.warning : null,
+                                  ),
                                 ),
-                                DataCardRow.text(
-                                  'Disponible',
-                                  _num((double.tryParse('${e['stock_disponible'] ?? 0}') ?? 0) / factor),
+                                DataCardRow(
+                                  label: 'Disponible',
+                                  value: _cantidad(
+                                    disponible / factor,
+                                    tipo: disponible <= 0 ? AppBadgeType.danger : null,
+                                  ),
                                 ),
                                 DataCardRow.text(
                                   'Mín. / Máx.',

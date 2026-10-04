@@ -23,6 +23,7 @@ import 'screens/movimientos_screen.dart';
 import 'screens/movimientos_caja_screen.dart';
 import 'screens/cierres_caja_screen.dart';
 import 'screens/notas_venta_screen.dart';
+import 'screens/pedidos_screen.dart';
 import 'screens/prestamos_screen.dart';
 import 'screens/traslados_screen.dart';
 import 'screens/ordenes_compra_screen.dart';
@@ -85,6 +86,7 @@ class MyApp extends StatelessWidget {
           AppRoutes.compras: (_) => const ComprasScreen(),
           AppRoutes.clientes: (_) => const ClientesScreen(),
           AppRoutes.notasVenta: (_) => const NotasVentaScreen(),
+          AppRoutes.pedidos: (_) => const PedidosScreen(),
           AppRoutes.cuentasMedios: (_) => const CuentasMediosScreen(),
           AppRoutes.cajas: (_) => const CajasScreen(),
           AppRoutes.movimientosCaja: (_) => const MovimientosCajaScreen(),
