@@ -6,7 +6,7 @@ import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
 import PdfViewerModal from '../components/PdfViewerModal';
 import ActionsMenu from '../components/ActionsMenu';
-import { Alert, Badge, Button, DataTable, Modal } from '../components/ui';
+import { Alert, Badge, Button, DataTable, DetalleSheet, esMovil, LineCards, Modal } from '../components/ui';
 
 const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
@@ -26,6 +26,7 @@ export default function RecepcionesCompra() {
 
     /** Recepción cuyo detalle se muestra en la segunda tabla. */
     const [seleccionada, setSeleccionada] = useState(null);
+    const [detalleMovil, setDetalleMovil] = useState(false);
 
     const [deshacerTarget, setDeshacerTarget] = useState(null);
     const [pdfTarget, setPdfTarget] = useState(null);
@@ -185,14 +186,17 @@ export default function RecepcionesCompra() {
                 rows={recepciones}
                 loading={loading}
                 searchPlaceholder="Buscar recepciones..."
-                onRowClick={(row) => setSeleccionada(row)}
+                onRowClick={(row) => {
+                    setSeleccionada(row);
+                    if (esMovil()) setDetalleMovil(true);
+                }}
                 rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
                 height="34vh"
                 dense
             />
 
             {/* Detalle de la recepción seleccionada */}
-            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+            <div className="hidden md:block mt-6 rounded-xl border border-edge bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-edge px-5 py-3">
                     <h2 className="text-sm font-semibold text-warm-900">
                         Detalle {seleccionada?.documento ? `de ${seleccionada.documento}` : ''}
@@ -201,7 +205,7 @@ export default function RecepcionesCompra() {
                         {detalles.length} {detalles.length === 1 ? 'línea' : 'líneas'}
                     </span>
                 </div>
-                <div className="overflow-auto" style={{ height: '30vh' }}>
+                <div className="overflow-auto md:h-[30vh]">
                     <table className="w-full min-w-[1080px] text-sm">
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
@@ -282,6 +286,30 @@ export default function RecepcionesCompra() {
                 titulo="Recepción de compra"
                 formatos={['a4', 'ticket']}
             />
+            <DetalleSheet
+                open={detalleMovil && Boolean(seleccionada)}
+                onClose={() => setDetalleMovil(false)}
+                title={`Recepción ${seleccionada?.documento ?? ''}`}
+                description={`${detalles.length} ${detalles.length === 1 ? 'producto' : 'productos'}`}
+            >
+                <LineCards
+                    empty={seleccionada ? 'Esta recepción no tiene líneas.' : 'Selecciona una recepción arriba para ver su detalle.'}
+                    items={detalles.map((d) => ({
+                        key: d.id,
+                        title: d.presentacion?.producto?.nombre ?? '—',
+                        subtitle: [d.presentacion?.producto?.codigo, d.presentacion?.nombre].filter(Boolean).join(' \u00b7 '),
+                        fields: [
+                            { label: 'Cant.', value: num(d.cantidad_recibida), className: 'text-primary-600' },
+                            { label: 'Pedida', value: num(d.cantidad_pedida) },
+                            { label: 'Total recep.', value: num(totalRecepcionado(d.compra_detalle_id)) },
+                            { label: 'Finaliz.', value: num(d.compra_detalle?.cantidad_finalizada), className: 'text-amber-600' },
+                            { label: 'Stock ant.', value: num(d.stock_anterior) },
+                            { label: 'Stock nuevo', value: num(d.stock_nuevo) },
+                        ],
+                    }))}
+                />
+            </DetalleSheet>
+
         </Layout>
     );
 }

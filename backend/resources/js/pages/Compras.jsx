@@ -8,7 +8,7 @@ import PageHeader, { CreateButton } from '../components/PageHeader';
 import PdfViewerModal from '../components/PdfViewerModal';
 import ActionsMenu from '../components/ActionsMenu';
 import RecepcionarCompraModal from '../components/RecepcionarCompraModal';
-import { Alert, Badge, Button, DataTable, Input, Modal } from '../components/ui';
+import { Alert, Badge, Button, DataTable, DetalleSheet, esMovil, Input, LineCards, Modal } from '../components/ui';
 
 const estadoCompra = {
     registrada: { label: 'Registrada', variant: 'green' },
@@ -40,6 +40,7 @@ export default function Compras() {
     const [motivo, setMotivo] = useState('');
     /** Compra cuyo detalle se muestra en la segunda tabla. */
     const [seleccionada, setSeleccionada] = useState(null);
+    const [detalleMovil, setDetalleMovil] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -224,14 +225,17 @@ export default function Compras() {
                 rows={compras}
                 loading={loading}
                 searchPlaceholder="Buscar compras..."
-                onRowClick={(row) => setSeleccionada(row)}
+                onRowClick={(row) => {
+                    setSeleccionada(row);
+                    if (esMovil()) setDetalleMovil(true);
+                }}
                 rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
                 height="34vh"
                 dense
             />
 
             {/* Detalle de la compra seleccionada */}
-            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+            <div className="hidden md:block mt-6 rounded-xl border border-edge bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-edge px-5 py-3">
                     <h2 className="text-sm font-semibold text-warm-900">
                         Detalle {seleccionada?.numero_compra ? `de ${seleccionada.numero_compra}` : ''}
@@ -240,8 +244,8 @@ export default function Compras() {
                         {detalles.length} {detalles.length === 1 ? 'producto' : 'productos'}
                     </span>
                 </div>
-                {/* Alto fijo: el detalle siempre ocupa lo mismo, haya 1 o 20 productos. */}
-                <div className="overflow-auto" style={{ height: '30vh' }}>
+                {/* Celular: tarjetas. Desde md: tabla de alto fijo (siempre ocupa lo mismo, haya 1 o 20 productos). */}
+                <div className="overflow-auto md:h-[30vh]">
                     <table className="w-full min-w-[900px] text-sm">
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
@@ -352,6 +356,33 @@ export default function Compras() {
                 titulo="Compra"
                 formatos={['a4', 'ticket']}
             />
+            <DetalleSheet
+                open={detalleMovil && Boolean(seleccionada)}
+                onClose={() => setDetalleMovil(false)}
+                title={`Compra ${seleccionada?.numero_compra ?? ''}`}
+                description={`${detalles.length} ${detalles.length === 1 ? 'producto' : 'productos'}`}
+            >
+                <LineCards
+                    empty={seleccionada ? 'Esta compra no tiene productos.' : 'Selecciona una compra arriba para ver su detalle.'}
+                    items={detalles.map((d) => ({
+                        key: d.id,
+                        title: d.presentacion?.producto?.nombre ?? '—',
+                        subtitle: [d.presentacion?.producto?.codigo, d.presentacion?.nombre].filter(Boolean).join(' \u00b7 '),
+                        fields: [
+                            { label: 'Cant.', value: num(d.cantidad) },
+                            { label: 'Costo', value: money(d.costo_unitario) },
+                            { label: 'Subtotal', value: money(d.subtotal), className: 'text-primary-600' },
+                            { label: 'Recib.', value: num(d.recibido), className: 'text-green-600' },
+                            {
+                                label: 'Pend.',
+                                value: num(d.pendiente),
+                                className: Number(d.pendiente) > 0 ? 'text-amber-600' : 'text-warm-500',
+                            },
+                        ],
+                    }))}
+                />
+            </DetalleSheet>
+
         </Layout>
     );
 }

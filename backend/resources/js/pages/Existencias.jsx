@@ -3,7 +3,7 @@ import { Package, Store } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
-import { Alert, Badge, Button, DataTable, Select, Tabs } from '../components/ui';
+import { Alert, Badge, Button, DataTable, DetalleSheet, esMovil, LineCards, Select, Tabs } from '../components/ui';
 
 const money = (n) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
@@ -23,6 +23,7 @@ export default function Existencias() {
 
     /** Fila cuyo desglose por unidad derivada se muestra abajo. */
     const [seleccionada, setSeleccionada] = useState(null);
+    const [detalleMovil, setDetalleMovil] = useState(false);
 
     /** Unidad elegida por fila para expresar su stock: { [id de la fila]: nombre }. */
     const [unidadPorFila, setUnidadPorFila] = useState({});
@@ -428,12 +429,15 @@ export default function Existencias() {
                 filters={filters}
                 filterCount={filterCount}
                 emptyMessage="Sin existencias en este almacén"
-                onRowClick={(row) => setSeleccionada(row)}
+                onRowClick={(row) => {
+                    setSeleccionada(row);
+                    if (esMovil()) setDetalleMovil(true);
+                }}
                 rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
             />
 
             {/* Desglose del stock en cada unidad derivada del producto */}
-            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+            <div className="hidden md:block mt-6 rounded-xl border border-edge bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-edge px-5 py-3">
                     <h2 className="text-sm font-semibold text-warm-900">
                         Unidades derivadas
@@ -493,6 +497,33 @@ export default function Existencias() {
                     </table>
                 </div>
             </div>
+            <DetalleSheet
+                open={detalleMovil && Boolean(seleccionada)}
+                onClose={() => setDetalleMovil(false)}
+                title={seleccionada?.producto?.nombre ?? 'Existencia'}
+                description={'Unidades derivadas'}
+                summary={[
+                    { label: 'Almacén', value: seleccionada?.almacen?.nombre },
+                    { label: 'Stock base', value: `${num(seleccionada?.stock_actual)} ${seleccionada?.producto?.unidad_base?.abreviatura ?? ''}` },
+                    { label: 'Reservado', value: num(seleccionada?.stock_reservado) },
+                    { label: 'Disponible', value: num(seleccionada?.stock_disponible) },
+                ]}
+            >
+                <LineCards
+                    empty="Este producto no tiene unidades derivadas activas."
+                    items={derivadas.map((u) => ({
+                        key: u.id,
+                        title: u.nombre,
+                        subtitle: `x${num(u.factor)} ${u.abrev}`,
+                        fields: [
+                            { label: 'Stock', value: num(u.completas), className: 'text-primary-600' },
+                            { label: 'Sobrante', value: u.sobrante > 0 ? `${num(u.sobrante)} ${u.abrev}` : '—' },
+                            { label: 'P. Venta', value: money(u.precio_venta) },
+                        ],
+                    }))}
+                />
+            </DetalleSheet>
+
         </Layout>
     );
 }

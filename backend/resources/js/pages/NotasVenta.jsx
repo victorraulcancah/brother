@@ -6,7 +6,7 @@ import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import PdfViewerModal from '../components/PdfViewerModal';
-import { Alert, Badge, Button, DataTable, Input, Modal, Select, Spinner } from '../components/ui';
+import { Alert, Badge, Button, DataTable, DetalleSheet, esMovil, Input, LineCards, Modal, Select, Spinner } from '../components/ui';
 
 const fecha = (v) => (v ? new Date(v).toLocaleDateString('es-PE') : '—');
 const formaLabel = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', yape: 'Yape', plin: 'Plin', credito: 'Crédito', otro: 'Otro' };
@@ -21,6 +21,7 @@ export default function NotasVenta() {
     const navigate = useNavigate();
     /** Venta cuyo detalle se muestra en la segunda tabla. */
     const [seleccionada, setSeleccionada] = useState(null);
+    const [detalleMovil, setDetalleMovil] = useState(false);
     const [notas, setNotas] = useState([]);
     /** Nota cuyo PDF se está viendo. */
     const [pdfTarget, setPdfTarget] = useState(null);
@@ -201,7 +202,10 @@ export default function NotasVenta() {
                         (!fPago || n.tipo_pago === fPago),
                 )}
                 loading={loading}
-                onRowClick={(row) => setSeleccionada(row)}
+                onRowClick={(row) => {
+                    setSeleccionada(row);
+                    if (esMovil()) setDetalleMovil(true);
+                }}
                 rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
                 searchPlaceholder="Buscar ventas..."
                 filterable
@@ -244,7 +248,7 @@ export default function NotasVenta() {
             />
 
             {/* Detalle de la venta seleccionada */}
-            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+            <div className="hidden md:block mt-6 rounded-xl border border-edge bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-edge px-5 py-3">
                     <h2 className="text-sm font-semibold text-warm-900">
                         Detalle {seleccionada ? `de ${seleccionada.serie}-${seleccionada.numero}` : ''}
@@ -253,8 +257,8 @@ export default function NotasVenta() {
                         {detallesVenta.length} {detallesVenta.length === 1 ? 'producto' : 'productos'}
                     </span>
                 </div>
-                {/* Alto fijo: el detalle siempre ocupa lo mismo, haya 1 o 20 productos. */}
-                <div className="overflow-auto" style={{ height: '30vh' }}>
+                {/* Celular: tarjetas. Desde md: tabla de alto fijo (siempre ocupa lo mismo, haya 1 o 20 productos). */}
+                <div className="overflow-auto md:h-[30vh]">
                     <table className="w-full min-w-[820px] text-sm">
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
@@ -462,6 +466,36 @@ export default function NotasVenta() {
                 titulo="Nota de venta"
                 formatos={['a4', 'ticket']}
             />
+            <DetalleSheet
+                open={detalleMovil && Boolean(seleccionada)}
+                onClose={() => setDetalleMovil(false)}
+                title={`Venta ${seleccionada?.serie}-${seleccionada?.numero}`}
+                description={`${detallesVenta.length} ${detallesVenta.length === 1 ? 'producto' : 'productos'}`}
+                summary={[
+                    { label: 'Cliente', value: seleccionada?.cliente?.nombre ?? 'Clientes varios' },
+                    { label: 'Fecha', value: fecha(seleccionada?.fecha_emision) },
+                    { label: 'Pago', value: seleccionada?.tipo_pago === 'contado' ? 'Contado' : 'Crédito' },
+                ]}
+            >
+                <LineCards
+                    empty={seleccionada ? 'Esta venta no tiene productos.' : 'Selecciona una venta arriba para ver su detalle.'}
+                    items={detallesVenta.map((d) => ({
+                        key: d.id,
+                        title: d.presentacion?.producto?.nombre ?? d.producto_nombre ?? '—',
+                        subtitle: [d.presentacion?.producto?.codigo, d.presentacion?.nombre].filter(Boolean).join(' \u00b7 '),
+                        fields: [
+                            { label: 'Cant.', value: num(d.cantidad) },
+                            { label: 'Precio', value: money(d.precio_unitario) },
+                            { label: 'Subtotal', value: money(d.subtotal), className: 'text-primary-600' },
+                        ],
+                    }))}
+                    totals={[
+                        ...(totalesVenta.descuento > 0 ? [{ label: 'Descuento', value: money(totalesVenta.descuento) }] : []),
+                        { label: 'Total', value: money(totalesVenta.subtotal), strong: true },
+                    ]}
+                />
+            </DetalleSheet>
+
         </Layout>
     );
 }

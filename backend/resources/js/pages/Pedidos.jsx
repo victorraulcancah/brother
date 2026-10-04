@@ -5,7 +5,7 @@ import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
-import { Alert, Badge, Button, DataTable, Input, Modal, Select } from '../components/ui';
+import { Alert, Badge, Button, DataTable, DetalleSheet, esMovil, Input, LineCards, Modal, Select } from '../components/ui';
 
 const money = (n) =>
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
@@ -31,6 +31,7 @@ export default function Pedidos() {
 
     const [pedidos, setPedidos] = useState([]);
     const [seleccionado, setSeleccionado] = useState(null);
+    const [detalleMovil, setDetalleMovil] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [fEstado, setFEstado] = useState('');
@@ -205,7 +206,10 @@ export default function Pedidos() {
                 columns={columns}
                 rows={pedidos.filter((p) => !fEstado || p.estado === fEstado)}
                 loading={loading}
-                onRowClick={(row) => setSeleccionado(row)}
+                onRowClick={(row) => {
+                    setSeleccionado(row);
+                    if (esMovil()) setDetalleMovil(true);
+                }}
                 rowClassName={(row) => (row.id === seleccionado?.id ? 'bg-primary-50' : undefined)}
                 searchPlaceholder="Buscar pedidos..."
                 emptyMessage="Aún no hay pedidos"
@@ -237,7 +241,7 @@ export default function Pedidos() {
             />
 
             {/* Detalle del pedido seleccionado */}
-            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+            <div className="hidden md:block mt-6 rounded-xl border border-edge bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-edge px-5 py-3">
                     <h2 className="text-sm font-semibold text-warm-900">
                         Detalle {seleccionado ? `de ${seleccionado.serie}-${seleccionado.numero}` : ''}
@@ -247,7 +251,7 @@ export default function Pedidos() {
                         {seleccionado?.almacen?.nombre ? ` · ${seleccionado.almacen.nombre}` : ''}
                     </span>
                 </div>
-                <div className="overflow-auto" style={{ maxHeight: '32vh' }}>
+                <div className="overflow-auto md:max-h-[32vh]">
                     <table className="w-full min-w-[720px] text-sm">
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
@@ -342,6 +346,34 @@ export default function Pedidos() {
                     onChange={(e) => setMotivo(e.target.value)}
                 />
             </Modal>
+            <DetalleSheet
+                open={detalleMovil && Boolean(seleccionado)}
+                onClose={() => setDetalleMovil(false)}
+                title={`Pedido ${seleccionado?.serie}-${seleccionado?.numero}`}
+                description={`${detalles.length} ${detalles.length === 1 ? 'producto' : 'productos'}`}
+                summary={[
+                    { label: 'Cliente', value: seleccionado?.cliente?.nombre ?? 'Clientes varios' },
+                    { label: 'Fecha', value: fecha(seleccionado?.fecha_pedido) },
+                    { label: 'Entrega', value: fecha(seleccionado?.fecha_entrega) },
+                    { label: 'Estado', value: ESTADOS[seleccionado?.estado]?.label ?? seleccionado?.estado },
+                ]}
+            >
+                <LineCards
+                    empty={seleccionado ? 'Este pedido no tiene productos.' : 'Selecciona un pedido arriba para ver su detalle.'}
+                    items={detalles.map((d) => ({
+                        key: d.id,
+                        title: d.presentacion?.producto?.nombre ?? d.producto_nombre ?? '—',
+                        subtitle: [d.presentacion?.producto?.codigo, d.presentacion?.nombre].filter(Boolean).join(' \u00b7 '),
+                        fields: [
+                            { label: 'Cant.', value: num(d.cantidad) },
+                            { label: 'Precio', value: money(d.precio_unitario) },
+                            { label: 'Subtotal', value: money(d.subtotal), className: 'text-primary-600' },
+                        ],
+                    }))}
+                    totals={[{ label: 'Total', value: money(seleccionado?.total), strong: true }]}
+                />
+            </DetalleSheet>
+
         </Layout>
     );
 }

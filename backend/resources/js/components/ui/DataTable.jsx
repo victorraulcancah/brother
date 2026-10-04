@@ -371,10 +371,10 @@ export default function DataTable({
                           </div>
                         </div>
 
-                    <div
-                        className="space-y-3 overflow-y-auto bg-gray-50 p-3 md:hidden"
-                        style={{ height: height ?? undefined, maxHeight: height ?? maxHeight }}
-                    >
+                    {/* Sin alto máximo ni scroll propio: en celular las tarjetas crecen con la
+                        página. Una caja con scroll interno cortaba la última tarjeta y dejaba
+                        un hueco vacío debajo. */}
+                    <div className="space-y-3 bg-gray-50 p-3 md:hidden">
                         {filteredRows.length === 0 && (
                             <p className="px-4 py-12 text-center text-sm text-gray-400">
                                 {emptyMessage}

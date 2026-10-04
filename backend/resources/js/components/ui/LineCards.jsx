@@ -12,7 +12,7 @@ import { cn } from './cn';
  */
 export default function LineCards({ items, totals, empty, className }) {
     return (
-        <div className={cn('space-y-3 p-3 md:hidden', className)}>
+        <div className={cn('space-y-3 md:hidden', className)}>
             {items.length === 0 && <p className="py-8 text-center text-sm text-warm-500">{empty}</p>}
 
             {items.map((it) => (

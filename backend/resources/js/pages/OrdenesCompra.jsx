@@ -6,7 +6,7 @@ import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import PdfViewerModal from '../components/PdfViewerModal';
-import { Alert, Badge, Button, DataTable, Modal, Select } from '../components/ui';
+import { Alert, Badge, Button, DataTable, DetalleSheet, esMovil, LineCards, Modal, Select } from '../components/ui';
 
 const money = (n) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(n) || 0);
 const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(Number(n) || 0);
@@ -33,6 +33,7 @@ export default function OrdenesCompra() {
     const [pdfTarget, setPdfTarget] = useState(null);
     /** Orden cuyo detalle se muestra en la segunda tabla. */
     const [seleccionada, setSeleccionada] = useState(null);
+    const [detalleMovil, setDetalleMovil] = useState(false);
 
     const [filterEstado, setFilterEstado] = useState('');
     const [filterCompra, setFilterCompra] = useState('');
@@ -215,14 +216,17 @@ export default function OrdenesCompra() {
                 filterable
                 filters={filters}
                 filterCount={filterCount}
-                onRowClick={(row) => setSeleccionada(row)}
+                onRowClick={(row) => {
+                    setSeleccionada(row);
+                    if (esMovil()) setDetalleMovil(true);
+                }}
                 rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
                 height="34vh"
                 dense
             />
 
             {/* Detalle de la orden seleccionada */}
-            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+            <div className="hidden md:block mt-6 rounded-xl border border-edge bg-white shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-5 py-3">
                     <h2 className="text-sm font-semibold text-warm-900">
                         Detalle {seleccionada?.codigo ? `de ${seleccionada.codigo}` : ''}
@@ -239,7 +243,7 @@ export default function OrdenesCompra() {
                         </span>
                     )}
                 </div>
-                <div className="overflow-auto" style={{ height: '30vh' }}>
+                <div className="overflow-auto md:h-[30vh]">
                     <table className="w-full min-w-[820px] text-sm">
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-primary-600 text-left text-xs font-semibold uppercase tracking-wide text-white">
@@ -316,6 +320,39 @@ export default function OrdenesCompra() {
                 titulo="Orden de compra"
                 formatos={['a4', 'ticket']}
             />
+            <DetalleSheet
+                open={detalleMovil && Boolean(seleccionada)}
+                onClose={() => setDetalleMovil(false)}
+                title={`Orden ${seleccionada?.codigo ?? ''}`}
+                description={`${(seleccionada?.detalles ?? []).length} ${(seleccionada?.detalles ?? []).length === 1 ? 'producto' : 'productos'}`}
+            >
+                <LineCards
+                    empty={seleccionada ? 'Esta orden no tiene productos.' : 'Selecciona una orden arriba para ver su detalle.'}
+                    items={(seleccionada?.detalles ?? []).map((d) => ({
+                        key: d.id,
+                        title: d.presentacion?.producto?.nombre ?? '—',
+                        subtitle: [d.presentacion?.producto?.codigo, d.presentacion?.nombre].filter(Boolean).join(' \u00b7 '),
+                        fields: [
+                            { label: 'Cant.', value: num(d.cantidad) },
+                            { label: 'P. Unit.', value: money(d.precio_unitario) },
+                            { label: 'Subtotal', value: money((Number(d.cantidad) || 0) * (Number(d.precio_unitario) || 0)), className: 'text-primary-600' },
+                        ],
+                    }))}
+                    totals={[
+                        {
+                            label: 'Total',
+                            value: money(
+                                (seleccionada?.detalles ?? []).reduce(
+                                    (s, d) => s + (Number(d.cantidad) || 0) * (Number(d.precio_unitario) || 0),
+                                    0,
+                                ),
+                            ),
+                            strong: true,
+                        },
+                    ]}
+                />
+            </DetalleSheet>
+
         </Layout>
     );
 }

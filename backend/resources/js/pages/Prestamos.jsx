@@ -8,7 +8,7 @@ import PageHeader, { CreateButton } from '../components/PageHeader';
 import PdfViewerModal from '../components/PdfViewerModal';
 import ActionsMenu from '../components/ActionsMenu';
 import ProductoPickerModal from '../components/ProductoPickerModal';
-import { Alert, Badge, Button, DataTable, Input, Modal, SearchSelect, Select, Tabs } from '../components/ui';
+import { Alert, Badge, Button, DataTable, DetalleSheet, esMovil, Input, LineCards, Modal, SearchSelect, Select, Tabs } from '../components/ui';
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
@@ -67,6 +67,7 @@ export default function Prestamos() {
 
     /** Préstamo cuyo detalle se muestra en la segunda tabla. */
     const [seleccionado, setSeleccionado] = useState(null);
+    const [detalleMovil, setDetalleMovil] = useState(false);
 
     const [filterEstado, setFilterEstado] = useState('');
     const [filterAlmacen, setFilterAlmacen] = useState('');
@@ -474,12 +475,15 @@ export default function Prestamos() {
                 filterable
                 filters={filters}
                 filterCount={filterCount}
-                onRowClick={(row) => setSeleccionado(row)}
+                onRowClick={(row) => {
+                    setSeleccionado(row);
+                    if (esMovil()) setDetalleMovil(true);
+                }}
                 rowClassName={(row) => (row.id === seleccionado?.id ? 'bg-primary-50' : undefined)}
             />
 
             {/* Detalle del préstamo seleccionado */}
-            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+            <div className="hidden md:block mt-6 rounded-xl border border-edge bg-white shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-5 py-3">
                     <h2 className="text-sm font-semibold text-warm-900">
                         Detalle {seleccionado?.documento ? `de ${seleccionado.documento}` : ''}
@@ -779,6 +783,51 @@ export default function Prestamos() {
                 titulo="Préstamo"
                 formatos={['a4', 'ticket']}
             />
+            <DetalleSheet
+                open={detalleMovil && Boolean(seleccionado)}
+                onClose={() => setDetalleMovil(false)}
+                title={`Préstamo ${seleccionado?.documento ?? ''}`}
+                description={`${detalles.length} ${detalles.length === 1 ? 'producto' : 'productos'}`}
+                summary={[
+                    { label: seleccionado?.tipo === 'prestado' ? 'Presté a' : 'Me prestó', value: seleccionado?.tercero },
+                    ...(seleccionado?.tercero_documento ? [{ label: 'Doc.', value: seleccionado.tercero_documento }] : []),
+                    ...(seleccionado?.tercero_telefono ? [{ label: 'Tel.', value: seleccionado.tercero_telefono }] : []),
+                    { label: 'Registró', value: seleccionado?.usuario?.name },
+                    ...(seleccionado?.fecha_devolucion ? [{ label: 'Devuelto el', value: fecha(seleccionado.fecha_devolucion) }] : []),
+                    ...(seleccionado?.observaciones ? [{ label: 'Obs.', value: seleccionado.observaciones }] : []),
+                ]}
+            >
+                <LineCards
+                    empty="Este préstamo no tiene artículos."
+                    items={detalles.map((d) => {
+                        const pend = Number(d.cantidad_pendiente ?? 0);
+                        return {
+                            key: d.id,
+                            title: d.presentacion?.producto?.nombre ?? '—',
+                            subtitle: [d.presentacion?.producto?.codigo, d.presentacion?.nombre].filter(Boolean).join(' · '),
+                            fields: [
+                                { label: 'Prestado', value: num(d.cantidad_prestada), className: 'text-primary-600' },
+                                { label: 'Devuelto', value: num(d.cantidad_devuelta) },
+                                { label: 'Pendiente', value: num(pend), className: pend > 0 ? 'text-amber-600' : 'text-green-600' },
+                            ],
+                        };
+                    })}
+                />
+                {(seleccionado?.devoluciones?.length ?? 0) > 0 && (
+                    <div className="mt-4 border-t border-edge pt-3 md:hidden">
+                        <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-warm-500">Historial de devoluciones</p>
+                        <ul className="space-y-1 text-xs text-warm-500">
+                            {seleccionado.devoluciones.map((dv) => (
+                                <li key={dv.id}>
+                                    <span className="text-warm-900">{fecha(dv.fecha)}</span> · {dv.presentacion?.producto?.nombre ?? 'Producto'} — {dv.presentacion?.nombre ?? ''}: <strong className="text-warm-900">{num(dv.cantidad)}</strong>
+                                    {dv.usuario?.name && <span> ({dv.usuario.name})</span>}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </DetalleSheet>
+
         </Layout>
     );
 }

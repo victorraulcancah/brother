@@ -6,7 +6,7 @@ import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import PdfViewerModal from '../components/PdfViewerModal';
-import { Alert, Badge, Button, DataTable, Input, Modal, SearchSelect, Select, Tabs } from '../components/ui';
+import { Alert, Badge, Button, DataTable, DetalleSheet, esMovil, Input, LineCards, Modal, SearchSelect, Select, Tabs } from '../components/ui';
 
 const num = (n) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
@@ -37,6 +37,7 @@ export default function Ajustes() {
     const [proveedores, setProveedores] = useState([]);
     /** Ajuste cuyo detalle se muestra en la segunda tabla. */
     const [seleccionado, setSeleccionado] = useState(null);
+    const [detalleMovil, setDetalleMovil] = useState(false);
     const [pdfTarget, setPdfTarget] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -781,12 +782,15 @@ export default function Ajustes() {
                         filterable
                         filters={filters}
                         filterCount={filterCount}
-                        onRowClick={(row) => setSeleccionado(row)}
+                        onRowClick={(row) => {
+                    setSeleccionado(row);
+                    if (esMovil()) setDetalleMovil(true);
+                }}
                         rowClassName={(row) => (row.id === seleccionado?.id ? 'bg-primary-50' : undefined)}
                     />
 
                     {/* Detalle del ajuste seleccionado */}
-                    <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+                    <div className="hidden md:block mt-6 rounded-xl border border-edge bg-white shadow-sm">
                         <div className="flex items-center justify-between border-b border-edge px-5 py-3">
                             <h2 className="text-sm font-semibold text-warm-900">
                                 Detalle {seleccionado?.documento ? `de ${seleccionado.documento}` : ''}
@@ -1234,6 +1238,28 @@ export default function Ajustes() {
                 titulo="Ajuste de inventario"
                 formatos={['a4', 'ticket']}
             />
+            <DetalleSheet
+                open={detalleMovil && Boolean(seleccionado)}
+                onClose={() => setDetalleMovil(false)}
+                title={`Ajuste ${seleccionado?.documento ?? ''}`}
+                description={`${detalleSeleccionado.length} ${detalleSeleccionado.length === 1 ? 'producto' : 'productos'}`}
+            >
+                <LineCards
+                    empty="Este ajuste no tiene productos."
+                    items={detalleSeleccionado.map((d) => ({
+                        key: d.id,
+                        title: d.presentacion?.producto?.nombre ?? '—',
+                        subtitle: [d.presentacion?.producto?.codigo, d.presentacion?.nombre].filter(Boolean).join(' · '),
+                        fields: [
+                            { label: 'Cant.', value: num(d.cantidad) },
+                            { label: 'Costo', value: money(d.costo_unitario) },
+                            { label: 'Total', value: money(d.subtotal), className: 'text-primary-600' },
+                        ],
+                    }))}
+                    totals={[{ label: 'Total', value: money(seleccionado?.total), strong: true }]}
+                />
+            </DetalleSheet>
+
         </Layout>
     );
 }

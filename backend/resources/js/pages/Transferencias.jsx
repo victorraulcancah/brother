@@ -7,7 +7,7 @@ import Layout from '../components/Layout';
 import PageHeader, { CreateButton } from '../components/PageHeader';
 import PdfViewerModal from '../components/PdfViewerModal';
 import ProductoPickerModal from '../components/ProductoPickerModal';
-import { Alert, Badge, Button, DataTable, Input, Modal, SearchSelect, Select, Tabs } from '../components/ui';
+import { Alert, Badge, Button, DataTable, DetalleSheet, esMovil, Input, LineCards, Modal, SearchSelect, Select, Tabs } from '../components/ui';
 
 
 const hoy = () => new Date().toISOString().slice(0, 10);
@@ -74,6 +74,7 @@ export default function Transferencias() {
 
     /** Guía cuyo detalle se muestra en la segunda tabla. */
     const [seleccionada, setSeleccionada] = useState(null);
+    const [detalleMovil, setDetalleMovil] = useState(false);
 
     const [filterEstado, setFilterEstado] = useState('');
     const [filterAlmacen, setFilterAlmacen] = useState('');
@@ -642,12 +643,15 @@ export default function Transferencias() {
                 filterable
                 filters={filters}
                 filterCount={filterCount}
-                onRowClick={(row) => setSeleccionada(row)}
+                onRowClick={(row) => {
+                    setSeleccionada(row);
+                    if (esMovil()) setDetalleMovil(true);
+                }}
                 rowClassName={(row) => (row.id === seleccionada?.id ? 'bg-primary-50' : undefined)}
             />
 
             {/* Detalle de la guía seleccionada */}
-            <div className="mt-6 rounded-xl border border-edge bg-white shadow-sm">
+            <div className="hidden md:block mt-6 rounded-xl border border-edge bg-white shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-5 py-3">
                     <h2 className="text-sm font-semibold text-warm-900">
                         Detalle {seleccionada?.documento ? `de ${seleccionada.documento}` : ''}
@@ -950,6 +954,34 @@ export default function Transferencias() {
                 titulo="Guía de traslado"
                 formatos={['a4', 'ticket']}
             />
+            <DetalleSheet
+                open={detalleMovil && Boolean(seleccionada)}
+                onClose={() => setDetalleMovil(false)}
+                title={`Guía ${seleccionada?.documento ?? ''}`}
+                description={`${detalles.length} ${detalles.length === 1 ? 'producto' : 'productos'}`}
+                summary={[
+                    { label: 'Motivo', value: MOTIVO_LABEL[seleccionada?.motivo_traslado] },
+                    { label: 'Transporte', value: seleccionada?.modalidad_transporte === 'publico' ? 'Público' : 'Privado' },
+                    ...(seleccionada?.vehiculo_placa ? [{ label: 'Placa', value: seleccionada.vehiculo_placa }] : []),
+                    ...(seleccionada?.conductor_nombre ? [{ label: 'Conductor', value: seleccionada.conductor_nombre }] : []),
+                    ...(seleccionada?.numero_bultos != null ? [{ label: 'Bultos', value: seleccionada.numero_bultos }] : []),
+                    ...(seleccionada?.peso_bruto_kg != null ? [{ label: 'Peso', value: `${num(seleccionada.peso_bruto_kg)} kg` }] : []),
+                ]}
+            >
+                <LineCards
+                    empty="Esta guía no tiene productos."
+                    items={detalles.map((d) => ({
+                        key: d.id,
+                        title: d.presentacion?.producto?.nombre ?? '—',
+                        subtitle: [d.presentacion?.producto?.codigo, d.presentacion?.nombre].filter(Boolean).join(' · '),
+                        fields: [
+                            { label: 'Enviado', value: num(d.cantidad_enviada), className: 'text-primary-600' },
+                            { label: 'Recibido', value: d.cantidad_recibida != null ? num(d.cantidad_recibida) : '—' },
+                        ],
+                    }))}
+                />
+            </DetalleSheet>
+
         </Layout>
     );
 }
