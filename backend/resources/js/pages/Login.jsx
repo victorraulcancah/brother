@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
+import LogoBrintech from '../components/LogoBrintech';
 import ModulosCarrusel from '../components/ModulosCarrusel';
 import { cn } from '../components/ui';
 import { useAuth } from '../lib/auth';
@@ -217,13 +218,9 @@ export default function Login() {
                         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                             Desarrollado por
                         </span>
-                        {/* El logo se entregó sobre fondo negro: el marco circular lo conserva tal cual. */}
-                        <span className="mt-3 grid h-36 w-36 place-items-center overflow-hidden rounded-full bg-black shadow-[0_14px_32px_-14px_rgba(37,99,235,0.55)] ring-4 ring-primary-600">
-                            <img
-                                src="/images/brintech-oscuro.jpg"
-                                alt="BRINTECH Technology Consulting"
-                                className="h-[74%] w-auto"
-                            />
+                        {/* Logo en vector sobre fondo blanco, dentro de un marco circular azul. */}
+                        <span className="mt-3 block h-36 w-36 overflow-hidden rounded-full bg-white shadow-[0_14px_32px_-14px_rgba(37,99,235,0.55)] ring-4 ring-primary-600">
+                            <LogoBrintech className="h-full w-full" />
                         </span>
                         <h2 className="mt-6 text-[1.75rem] font-extrabold leading-tight tracking-[-0.015em] text-slate-900">
                             Bienvenido de nuevo
