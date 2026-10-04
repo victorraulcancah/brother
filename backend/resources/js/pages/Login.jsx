@@ -199,7 +199,7 @@ export default function Login() {
                 </div>
 
                 <div className="max-w-[28.5rem] animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none max-lg:mt-8 lg:my-auto">
-                    <h1 className="text-[1.75rem] font-extrabold leading-[1.08] tracking-tight sm:text-4xl lg:text-[clamp(2.75rem,3.6vw,3.6rem)]">
+                    <h1 className="text-[1.75rem] font-extrabold leading-[1.08] tracking-[-0.015em] sm:text-4xl lg:text-[clamp(2.75rem,3.6vw,3.6rem)]">
                         Del molino a tu almacén, todo en un solo lugar.
                     </h1>
                     <p className="mt-5 hidden max-w-md text-[15px] leading-relaxed text-blue-100/85 lg:block">
@@ -222,7 +222,7 @@ export default function Login() {
             {/* Formulario */}
             <main className="flex items-center justify-center px-6 py-10 [color-scheme:dark] sm:px-10 lg:py-12">
                 <div className="w-full max-w-[22.5rem] animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)_0.08s_backwards] motion-reduce:animate-none">
-                    <h2 className="text-[1.75rem] font-extrabold leading-tight tracking-tight">Bienvenido de nuevo</h2>
+                    <h2 className="text-[1.75rem] font-extrabold leading-tight tracking-[-0.015em]">Bienvenido de nuevo</h2>
                     <p className="mt-1.5 text-[15px] text-[#8c9ac0]">Ingresa a tu cuenta para continuar.</p>
 
                     {formError && (
@@ -265,7 +265,7 @@ export default function Login() {
                                     onClick={() => setShowPassword((v) => !v)}
                                     aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
                                     aria-pressed={showPassword}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#7f8db0] transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+                                    className="absolute right-0.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-xl text-[#7f8db0] transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
                                 >
                                     {showPassword ? (
                                         <EyeOff className="h-[18px] w-[18px]" />
@@ -277,18 +277,18 @@ export default function Login() {
                         />
 
                         <div className="flex items-center justify-between gap-3">
-                            <label className="flex cursor-pointer select-none items-center gap-2.5 text-[13px] font-medium text-[#c3cde8]">
+                            <label className="flex min-h-11 cursor-pointer select-none items-center gap-2.5 text-[13px] font-medium text-[#c3cde8]">
                                 <input
                                     type="checkbox"
                                     checked={remember}
                                     onChange={(e) => setRemember(e.target.checked)}
-                                    className="h-[18px] w-[18px] shrink-0 cursor-pointer appearance-none rounded-md border border-[#3a4a7c] bg-night-700 transition checked:border-primary-500 checked:bg-primary-500 checked:bg-[url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2016%2016%22%20fill=%22none%22%20stroke=%22white%22%20stroke-width=%222.2%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22%3E%3Cpath%20d=%22M3.5%208.5l3 3%206-7%22/%3E%3C/svg%3E')] checked:bg-center checked:bg-no-repeat focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400"
+                                    className="h-[18px] w-[18px] shrink-0 cursor-pointer appearance-none rounded-md border border-[#3a4a7c] bg-night-700 transition checked:border-primary-500 checked:bg-primary-500 check-brava focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400"
                                 />
                                 Recordarme
                             </label>
                             <Link
                                 to="/recuperar"
-                                className="text-[13px] font-semibold text-primary-400 transition hover:text-primary-300"
+                                className="inline-flex min-h-11 items-center rounded text-[13px] font-semibold text-primary-400 transition hover:text-primary-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300"
                             >
                                 ¿Olvidaste tu contraseña?
                             </Link>
@@ -297,16 +297,19 @@ export default function Login() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary-500 text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(59,130,246,0.75)] transition hover:bg-primary-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-70"
+                            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#2f6df0] text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(59,130,246,0.75)] transition hover:bg-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-70"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                             {loading ? 'Ingresando...' : 'Iniciar sesión'}
                         </button>
                     </form>
 
-                    <p className="mt-6 text-center text-[13px] text-[#8c9ac0]">
-                        ¿No tienes cuenta?{' '}
-                        <Link to="/registro" className="font-semibold text-primary-400 transition hover:text-primary-300">
+                    <p className="mt-3 flex min-h-11 flex-wrap items-center justify-center gap-x-1 text-center text-[13px] text-[#8c9ac0]">
+                        ¿No tienes cuenta?
+                        <Link
+                            to="/registro"
+                            className="inline-flex min-h-11 items-center rounded px-0.5 font-semibold text-primary-400 transition hover:text-primary-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300"
+                        >
                             Regístrate
                         </Link>
                     </p>
