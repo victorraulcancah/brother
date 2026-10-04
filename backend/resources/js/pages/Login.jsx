@@ -198,7 +198,7 @@ export default function Login() {
                     </span>
                 </div>
 
-                <div className="max-w-[28.5rem] animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none max-lg:mt-8 lg:my-auto">
+                <div className="max-w-[30rem] animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none max-lg:mt-8 lg:my-auto">
                     <h1 className="text-[1.75rem] font-extrabold leading-[1.08] tracking-[-0.015em] sm:text-4xl lg:text-[clamp(2.75rem,3.6vw,3.6rem)]">
                         Del molino a tu almacén, todo en un solo lugar.
                     </h1>
