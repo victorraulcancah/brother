@@ -4,7 +4,6 @@ import { NavLink } from 'react-router-dom';
 import { ChevronDown, ChevronsLeft, ChevronsRight, Menu, X } from 'lucide-react';
 import { navigation } from '../config/navigation';
 import { cn } from './ui';
-import UserMenu from './UserMenu';
 
 const GROUPS_STORAGE = 'sidebar_groups';
 const GROUP_LABELS = navigation.filter((i) => i.children).map((i) => i.label);
@@ -282,9 +281,16 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }) {
                     )}
                 </nav>
 
-                <div className={cn('border-t border-edge', rail ? 'p-2' : 'p-3')}>
-                    <UserMenu compact={rail} />
-                </div>
+                {/* Firma del software. En el modo contraído no hay lugar para ella. */}
+                {!rail && (
+                    <div className="flex items-center justify-between gap-3 border-t border-edge px-4 py-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                            Desarrollado por
+                        </span>
+                        <img src="/images/brintech.png" alt="BRINTECH Technology Consulting" className="h-11 w-auto" />
+                    </div>
+                )}
+
             </aside>
 
             {/* Submenú del modo contraído. Va en un portal porque el nav recorta

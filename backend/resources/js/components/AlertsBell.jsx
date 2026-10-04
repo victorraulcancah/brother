@@ -53,7 +53,7 @@ export default function AlertsBell() {
               : 'bg-primary-600';
 
     return (
-        <div ref={ref} className="fixed right-4 top-3 z-40">
+        <div ref={ref} className="relative z-40">
             <button
                 onClick={() => {
                     setOpen((v) => !v);
@@ -76,7 +76,7 @@ export default function AlertsBell() {
             </button>
 
             {open && (
-                <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-2xl border border-edge bg-white shadow-2xl">
+                <div className="fixed inset-x-4 top-16 overflow-hidden rounded-2xl border border-edge bg-white shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96">
                     <div className="flex items-center justify-between border-b border-edge px-4 py-3">
                         <div>
                             <h3 className="text-sm font-bold text-warm-900">Alertas</h3>

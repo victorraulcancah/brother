@@ -194,6 +194,13 @@ export default function Login() {
                         </Link>
                     </p>
                 </div>
+
+                <div className="mt-8 flex flex-col items-center gap-1">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-warm-500">
+                        Desarrollado por
+                    </span>
+                    <img src="/images/brintech.png" alt="BRINTECH Technology Consulting" className="h-16 w-auto" />
+                </div>
             </div>
         </div>
     );

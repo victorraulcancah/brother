@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../config/app_config.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_logo.dart';
+import '../widgets/developed_by.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -84,57 +85,74 @@ class _SplashScreenState extends State<SplashScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            FadeTransition(
-              opacity: _logoOpacidad,
-              child: ScaleTransition(
-                scale: _logoEscala,
-                child: const AppLogo(
-                  height: 96,
-                  variant: AppLogoVariant.monograma,
+      body: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FadeTransition(
+                  opacity: _logoOpacidad,
+                  child: ScaleTransition(
+                    scale: _logoEscala,
+                    child: const AppLogo(
+                      height: 96,
+                      variant: AppLogoVariant.monograma,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                FadeTransition(
+                  opacity: _textoOpacidad,
+                  child: SlideTransition(
+                    position: _textoDesplazamiento,
+                    child: Column(
+                      children: [
+                        Text(
+                          AppConfig.appName,
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Distribuidora de arroz',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            letterSpacing: 3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                FadeTransition(
+                  opacity: _textoOpacidad,
+                  child: const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Firma del software, fija abajo.
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: FadeTransition(
+                  opacity: _textoOpacidad,
+                  child: const DevelopedBy(height: 48),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            FadeTransition(
-              opacity: _textoOpacidad,
-              child: SlideTransition(
-                position: _textoDesplazamiento,
-                child: Column(
-                  children: [
-                    Text(
-                      AppConfig.appName,
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Abarrotes Canchari',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        letterSpacing: 3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 40),
-            FadeTransition(
-              opacity: _textoOpacidad,
-              child: const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2.5),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

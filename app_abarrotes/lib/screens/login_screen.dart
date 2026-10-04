@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../utils/responsive.dart';
 import '../widgets/app_logo.dart';
+import '../widgets/developed_by.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_message.dart';
@@ -192,7 +193,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               MaterialTapTargetSize.shrinkWrap,
                         ),
                         const SizedBox(width: 4),
-                        Text('Recordar mis credenciales', style: textTheme.bodyMedium),
+                        Text(
+                          'Recordar mis credenciales',
+                          style: textTheme.bodyMedium,
+                        ),
                       ],
                     ),
                   ),
@@ -212,6 +216,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () => Navigator.pushNamed(context, '/register'),
                   child: const Text('¿No tienes cuenta? Regístrate'),
                 ),
+                const SizedBox(height: 24),
+                const DevelopedBy(),
               ],
             ),
           ),
