@@ -198,8 +198,8 @@ export default function Login() {
                     </span>
                 </div>
 
-                <div className="mt-8 max-w-xl animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none lg:my-auto lg:mt-0">
-                    <h1 className="text-balance text-[1.75rem] font-extrabold leading-[1.08] tracking-tight sm:text-4xl lg:text-[clamp(2.75rem,3.6vw,3.6rem)]">
+                <div className="max-w-[28.5rem] animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none max-lg:mt-8 lg:my-auto">
+                    <h1 className="text-[1.75rem] font-extrabold leading-[1.08] tracking-tight sm:text-4xl lg:text-[clamp(2.75rem,3.6vw,3.6rem)]">
                         Del molino a tu almacén, todo en un solo lugar.
                     </h1>
                     <p className="mt-5 hidden max-w-md text-[15px] leading-relaxed text-blue-100/85 lg:block">
@@ -282,7 +282,7 @@ export default function Login() {
                                     type="checkbox"
                                     checked={remember}
                                     onChange={(e) => setRemember(e.target.checked)}
-                                    className="h-4 w-4 rounded border-night-600 accent-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400"
+                                    className="h-[18px] w-[18px] shrink-0 cursor-pointer appearance-none rounded-md border border-[#3a4a7c] bg-night-700 transition checked:border-primary-500 checked:bg-primary-500 checked:bg-[url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2016%2016%22%20fill=%22none%22%20stroke=%22white%22%20stroke-width=%222.2%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22%3E%3Cpath%20d=%22M3.5%208.5l3 3%206-7%22/%3E%3C/svg%3E')] checked:bg-center checked:bg-no-repeat focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400"
                                 />
                                 Recordarme
                             </label>
