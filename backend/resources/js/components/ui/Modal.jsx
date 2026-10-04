@@ -15,8 +15,11 @@ const sizes = {
 
 /**
  * Ventana modal. En pantallas chicas se comporta como una hoja inferior: sube
- * desde abajo, ocupa todo el ancho y se desplaza por dentro (el pulgar llega
- * mejor abajo que al centro). Desde `sm` es el diálogo centrado de siempre.
+ * desde abajo, ocupa todo el ancho, lleva la cabecera en el color del tema y se
+ * desplaza por dentro (el pulgar llega mejor abajo que al centro). Desde `sm` es
+ * el diálogo centrado de siempre, con cabecera blanca.
+ *
+ * `icon` (opcional): componente de lucide-react que acompaña al título.
  */
 export default function Modal({
     open,
@@ -25,6 +28,7 @@ export default function Modal({
     description,
     footer,
     size = 'md',
+    icon: Icon,
     children,
 }) {
     useEffect(() => {
@@ -43,6 +47,8 @@ export default function Modal({
     }, [open, onClose]);
 
     if (!open) return null;
+
+    const tieneCabecera = Boolean(title || description);
 
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
@@ -63,32 +69,35 @@ export default function Modal({
                     sizes[size],
                 )}
             >
-                {/* Asa de la hoja inferior: avisa que se cierra tocando fuera o con la X. */}
-                <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-gray-300 sm:hidden" aria-hidden="true" />
+                {tieneCabecera ? (
+                    <div className="shrink-0 rounded-t-3xl bg-primary-600 px-5 pb-4 pt-2.5 text-white sm:rounded-none sm:bg-transparent sm:px-6 sm:pb-0 sm:pt-5 sm:text-warm-900">
+                        {/* Asa de la hoja inferior: avisa que se cierra tocando fuera o con la X. */}
+                        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/40 sm:hidden" aria-hidden="true" />
 
-                {(title || description) && (
-                    <div className="flex items-start gap-3 px-5 pt-3 sm:px-6 sm:pt-5">
-                        <div className="min-w-0 flex-1">
-                            {title && (
-                                <h2 className="text-lg font-semibold text-warm-900">
-                                    {title}
-                                </h2>
+                        <div className="flex items-start gap-3">
+                            {Icon && (
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white sm:bg-primary-50 sm:text-primary-600">
+                                    <Icon className="h-5 w-5" />
+                                </span>
                             )}
-                            {description && (
-                                <p className="mt-0.5 text-sm text-warm-500">
-                                    {description}
-                                </p>
-                            )}
+                            <div className="min-w-0 flex-1">
+                                {title && <h2 className="text-lg font-semibold">{title}</h2>}
+                                {description && (
+                                    <p className="mt-0.5 text-sm text-white/80 sm:text-warm-500">{description}</p>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                aria-label="Cerrar"
+                                className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition hover:bg-white/15 sm:hidden"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
                         </div>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            aria-label="Cerrar"
-                            className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 sm:hidden"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
                     </div>
+                ) : (
+                    <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-gray-300 sm:hidden" aria-hidden="true" />
                 )}
 
                 <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">{children}</div>

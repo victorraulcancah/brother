@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ban, Edit, Eye, Printer, User } from 'lucide-react';
+import { Ban, Edit, Eye, Printer, User, ReceiptText } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
@@ -467,6 +467,7 @@ export default function NotasVenta() {
                 formatos={['a4', 'ticket']}
             />
             <DetalleSheet
+                icon={ReceiptText}
                 open={detalleMovil && Boolean(seleccionada)}
                 onClose={() => setDetalleMovil(false)}
                 title={`Venta ${seleccionada?.serie}-${seleccionada?.numero}`}

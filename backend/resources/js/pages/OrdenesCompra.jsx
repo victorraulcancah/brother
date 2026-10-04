@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileDown, Pencil, Printer, ShoppingCart, Trash2 } from 'lucide-react';
+import { FileDown, Pencil, Printer, ShoppingCart, Trash2, FileText } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
@@ -321,6 +321,7 @@ export default function OrdenesCompra() {
                 formatos={['a4', 'ticket']}
             />
             <DetalleSheet
+                icon={FileText}
                 open={detalleMovil && Boolean(seleccionada)}
                 onClose={() => setDetalleMovil(false)}
                 title={`Orden ${seleccionada?.codigo ?? ''}`}

@@ -1,3 +1,4 @@
+import { Package } from 'lucide-react';
 import { cn } from './cn';
 
 /**
@@ -7,6 +8,7 @@ import { cn } from './cn';
  * tabla de cada pantalla.
  *
  * items:  [{ key, title, subtitle?, fields: [{ label, value, className? }] }]
+ *         `className` de un campo reemplaza el color del valor (p. ej. 'text-primary-600').
  * totals: [{ label, value, strong? }]   — filas de resumen debajo de las tarjetas
  * empty:  texto cuando no hay líneas
  */
@@ -16,14 +18,24 @@ export default function LineCards({ items, totals, empty, className }) {
             {items.length === 0 && <p className="py-8 text-center text-sm text-warm-500">{empty}</p>}
 
             {items.map((it) => (
-                <article key={it.key} className="rounded-xl border border-edge bg-white p-3">
-                    <h3 className="text-sm font-semibold text-warm-900">{it.title}</h3>
-                    {it.subtitle && <p className="mt-0.5 text-xs text-warm-500">{it.subtitle}</p>}
-                    <dl className="mt-2 grid grid-cols-3 gap-x-2 gap-y-2 text-sm">
+                <article
+                    key={it.key}
+                    className="rounded-xl border border-edge border-l-4 border-l-primary-500 bg-white p-3 shadow-sm"
+                >
+                    <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+                            <Package className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                            <h3 className="text-sm font-semibold text-warm-900">{it.title}</h3>
+                            {it.subtitle && <p className="mt-0.5 text-xs text-warm-500">{it.subtitle}</p>}
+                        </div>
+                    </div>
+                    <dl className="mt-3 grid grid-cols-3 gap-x-2 gap-y-2 border-t border-dashed border-edge pt-2.5 text-sm">
                         {it.fields.map((f) => (
                             <div key={f.label} className="min-w-0">
                                 <dt className="text-xs text-warm-500">{f.label}</dt>
-                                <dd className={cn('truncate font-semibold text-warm-900', f.className)}>{f.value}</dd>
+                                <dd className={cn('truncate font-semibold', f.className ?? 'text-warm-900')}>{f.value}</dd>
                             </div>
                         ))}
                     </dl>
@@ -31,11 +43,13 @@ export default function LineCards({ items, totals, empty, className }) {
             ))}
 
             {items.length > 0 && totals && (
-                <div className="space-y-1 border-t border-edge px-1 pt-3">
+                <div className="space-y-1 rounded-xl bg-primary-50 px-4 py-3">
                     {totals.map((t) => (
                         <div key={t.label} className="flex items-baseline justify-between text-sm">
-                            <span className="text-warm-500">{t.label}</span>
-                            <span className={cn('font-semibold text-warm-900', t.strong && 'text-lg font-extrabold text-primary-700')}>
+                            <span className={t.strong ? 'font-bold uppercase tracking-wide text-primary-700' : 'text-warm-500'}>
+                                {t.label}
+                            </span>
+                            <span className={t.strong ? 'text-xl font-extrabold text-primary-700' : 'font-semibold text-warm-900'}>
                                 {t.value}
                             </span>
                         </div>

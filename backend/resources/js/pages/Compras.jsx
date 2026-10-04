@@ -357,6 +357,7 @@ export default function Compras() {
                 formatos={['a4', 'ticket']}
             />
             <DetalleSheet
+                icon={ShoppingBag}
                 open={detalleMovil && Boolean(seleccionada)}
                 onClose={() => setDetalleMovil(false)}
                 title={`Compra ${seleccionada?.numero_compra ?? ''}`}

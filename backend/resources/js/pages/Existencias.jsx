@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Package, Store } from 'lucide-react';
+import { Package, Store, Warehouse } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import Layout from '../components/Layout';
 import PageHeader from '../components/PageHeader';
@@ -498,6 +498,7 @@ export default function Existencias() {
                 </div>
             </div>
             <DetalleSheet
+                icon={Warehouse}
                 open={detalleMovil && Boolean(seleccionada)}
                 onClose={() => setDetalleMovil(false)}
                 title={seleccionada?.producto?.nombre ?? 'Existencia'}

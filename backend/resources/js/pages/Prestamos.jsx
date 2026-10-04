@@ -784,6 +784,7 @@ export default function Prestamos() {
                 formatos={['a4', 'ticket']}
             />
             <DetalleSheet
+                icon={Handshake}
                 open={detalleMovil && Boolean(seleccionado)}
                 onClose={() => setDetalleMovil(false)}
                 title={`Préstamo ${seleccionado?.documento ?? ''}`}

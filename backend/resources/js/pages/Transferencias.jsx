@@ -955,6 +955,7 @@ export default function Transferencias() {
                 formatos={['a4', 'ticket']}
             />
             <DetalleSheet
+                icon={Repeat}
                 open={detalleMovil && Boolean(seleccionada)}
                 onClose={() => setDetalleMovil(false)}
                 title={`Guía ${seleccionada?.documento ?? ''}`}

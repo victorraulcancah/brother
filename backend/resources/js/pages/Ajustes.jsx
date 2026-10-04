@@ -1239,6 +1239,7 @@ export default function Ajustes() {
                 formatos={['a4', 'ticket']}
             />
             <DetalleSheet
+                icon={Scale}
                 open={detalleMovil && Boolean(seleccionado)}
                 onClose={() => setDetalleMovil(false)}
                 title={`Ajuste ${seleccionado?.documento ?? ''}`}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ban, Edit, Receipt, User } from 'lucide-react';
+import { Ban, Edit, Receipt, User, ClipboardList } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
@@ -347,6 +347,7 @@ export default function Pedidos() {
                 />
             </Modal>
             <DetalleSheet
+                icon={ClipboardList}
                 open={detalleMovil && Boolean(seleccionado)}
                 onClose={() => setDetalleMovil(false)}
                 title={`Pedido ${seleccionado?.serie}-${seleccionado?.numero}`}

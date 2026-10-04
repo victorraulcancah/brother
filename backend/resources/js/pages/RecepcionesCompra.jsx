@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Printer, Truck, Undo2 } from 'lucide-react';
+import { Printer, Truck, Undo2, PackageCheck } from 'lucide-react';
 import api, { asList } from '../lib/api';
 import { useToast } from '../lib/toast';
 import Layout from '../components/Layout';
@@ -287,6 +287,7 @@ export default function RecepcionesCompra() {
                 formatos={['a4', 'ticket']}
             />
             <DetalleSheet
+                icon={PackageCheck}
                 open={detalleMovil && Boolean(seleccionada)}
                 onClose={() => setDetalleMovil(false)}
                 title={`Recepción ${seleccionada?.documento ?? ''}`}
