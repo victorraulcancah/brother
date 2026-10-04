@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
+import ModulosCarrusel from '../components/ModulosCarrusel';
 import { cn } from '../components/ui';
 import { useAuth } from '../lib/auth';
 
@@ -198,32 +199,32 @@ export default function Login() {
                     </span>
                 </div>
 
-                <div className="max-w-[30rem] animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none max-lg:mt-8 lg:my-auto">
-                    <h1 className="text-[1.75rem] font-extrabold leading-[1.08] tracking-[-0.015em] sm:text-4xl lg:text-[clamp(2.75rem,3.6vw,3.6rem)]">
-                        Del molino a tu almacén, todo en un solo lugar.
-                    </h1>
-                    <p className="mt-5 hidden max-w-md text-[15px] leading-relaxed text-blue-100/85 lg:block">
-                        Gestiona pedidos, stock y clientes de tu distribuidora desde un panel simple y rápido.
-                    </p>
-                </div>
+                {/* En celular el panel es una banda con el titular; en escritorio el titular lo
+                    llevan los módulos del carrusel y este queda solo para lectores de pantalla. */}
+                <h1 className="max-w-[30rem] animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)] text-[1.75rem] font-extrabold leading-[1.08] tracking-[-0.015em] motion-reduce:animate-none max-lg:mt-8 sm:text-4xl lg:sr-only">
+                    Del molino a tu almacén, todo en un solo lugar.
+                </h1>
 
-                <dl className="hidden gap-8 lg:flex">
-                    <div>
-                        <dt className="text-xl font-bold text-wheat-200">Pedidos</dt>
-                        <dd className="mt-0.5 text-xs text-blue-200/80">en tiempo real</dd>
-                    </div>
-                    <div>
-                        <dt className="text-xl font-bold text-wheat-200">Stock</dt>
-                        <dd className="mt-0.5 text-xs text-blue-200/80">siempre al día</dd>
-                    </div>
-                </dl>
+                <ModulosCarrusel className="hidden w-full max-w-[36rem] lg:m-auto lg:block" />
             </section>
 
             {/* Formulario */}
             <main className="flex items-center justify-center px-6 py-10 [color-scheme:dark] sm:px-10 lg:py-12">
                 <div className="w-full max-w-[22.5rem] animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)_0.08s_backwards] motion-reduce:animate-none">
-                    <h2 className="text-[1.75rem] font-extrabold leading-tight tracking-[-0.015em]">Bienvenido de nuevo</h2>
-                    <p className="mt-1.5 text-[15px] text-[#8c9ac0]">Ingresa a tu cuenta para continuar.</p>
+                    <div className="flex flex-col items-center text-center">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8c9ac0]">
+                            Desarrollado por
+                        </span>
+                        <img
+                            src="/images/brintech-oscuro.jpg"
+                            alt="BRINTECH Technology Consulting"
+                            className="mt-1 h-24 w-auto mix-blend-screen"
+                        />
+                        <h2 className="mt-6 text-[1.75rem] font-extrabold leading-tight tracking-[-0.015em]">
+                            Bienvenido de nuevo
+                        </h2>
+                        <p className="mt-1.5 text-[15px] text-[#8c9ac0]">Ingresa a tu cuenta para continuar.</p>
+                    </div>
 
                     {formError && (
                         <div
@@ -313,15 +314,6 @@ export default function Login() {
                             Regístrate
                         </Link>
                     </p>
-
-                    <div className="mt-10 flex flex-col items-center gap-0.5">
-                        <span className="text-[11px] text-[#8c9ac0]">Desarrollado por</span>
-                        <img
-                            src="/images/brintech-oscuro.jpg"
-                            alt="BRINTECH Technology Consulting"
-                            className="h-16 w-auto mix-blend-screen"
-                        />
-                    </div>
                 </div>
             </main>
         </div>

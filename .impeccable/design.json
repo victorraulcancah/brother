@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-03T00:00:00Z",
+  "title": "Design System: BRAVA",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Azul BRAVA", "canonical": "#2563eb", "tonalRamp": ["#1e3a8a", "#1e40af", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe", "#eff6ff"] },
+      "cream": { "role": "neutral", "displayName": "Fondo de página", "canonical": "#e9ecf0", "tonalRamp": ["#1f2937", "#6b7280", "#d4d8de", "#e9ecf0", "#f9fafb", "#ffffff"] },
+      "night-700": { "role": "neutral", "displayName": "Noche del ingreso", "canonical": "#131b36", "tonalRamp": ["#080c18", "#0d1326", "#131b36", "#202c52"] },
+      "deep-800": { "role": "secondary", "displayName": "Azul profundo", "canonical": "#0b1f5c", "tonalRamp": ["#091648", "#0b1f5c"] },
+      "wheat-200": { "role": "tertiary", "displayName": "Trigo", "canonical": "#efdcae", "tonalRamp": ["#efdcae"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display del ingreso", "purpose": "Titular del panel de marca (Manrope 800)." },
+      "login-title": { "displayName": "Título del formulario", "purpose": "Bienvenido de nuevo (Manrope 800)." },
+      "page-title": { "displayName": "Título de página", "purpose": "PageHeader de la aplicación." },
+      "title": { "displayName": "Título", "purpose": "Títulos de modal y tarjeta." },
+      "body": { "displayName": "Cuerpo", "purpose": "Tablas, campos y botones." },
+      "label": { "displayName": "Etiqueta", "purpose": "Cabeceras de tabla en mayúsculas pequeñas." }
+    },
+    "shadows": [
+      { "name": "card", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "shadow-sm de tarjetas, botones y campos." },
+      { "name": "dropdown", "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", "purpose": "Menús desplegables, con borde edge." },
+      { "name": "modal", "value": "0 25px 50px -12px rgb(0 0 0 / 0.25)", "purpose": "Diálogo y hoja inferior." },
+      { "name": "login-glow-button", "value": "0 10px 24px -10px rgba(59,130,246,0.75)", "purpose": "Botón del ingreso." },
+      { "name": "login-glow-logo", "value": "0 8px 20px -6px rgba(59,130,246,0.7)", "purpose": "Recuadro del logo en el ingreso." }
+    ],
+    "motion": [
+      { "name": "login-in", "value": "0.7s cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Entrada única de titular y formulario del ingreso." },
+      { "name": "sheet-in", "value": "0.28s cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Hoja inferior móvil." },
+      { "name": "fade-in", "value": "0.2s ease-out", "purpose": "Velo del modal." },
+      { "name": "dropdown-in", "value": "0.15s ease-out", "purpose": "Menús desplegables." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal de la aplicación.",
+      "html": "<button class=\"ds-btn-primary\">Guardar</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #2563eb; color: #fff; padding: 8px 12px; font-size: 14px; font-weight: 500; border: 0; border-radius: 6px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); cursor: pointer; transition: background .15s; } .ds-btn-primary:hover { background: #1d4ed8; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3b82f6; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Acción secundaria, blanca con anillo.",
+      "html": "<button class=\"ds-btn-secondary\">Cerrar</button>",
+      "css": ".ds-btn-secondary { background: #fff; color: #374151; padding: 8px 12px; font-size: 14px; font-weight: 500; border: 0; border-radius: 6px; box-shadow: inset 0 0 0 1px #d1d5db, 0 1px 2px 0 rgb(0 0 0 / 0.05); cursor: pointer; transition: background .15s; } .ds-btn-secondary:hover { background: #f9fafb; } .ds-btn-secondary:focus-visible { outline: none; box-shadow: inset 0 0 0 1px #d1d5db, 0 0 0 2px #fff, 0 0 0 4px #3b82f6; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo con etiqueta visible y anillo interior.",
+      "html": "<div class=\"ds-input-wrap\"><label class=\"ds-input-label\">Nombre</label><input class=\"ds-input\" placeholder=\"Nombre\"></div>",
+      "css": ".ds-input-wrap { width: 240px; } .ds-input-label { display: block; margin-bottom: 4px; font-size: 14px; font-weight: 500; color: #374151; } .ds-input { display: block; width: 100%; box-sizing: border-box; border: 0; border-radius: 6px; padding: 8px 12px; font-size: 14px; color: #111827; background: #fff; box-shadow: inset 0 0 0 1px #d1d5db, 0 1px 2px 0 rgb(0 0 0 / 0.05); } .ds-input::placeholder { color: #9ca3af; } .ds-input:focus { outline: none; box-shadow: inset 0 0 0 2px #2563eb; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Tarjeta blanca con borde edge sobre fondo gris.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Resumen</h3><p class=\"ds-card-text\">Contenido de la tarjeta.</p></div>",
+      "css": ".ds-card { background: #fff; border: 1px solid #d4d8de; border-radius: 8px; padding: 24px; width: 260px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); } .ds-card-title { margin: 0; font-size: 16px; font-weight: 600; color: #111827; } .ds-card-text { margin: 8px 0 0; font-size: 14px; color: #6b7280; }"
+    },
+    {
+      "name": "Table Header",
+      "kind": "custom",
+      "refersTo": "table-header",
+      "description": "Cabecera de tabla en azul con mayúsculas pequeñas.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Producto</th><th>Stock</th></tr></thead><tbody><tr><td>Arroz extra 50 kg</td><td>120</td></tr></tbody></table>",
+      "css": ".ds-table { width: 320px; border-collapse: collapse; font-size: 14px; text-align: left; background: #fff; } .ds-table th { background: #2563eb; color: #fff; padding: 12px 16px; font-size: 12px; font-weight: 600; letter-spacing: .025em; text-transform: uppercase; } .ds-table td { padding: 12px 16px; color: #374151; border-bottom: 1px solid #f3f4f6; } .ds-table tbody tr:hover { background: #f9fafb; }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Píldora de estado con anillo interior.",
+      "html": "<span class=\"ds-badge\">Activo</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; background: #eff6ff; color: #1d4ed8; border-radius: 9999px; padding: 2px 8px; font-size: 12px; font-weight: 500; box-shadow: inset 0 0 0 1px #bfdbfe; }"
+    },
+    {
+      "name": "Sheet Header (móvil)",
+      "kind": "custom",
+      "refersTo": "modal-sheet",
+      "description": "Cabecera azul de la hoja inferior móvil con asa e ícono.",
+      "html": "<div class=\"ds-sheet\"><div class=\"ds-sheet-handle\"></div><h2 class=\"ds-sheet-title\">Detalle de venta</h2></div>",
+      "css": ".ds-sheet { width: 300px; background: #2563eb; color: #fff; border-radius: 24px 24px 0 0; padding: 10px 20px 16px; } .ds-sheet-handle { width: 40px; height: 4px; margin: 0 auto 12px; border-radius: 9999px; background: rgba(255,255,255,.4); } .ds-sheet-title { margin: 0; font-size: 18px; font-weight: 600; }"
+    },
+    {
+      "name": "Login Field",
+      "kind": "input",
+      "refersTo": "login-field",
+      "description": "Campo oscuro del ingreso, 48px de alto.",
+      "html": "<input class=\"ds-login-field\" placeholder=\"tucorreo@empresa.com\">",
+      "css": ".ds-login-field { box-sizing: border-box; width: 300px; height: 48px; padding: 0 16px; border-radius: 12px; border: 1px solid #202c52; background: rgba(19,27,54,.7); color: #fff; font-size: 15px; font-family: Manrope, system-ui, sans-serif; transition: border-color .15s, box-shadow .15s; } .ds-login-field::placeholder { color: #7f8db0; } .ds-login-field:hover { border-color: #2d3c6c; } .ds-login-field:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,.2); }"
+    },
+    {
+      "name": "Login Button",
+      "kind": "button",
+      "refersTo": "login-button",
+      "description": "Botón de ingreso con brillo azul.",
+      "html": "<button class=\"ds-login-btn\">Iniciar sesión</button>",
+      "css": ".ds-login-btn { height: 48px; width: 300px; border: 0; border-radius: 12px; background: #2f6df0; color: #fff; font-size: 15px; font-weight: 700; font-family: Manrope, system-ui, sans-serif; box-shadow: 0 10px 24px -10px rgba(59,130,246,.75); cursor: pointer; transition: background .15s; } .ds-login-btn:hover { background: #2563eb; } .ds-login-btn:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; } .ds-login-btn:active { transform: translateY(1px); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El mostrador claro",
+    "overview": "Dos mundos conviven y no se mezclan. La aplicación es un mostrador de trabajo: fondo gris de página (#e9ecf0), tarjetas blancas con borde fino, un solo acento azul y texto gris oscuro. Es denso pero legible, pensado para PC de oficina y celular por igual. La pantalla de ingreso es un mundo propio y nocturno: pantalla partida con un panel de marca azul profundo y un panel de formulario casi negro. El azul de marca es el hilo que une ambos.\n\nLa aplicación es plana: la profundidad viene del contraste blanco sobre gris y de bordes edge, con sombra mínima. La tipografía es la del sistema; Manrope vive solo en el ingreso. En celular los componentes cambian de forma (tabla a tarjetas, modal a hoja inferior), no solo de tamaño.",
+    "keyCharacteristics": [
+      "Un solo acento: azul primary-600; el resto es gris neutro.",
+      "Tarjetas blancas con borde edge sobre fondo cream.",
+      "Móvil con forma propia: hoja inferior, tarjetas de fila, tarjetas de línea.",
+      "Ingreso nocturno con granos de arroz en contorno como textura de marca."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "El azul es el único acento de la aplicación; estados usan verde, ámbar y rojo solo en Badge, Button success/danger y errores.", "section": "colors" },
+      { "name": "The Gray-Page Rule", "body": "La página es gris y la tarjeta es blanca; una tarjeta nunca va sobre blanco.", "section": "colors" },
+      { "name": "The Wheat Is Login's Rule", "body": "El trigo no sale del ingreso.", "section": "colors" },
+      { "name": "The Manrope Stays Home Rule", "body": "Manrope no se usa fuera del ingreso.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Las superficies en reposo no llevan sombra más allá de shadow-sm; la sombra grande solo marca capas que flotan.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar primary-600 como único acento de la aplicación y cream como fondo de página.",
+      "Do poner tarjetas blancas con borde edge y shadow-sm.",
+      "Do dar a cada componente su forma móvil: hoja inferior en Modal, tarjetas en DataTable y líneas.",
+      "Do usar íconos de lucide-react en SVG, con etiqueta visible en los campos.",
+      "Do respetar motion-reduce en toda animación de entrada.",
+      "Do mantener el ingreso en su mundo nocturno con tokens night, deep y wheat."
+    ],
+    "donts": [
+      "Don't usar Manrope, night, deep ni wheat fuera del ingreso.",
+      "Don't introducir un segundo acento de color en la aplicación.",
+      "Don't mostrar una tabla de muchas columnas en celular; usar tarjetas.",
+      "Don't usar cabecera de tabla en otro color que primary-600."
+    ]
+  }
+}

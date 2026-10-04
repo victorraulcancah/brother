@@ -47,6 +47,16 @@
     background-repeat: no-repeat;
 }
 
+/* Carrusel del ingreso: la barra del módulo activo se llena y pasa al siguiente. */
+@keyframes login-progress {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+
 /* Pantalla de ingreso: aparición única de titular y formulario. */
 @keyframes login-in {
     from {
