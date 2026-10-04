@@ -11,12 +11,12 @@ const REMEMBER_KEY = 'brava_remember';
 function Campo({ id, label, icon: Icon, error, trailing, ...props }) {
     return (
         <div>
-            <label htmlFor={id} className="mb-2 block text-[13px] font-semibold text-white">
+            <label htmlFor={id} className="mb-2 block text-[13px] font-semibold text-slate-700">
                 {label}
             </label>
             <div className="relative">
                 <Icon
-                    className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#7f8db0]"
+                    className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-500"
                     aria-hidden="true"
                 />
                 <input
@@ -24,18 +24,20 @@ function Campo({ id, label, icon: Icon, error, trailing, ...props }) {
                     aria-invalid={Boolean(error)}
                     aria-describedby={error ? `${id}-error` : undefined}
                     className={cn(
-                        'h-12 w-full rounded-xl border border-night-600 bg-night-700/70 pl-11 pr-11 text-[15px] text-white caret-primary-400 outline-none transition',
-                        'placeholder:text-[#7f8db0] hover:border-[#2d3c6c] focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20',
+                        'h-12 w-full rounded-xl border bg-white pl-11 pr-11 text-[15px] text-slate-900 caret-primary-600 outline-none transition',
+                        'placeholder:text-slate-500 focus:ring-4',
                         // El autocompletado del navegador pinta su propio fondo claro: se le da el del campo.
-                        '[&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#131b36] [&:-webkit-autofill]:[-webkit-text-fill-color:white]',
-                        error && 'border-red-400/70 focus:border-red-400 focus:ring-red-400/20',
+                        '[&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#ffffff] [&:-webkit-autofill]:[-webkit-text-fill-color:#0f172a]',
+                        error
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                            : 'border-slate-300 hover:border-slate-400 focus:border-primary-600 focus:ring-primary-600/20',
                     )}
                     {...props}
                 />
                 {trailing}
             </div>
             {error && (
-                <p id={`${id}-error`} className="mt-1.5 text-xs text-red-300">
+                <p id={`${id}-error`} className="mt-1.5 text-xs text-red-600">
                     {error}
                 </p>
             )}
@@ -178,7 +180,7 @@ export default function Login() {
     };
 
     return (
-        <div className="grid min-h-dvh bg-night-900 font-display text-white selection:bg-primary-500/40 lg:grid-cols-[1.04fr_1fr]">
+        <div className="grid min-h-dvh bg-slate-50 font-display text-white selection:bg-primary-500/40 lg:grid-cols-[1.04fr_1fr]">
             {/* Panel de marca */}
             <section className="relative isolate flex flex-col overflow-hidden bg-[linear-gradient(160deg,#0a1a52_0%,#0b1f5c_55%,#0e2a7e_100%)] px-6 pb-8 pt-7 sm:px-10 lg:min-h-dvh lg:px-14 lg:py-12">
                 <FondoGranos />
@@ -209,27 +211,30 @@ export default function Login() {
             </section>
 
             {/* Formulario */}
-            <main className="flex items-center justify-center px-6 py-10 [color-scheme:dark] sm:px-10 lg:py-12">
+            <main className="flex items-center justify-center bg-slate-50 px-6 py-10 text-slate-900 [color-scheme:light] sm:px-10 lg:py-12">
                 <div className="w-full max-w-[22.5rem] animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)_0.08s_backwards] motion-reduce:animate-none">
                     <div className="flex flex-col items-center text-center">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8c9ac0]">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                             Desarrollado por
                         </span>
-                        <img
-                            src="/images/brintech-oscuro.jpg"
-                            alt="BRINTECH Technology Consulting"
-                            className="mt-1 h-24 w-auto mix-blend-screen"
-                        />
-                        <h2 className="mt-6 text-[1.75rem] font-extrabold leading-tight tracking-[-0.015em]">
+                        {/* El logo se entregó sobre fondo negro: el marco circular lo conserva tal cual. */}
+                        <span className="mt-3 grid h-36 w-36 place-items-center overflow-hidden rounded-full bg-black shadow-[0_14px_32px_-14px_rgba(37,99,235,0.55)] ring-4 ring-primary-600">
+                            <img
+                                src="/images/brintech-oscuro.jpg"
+                                alt="BRINTECH Technology Consulting"
+                                className="h-[74%] w-auto"
+                            />
+                        </span>
+                        <h2 className="mt-6 text-[1.75rem] font-extrabold leading-tight tracking-[-0.015em] text-slate-900">
                             Bienvenido de nuevo
                         </h2>
-                        <p className="mt-1.5 text-[15px] text-[#8c9ac0]">Ingresa a tu cuenta para continuar.</p>
+                        <p className="mt-1.5 text-[15px] text-slate-500">Ingresa a tu cuenta para continuar.</p>
                     </div>
 
                     {formError && (
                         <div
                             role="alert"
-                            className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+                            className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
                         >
                             {formError}
                         </div>
@@ -266,7 +271,7 @@ export default function Login() {
                                     onClick={() => setShowPassword((v) => !v)}
                                     aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
                                     aria-pressed={showPassword}
-                                    className="absolute right-0.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-xl text-[#7f8db0] transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+                                    className="absolute right-0.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-xl text-slate-500 transition hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                                 >
                                     {showPassword ? (
                                         <EyeOff className="h-[18px] w-[18px]" />
@@ -278,18 +283,18 @@ export default function Login() {
                         />
 
                         <div className="flex items-center justify-between gap-3">
-                            <label className="flex min-h-11 cursor-pointer select-none items-center gap-2.5 text-[13px] font-medium text-[#c3cde8]">
+                            <label className="flex min-h-11 cursor-pointer select-none items-center gap-2.5 text-[13px] font-medium text-slate-700">
                                 <input
                                     type="checkbox"
                                     checked={remember}
                                     onChange={(e) => setRemember(e.target.checked)}
-                                    className="h-[18px] w-[18px] shrink-0 cursor-pointer appearance-none rounded-md border border-[#3a4a7c] bg-night-700 transition checked:border-primary-500 checked:bg-primary-500 check-brava focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400"
+                                    className="h-[18px] w-[18px] shrink-0 cursor-pointer appearance-none rounded-md border border-slate-400 bg-white transition checked:border-primary-500 checked:bg-primary-500 check-brava focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
                                 />
                                 Recordarme
                             </label>
                             <Link
                                 to="/recuperar"
-                                className="inline-flex min-h-11 items-center rounded text-[13px] font-semibold text-primary-400 transition hover:text-primary-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300"
+                                className="inline-flex min-h-11 items-center rounded text-[13px] font-semibold text-primary-600 transition hover:text-primary-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
                             >
                                 ¿Olvidaste tu contraseña?
                             </Link>
@@ -298,18 +303,18 @@ export default function Login() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#2f6df0] text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(59,130,246,0.75)] transition hover:bg-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-70"
+                            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#2f6df0] text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(37,99,235,0.6)] transition hover:bg-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-70"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                             {loading ? 'Ingresando...' : 'Iniciar sesión'}
                         </button>
                     </form>
 
-                    <p className="mt-3 flex min-h-11 flex-wrap items-center justify-center gap-x-1 text-center text-[13px] text-[#8c9ac0]">
+                    <p className="mt-3 flex min-h-11 flex-wrap items-center justify-center gap-x-1 text-center text-[13px] text-slate-500">
                         ¿No tienes cuenta?
                         <Link
                             to="/registro"
-                            className="inline-flex min-h-11 items-center rounded px-0.5 font-semibold text-primary-400 transition hover:text-primary-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300"
+                            className="inline-flex min-h-11 items-center rounded px-0.5 font-semibold text-primary-600 transition hover:text-primary-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
                         >
                             Regístrate
                         </Link>
