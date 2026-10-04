@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Correlativo;
 use App\Models\Almacen;
 use App\Models\ProductoPresentacion;
 use App\Models\SerieDocumento;
@@ -111,7 +112,7 @@ class TransferenciaController extends Controller
         return response()->json($transferencia->fresh());
     }
 
-    /** Correlativo formal de la guia, ej. T001-00000012. */
+    /** Correlativo formal de la guia, ej. T001-12. */
     private function siguienteNumero(): string
     {
         $serieDoc = SerieDocumento::where('tipo_documento', 'guia_traslado')
@@ -123,7 +124,7 @@ class TransferenciaController extends Controller
             );
         $serieDoc->increment('numero_actual');
 
-        return str_pad($serieDoc->numero_actual, 8, '0', STR_PAD_LEFT);
+        return Correlativo::pad($serieDoc->numero_actual);
     }
 
     public function destroy(Transferencia $transferencia)

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Correlativo;
 use App\Models\Almacen;
 use App\Models\Compra;
 use App\Models\ProductoPresentacion;
@@ -278,6 +279,6 @@ class RecepcionCompraController extends Controller
 
         $serieDoc->increment('numero_actual');
 
-        return str_pad($serieDoc->numero_actual, 4, '0', STR_PAD_LEFT);
+        return Correlativo::pad($serieDoc->numero_actual);
     }
 }

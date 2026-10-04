@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Correlativo;
 use App\Models\AjusteInventario;
 use App\Models\Almacen;
 use App\Models\ProductoAlmacenStock;
@@ -134,7 +135,7 @@ class AjusteInventarioController extends Controller
         return round((float) $presentacion->precio_compra, 4);
     }
 
-    /** Correlativo formal del ajuste, ej. AJ01-0001. */
+    /** Correlativo formal del ajuste, ej. AJ01-01. */
     private function siguienteNumero(): string
     {
         $serieDoc = SerieDocumento::where('tipo_documento', 'ajuste_inventario')
@@ -147,7 +148,7 @@ class AjusteInventarioController extends Controller
 
         $serieDoc->increment('numero_actual');
 
-        return str_pad($serieDoc->numero_actual, 4, '0', STR_PAD_LEFT);
+        return Correlativo::pad($serieDoc->numero_actual);
     }
 
     /**

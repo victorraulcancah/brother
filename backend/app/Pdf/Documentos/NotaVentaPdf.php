@@ -2,6 +2,7 @@
 
 namespace App\Pdf\Documentos;
 
+use App\Support\Correlativo;
 use App\Models\NotaVenta;
 use App\Pdf\DocumentoPdf;
 use App\Pdf\MontoEnLetras;
@@ -29,7 +30,7 @@ class NotaVentaPdf implements DocumentoPdf
             'pagos',
         ])->findOrFail($id);
 
-        $documento = "{$venta->serie}-" . str_pad((string) $venta->numero, 8, '0', STR_PAD_LEFT);
+        $documento = "{$venta->serie}-" . Correlativo::pad($venta->numero);
 
         $filas = $venta->detalles->map(function ($d, $i) {
             $prod = $d->presentacion?->producto;
@@ -71,6 +72,6 @@ class NotaVentaPdf implements DocumentoPdf
     {
         $venta = NotaVenta::findOrFail($id);
 
-        return 'nota-venta-' . $venta->serie . '-' . str_pad((string) $venta->numero, 8, '0', STR_PAD_LEFT);
+        return 'nota-venta-' . $venta->serie . '-' . Correlativo::pad($venta->numero);
     }
 }

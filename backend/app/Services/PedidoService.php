@@ -1,6 +1,7 @@
 <?php
 namespace App\Services;
 
+use App\Support\Correlativo;
 use App\Models\NotaVenta;
 use App\Models\Pedido;
 use App\Models\SerieDocumento;
@@ -35,7 +36,7 @@ class PedidoService
                     ['numero_actual' => 0, 'activo' => true]
                 );
             $serieDoc->increment('numero_actual');
-            $numero = str_pad($serieDoc->numero_actual, 3, '0', STR_PAD_LEFT);
+            $numero = Correlativo::pad($serieDoc->numero_actual);
 
             $pedido = Pedido::create($this->cabecera($data) + [
                 'serie' => $serie,

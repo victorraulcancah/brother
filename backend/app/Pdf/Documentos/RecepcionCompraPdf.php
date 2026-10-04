@@ -2,6 +2,7 @@
 
 namespace App\Pdf\Documentos;
 
+use App\Support\Correlativo;
 use App\Models\RecepcionCompra;
 use App\Pdf\DocumentoPdf;
 
@@ -46,7 +47,7 @@ class RecepcionCompraPdf implements DocumentoPdf
         return [
             'recepcion' => $recepcion,
             'documento' => $recepcion->documento ?? ('#' . $recepcion->id),
-            'compraRef' => $recepcion->compra?->correlativo ? 'C001-' . str_pad((string) $recepcion->compra->correlativo, 8, '0', STR_PAD_LEFT) : null,
+            'compraRef' => $recepcion->compra?->correlativo ? 'C001-' . Correlativo::pad($recepcion->compra->correlativo) : null,
             'ordenRef' => $recepcion->ordenCompra?->codigo,
             'filas' => $filas,
         ];

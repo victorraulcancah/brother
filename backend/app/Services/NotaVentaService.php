@@ -1,6 +1,7 @@
 <?php
 namespace App\Services;
 
+use App\Support\Correlativo;
 use App\Models\AperturaCaja;
 use App\Models\CuentaPorCobrar;
 use App\Models\MotivoMovimiento;
@@ -36,7 +37,7 @@ class NotaVentaService
                     ['numero_actual' => 0, 'activo' => true]
                 );
             $serieDoc->increment('numero_actual');
-            $numero = str_pad($serieDoc->numero_actual, 3, '0', STR_PAD_LEFT);
+            $numero = Correlativo::pad($serieDoc->numero_actual);
 
             $nota = NotaVenta::create($this->cabecera($data) + [
                 'serie' => $serie,

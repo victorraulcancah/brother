@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Correlativo;
 use App\Models\OrdenCompra;
 use App\Models\SerieDocumento;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ class OrdenCompraController extends Controller
     private const SERIE = 'OC0001';
 
     /**
-     * Siguiente código interno (ej. OC0001-00000019). Se llama dentro de la
+     * Siguiente código interno (ej. OC0001-19). Se llama dentro de la
      * transacción para que el bloqueo evite correlativos duplicados.
      */
     private function generarCodigo(): string
@@ -28,7 +29,7 @@ class OrdenCompraController extends Controller
 
         $serieDoc->increment('numero_actual');
 
-        return self::SERIE . '-' . str_pad($serieDoc->numero_actual, 8, '0', STR_PAD_LEFT);
+        return self::SERIE . '-' . Correlativo::pad($serieDoc->numero_actual);
     }
 
     public function index()

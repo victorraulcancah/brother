@@ -170,7 +170,7 @@ export default function NotasVenta() {
         },
     ];
 
-    const docNombre = (n) => `${n?.serie ?? ''}-${String(n?.numero ?? '').padStart(8, '0')}`;
+    const docNombre = (n) => `${n?.serie ?? ''}-${String(n?.numero ?? '').padStart(2, '0')}`;
 
     const detallesVenta = seleccionada?.detalles ?? [];
     const totalesVenta = detallesVenta.reduce(

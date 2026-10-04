@@ -76,7 +76,7 @@ class PedidoReservaTest extends TestCase
         $pedido = app(PedidoService::class)->crear($this->datos(4));
 
         $this->assertSame('pendiente', $pedido->estado);
-        $this->assertSame('PE01-001', $pedido->serie . '-' . $pedido->numero);
+        $this->assertSame('PE01-01', $pedido->serie . '-' . $pedido->numero);
         $this->assertEquals(10, $this->stock()->stock_actual);
         $this->assertEquals(4, $this->stock()->stock_reservado);
         $this->assertEquals(6, $this->stock()->stock_disponible);

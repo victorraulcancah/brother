@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Correlativo;
 use App\Models\Almacen;
 use App\Models\Prestamo;
 use App\Models\PrestamoDevolucion;
@@ -222,7 +223,7 @@ class PrestamoController extends Controller
             );
         $serieDoc->increment('numero_actual');
 
-        return str_pad($serieDoc->numero_actual, 4, '0', STR_PAD_LEFT);
+        return Correlativo::pad($serieDoc->numero_actual);
     }
 
     private function devueltoDe(Prestamo $prestamo, int $presentacionId): float
