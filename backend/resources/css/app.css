@@ -7,6 +7,17 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 
+    --font-display: 'Manrope', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+
+    /* Pantalla de ingreso: noche azulada del panel del formulario y azul profundo del panel de marca. */
+    --color-night-900: #080c18;
+    --color-night-800: #0d1326;
+    --color-night-700: #131b36;
+    --color-night-600: #202c52;
+    --color-deep-900: #091648;
+    --color-deep-800: #0b1f5c;
+    --color-wheat-200: #efdcae;
+
     /* Acento azul. Los nombres `primary-*` se conservan para no tocar cada pantalla. */
     --color-primary-50: #eff6ff;
     --color-primary-100: #dbeafe;
@@ -27,6 +38,18 @@
     --color-cream: #e9ecf0;
     --color-field: #f9fafb;
     --color-edge: #d4d8de;
+}
+
+/* Pantalla de ingreso: aparición única de titular y formulario. */
+@keyframes login-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Modales en celular: la hoja sube desde abajo. */

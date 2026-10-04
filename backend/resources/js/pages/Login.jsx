@@ -1,30 +1,103 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Button, Input, Alert } from '../components/ui';
+import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
+import { cn } from '../components/ui';
 import { useAuth } from '../lib/auth';
 
 const REMEMBER_KEY = 'brava_remember';
 
-function EyeIcon({ open }) {
+/** Entrada con ícono a la izquierda y, opcionalmente, un control a la derecha (ver contraseña). */
+function Campo({ id, label, icon: Icon, error, trailing, ...props }) {
+    return (
+        <div>
+            <label htmlFor={id} className="mb-2 block text-[13px] font-semibold text-white">
+                {label}
+            </label>
+            <div className="relative">
+                <Icon
+                    className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#7f8db0]"
+                    aria-hidden="true"
+                />
+                <input
+                    id={id}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? `${id}-error` : undefined}
+                    className={cn(
+                        'h-12 w-full rounded-xl border border-night-600 bg-night-700/70 pl-11 pr-11 text-[15px] text-white caret-primary-400 outline-none transition',
+                        'placeholder:text-[#7f8db0] hover:border-[#2d3c6c] focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20',
+                        // El autocompletado del navegador pinta su propio fondo claro: se le da el del campo.
+                        '[&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#131b36] [&:-webkit-autofill]:[-webkit-text-fill-color:white]',
+                        error && 'border-red-400/70 focus:border-red-400 focus:ring-red-400/20',
+                    )}
+                    {...props}
+                />
+                {trailing}
+            </div>
+            {error && (
+                <p id={`${id}-error`} className="mt-1.5 text-xs text-red-300">
+                    {error}
+                </p>
+            )}
+        </div>
+    );
+}
+
+/** Espiga de arroz de la marca: tallo, tres pares de granos y el de la punta. */
+function EspigaMark({ className }) {
+    const pares = [
+        { y: 46, largo: 15 },
+        { y: 37, largo: 14 },
+        { y: 28, largo: 13 },
+    ];
+    const abrir = 42; // grados respecto a la vertical
+
+    return (
+        <svg viewBox="0 0 64 64" className={className} aria-hidden="true" fill="currentColor">
+            <rect x="31" y="24" width="2" height="30" rx="1" />
+            {pares.map(({ y, largo }) =>
+                [1, -1].map((lado) => {
+                    const a = (abrir * Math.PI) / 180;
+                    const cx = 32 + lado * Math.sin(a) * (largo / 2);
+                    const cy = y - Math.cos(a) * (largo / 2);
+                    return (
+                        <ellipse
+                            key={`${y}-${lado}`}
+                            cx={cx}
+                            cy={cy}
+                            rx={largo / 2}
+                            ry={3.3}
+                            transform={`rotate(${-90 + lado * abrir} ${cx} ${cy})`}
+                            stroke="#3b6cf0"
+                            strokeWidth="1.3"
+                        />
+                    );
+                }),
+            )}
+            <ellipse cx="32" cy="19" rx="3.3" ry="7.2" stroke="#3b6cf0" strokeWidth="1.3" />
+        </svg>
+    );
+}
+
+/** Granos de arroz en contorno, repetidos en diagonal: la textura del panel de marca. */
+function FondoGranos() {
     return (
         <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.8}
-            stroke="currentColor"
-            className="h-5 w-5"
+            className="pointer-events-none absolute inset-0 -z-10 h-full w-full text-white opacity-[0.07]"
+            aria-hidden="true"
         >
-            {open ? (
-                <>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                </>
-            ) : (
-                <>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                </>
-            )}
+            <defs>
+                <pattern id="granos" width="64" height="64" patternUnits="userSpaceOnUse">
+                    <g transform="rotate(-38 16 16)" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+                        <ellipse cx="16" cy="16" rx="10" ry="4.2" />
+                        <path d="M8 16h16" />
+                    </g>
+                    <g transform="rotate(-38 48 48)" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+                        <ellipse cx="48" cy="48" rx="10" ry="4.2" />
+                        <path d="M40 48h16" />
+                    </g>
+                </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#granos)" />
         </svg>
     );
 }
@@ -104,31 +177,70 @@ export default function Login() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-cream px-4 py-12">
-            <div className="w-full max-w-md">
-                <div className="mb-8 text-center">
-                    <img
-                        src="/images/brava-horizontal.png"
-                        alt="BRAVA"
-                        className="mx-auto h-20 w-auto drop-shadow-sm"
-                    />
-                    <p className="mt-4 text-sm text-warm-500">
-                        Ingresa a tu cuenta para continuar
+        <div className="grid min-h-dvh bg-night-900 font-display text-white selection:bg-primary-500/40 lg:grid-cols-[1.04fr_1fr]">
+            {/* Panel de marca */}
+            <section className="relative isolate flex flex-col overflow-hidden bg-[linear-gradient(160deg,#0a1a52_0%,#0b1f5c_55%,#0e2a7e_100%)] px-6 pb-8 pt-7 sm:px-10 lg:min-h-dvh lg:px-14 lg:py-12">
+                <FondoGranos />
+                <div
+                    className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(70%_55%_at_0%_100%,rgba(37,99,235,0.55),transparent_70%)]"
+                    aria-hidden="true"
+                />
+
+                <div className="flex items-center gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary-500 shadow-[0_8px_20px_-6px_rgba(59,130,246,0.7)]">
+                        <EspigaMark className="h-6 w-6 text-white" />
+                    </span>
+                    <span>
+                        <span className="block text-[22px] font-extrabold leading-none tracking-wide">BRAVA</span>
+                        <span className="mt-1 block text-[11px] font-medium leading-none text-blue-200/80">
+                            Distribuidora de arroz
+                        </span>
+                    </span>
+                </div>
+
+                <div className="mt-8 max-w-xl animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none lg:my-auto lg:mt-0">
+                    <h1 className="text-balance text-[1.75rem] font-extrabold leading-[1.08] tracking-tight sm:text-4xl lg:text-[clamp(2.75rem,3.6vw,3.6rem)]">
+                        Del molino a tu almacén, todo en un solo lugar.
+                    </h1>
+                    <p className="mt-5 hidden max-w-md text-[15px] leading-relaxed text-blue-100/85 lg:block">
+                        Gestiona pedidos, stock y clientes de tu distribuidora desde un panel simple y rápido.
                     </p>
                 </div>
 
-                <div className="rounded-2xl border border-edge bg-white p-6 shadow-xl shadow-primary-600/5 sm:p-8">
+                <dl className="hidden gap-8 lg:flex">
+                    <div>
+                        <dt className="text-xl font-bold text-wheat-200">Pedidos</dt>
+                        <dd className="mt-0.5 text-xs text-blue-200/80">en tiempo real</dd>
+                    </div>
+                    <div>
+                        <dt className="text-xl font-bold text-wheat-200">Stock</dt>
+                        <dd className="mt-0.5 text-xs text-blue-200/80">siempre al día</dd>
+                    </div>
+                </dl>
+            </section>
+
+            {/* Formulario */}
+            <main className="flex items-center justify-center px-6 py-10 [color-scheme:dark] sm:px-10 lg:py-12">
+                <div className="w-full max-w-[22.5rem] animate-[login-in_0.7s_cubic-bezier(0.16,1,0.3,1)_0.08s_backwards] motion-reduce:animate-none">
+                    <h2 className="text-[1.75rem] font-extrabold leading-tight tracking-tight">Bienvenido de nuevo</h2>
+                    <p className="mt-1.5 text-[15px] text-[#8c9ac0]">Ingresa a tu cuenta para continuar.</p>
+
                     {formError && (
-                        <Alert variant="error" className="mb-4">
+                        <div
+                            role="alert"
+                            className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+                        >
                             {formError}
-                        </Alert>
+                        </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                        <Input
-                            label="Correo electrónico"
+                    <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
+                        <Campo
+                            id="email"
                             name="email"
                             type="email"
+                            label="Correo electrónico"
+                            icon={Mail}
                             autoComplete="email"
                             placeholder="tucorreo@empresa.com"
                             value={form.email}
@@ -136,72 +248,79 @@ export default function Login() {
                             error={errors.email}
                         />
 
-                        <div className="relative">
-                            <Input
-                                label="Contraseña"
-                                name="password"
-                                type={showPassword ? 'text' : 'password'}
-                                autoComplete={showPassword ? 'off' : 'current-password'}
-                                placeholder="••••••••"
-                                value={form.password}
-                                onChange={handleChange}
-                                error={errors.password}
-                                className="pr-11"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword((v) => !v)}
-                                aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                                aria-pressed={showPassword}
-                                className="absolute right-3 top-[38px] text-warm-500 transition hover:text-primary-600"
-                            >
-                                <EyeIcon open={showPassword} />
-                            </button>
-                        </div>
+                        <Campo
+                            id="password"
+                            name="password"
+                            type={showPassword ? 'text' : 'password'}
+                            label="Contraseña"
+                            icon={Lock}
+                            autoComplete={showPassword ? 'off' : 'current-password'}
+                            placeholder="Tu contraseña"
+                            value={form.password}
+                            onChange={handleChange}
+                            error={errors.password}
+                            trailing={
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                    aria-pressed={showPassword}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#7f8db0] transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="h-[18px] w-[18px]" />
+                                    ) : (
+                                        <Eye className="h-[18px] w-[18px]" />
+                                    )}
+                                </button>
+                            }
+                        />
 
-                        <div className="flex items-center justify-between pt-1">
-                            <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-gray-600">
+                        <div className="flex items-center justify-between gap-3">
+                            <label className="flex cursor-pointer select-none items-center gap-2.5 text-[13px] font-medium text-[#c3cde8]">
                                 <input
                                     type="checkbox"
                                     checked={remember}
                                     onChange={(e) => setRemember(e.target.checked)}
-                                    className="h-4 w-4 rounded border-gray-300 text-primary-600 accent-primary-600 focus:ring-primary-500"
+                                    className="h-4 w-4 rounded border-night-600 accent-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400"
                                 />
-                                Recordar credenciales
+                                Recordarme
                             </label>
                             <Link
                                 to="/recuperar"
-                                className="text-sm font-medium text-primary-600 hover:text-primary-700"
+                                className="text-[13px] font-semibold text-primary-400 transition hover:text-primary-300"
                             >
                                 ¿Olvidaste tu contraseña?
                             </Link>
                         </div>
 
-                        <Button
+                        <button
                             type="submit"
-                            size="lg"
-                            loading={loading}
-                            className="w-full"
+                            disabled={loading}
+                            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary-500 text-[15px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(59,130,246,0.75)] transition hover:bg-primary-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-70"
                         >
+                            {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                             {loading ? 'Ingresando...' : 'Iniciar sesión'}
-                        </Button>
+                        </button>
                     </form>
 
-                    <p className="mt-6 text-center text-sm text-gray-500">
+                    <p className="mt-6 text-center text-[13px] text-[#8c9ac0]">
                         ¿No tienes cuenta?{' '}
-                        <Link to="/registro" className="font-medium text-primary-600 hover:text-primary-700">
+                        <Link to="/registro" className="font-semibold text-primary-400 transition hover:text-primary-300">
                             Regístrate
                         </Link>
                     </p>
-                </div>
 
-                <div className="mt-8 flex flex-col items-center gap-1">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-warm-500">
-                        Desarrollado por
-                    </span>
-                    <img src="/images/brintech.png" alt="BRINTECH Technology Consulting" className="h-16 w-auto" />
+                    <div className="mt-10 flex flex-col items-center gap-0.5">
+                        <span className="text-[11px] text-[#8c9ac0]">Desarrollado por</span>
+                        <img
+                            src="/images/brintech-oscuro.jpg"
+                            alt="BRINTECH Technology Consulting"
+                            className="h-16 w-auto mix-blend-screen"
+                        />
+                    </div>
                 </div>
-            </div>
+            </main>
         </div>
     );
 }
